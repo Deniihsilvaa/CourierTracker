@@ -1,20 +1,20 @@
-import { useState } from 'react';
-import { 
-  StyleSheet, 
-  TextInput, 
-  View, 
-  Button, 
-  Text, 
-  ActivityIndicator, 
-  KeyboardAvoidingView, 
-  Platform, 
-  ScrollView,
-  TouchableWithoutFeedback,
-  Keyboard,
-  Alert
-} from 'react-native';
-import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/src/modules/auth/store';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Button,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableWithoutFeedback,
+  View
+} from 'react-native';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -59,7 +59,7 @@ export default function LoginScreen() {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Text style={styles.title}>Courier Tracker</Text>
-          
+
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Email Address</Text>
             <TextInput
@@ -90,29 +90,29 @@ export default function LoginScreen() {
           ) : (
             <View style={styles.buttonGroup}>
               <Button title="Login" onPress={handleSignIn} />
-              
+
               <View style={styles.spacer} />
-              
-              <Button 
-                title="Login with Google" 
-                onPress={handleGoogleSignIn} 
+
+              <Button
+                title="Login with Google"
+                onPress={handleGoogleSignIn}
                 color="#DB4437"
               />
 
               <View style={styles.spacer} />
-              
-              <Text 
-                style={styles.registerLink} 
+
+              <Text
+                style={styles.registerLink}
                 onPress={() => router.push('/register' as any)}
               >
-                Don't have an account? Register
+                Não tem uma conta? Cadastre-se
               </Text>
 
-              <Text 
-                style={styles.forgotPassword} 
+              <Text
+                style={styles.forgotPassword}
                 onPress={handleForgotPassword}
               >
-                Forgot Password?
+                Esqueceu a senha?
               </Text>
             </View>
           )}
