@@ -1,98 +1,192 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { StyleSheet, View, Text, Button, TouchableOpacity, Alert } from 'react-native';
+import { useAuthStore } from '@/src/modules/auth/store';
+import { useTrackingStore } from '@/src/modules/tracking/store';
+import { useSessionStore } from '@/src/modules/sessions/store';
+import { startTracking, stopTracking } from '@/src/modules/tracking/service';
+import { startSession, endSession } from '@/src/modules/sessions/service';
+import { runFullSync } from '@/src/services/sync';
+import { Ionicons } from '@expo/vector-icons';
+import { useState, useEffect } from 'react';
+import { getDb } from '@/src/services/sqlite';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+export default function DashboardScreen() {
+  const { user, signOut } = useAuthStore();
+  const { isTracking, currentLocation, lastSyncTime } = useTrackingStore();
+  const { activeSession } = useSessionStore();
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
 
-export default function HomeScreen() {
+  // Check for unsynced data periodically
+  useEffect(() => {
+    const checkPending = async () => {
+      const db = getDb();
+      try {
+        const gps = await db.getFirstAsync<{count: number}>('SELECT COUNT(*) as count FROM gps_points WHERE synced = 0');
+        const sessions = await db.getFirstAsync<{count: number}>('SELECT COUNT(*) as count FROM work_sessions WHERE synced = 0');
+        setPendingCount((gps?.count || 0) + (sessions?.count || 0));
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    checkPending();
+    const interval = setInterval(checkPending, 5000);
+    return () => clearInterval(interval);
+  }, [lastSyncTime, isTracking]);
+
+  const handleManualSync = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      await runFullSync();
+    } catch (e: any) {
+      if (e.message === 'OFFLINE') {
+        Alert.alert('Sem Conexão', 'Não foi possível sincronizar os dados. Verifique sua conexão com a internet.');
+      } else {
+        console.error('Manual sync error:', e);
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const getSyncIcon = () => {
+    if (isSyncing) return { name: 'cloud-upload', color: '#007AFF', label: 'Sincronizando...' };
+    if (pendingCount > 0) return { name: 'cloud-offline', color: '#FFA500', label: `${pendingCount} pendentes` };
+    return { name: 'cloud-done', color: '#28a745', label: 'Sincronizado' };
+  };
+
+  const syncStatus = getSyncIcon();
+
+  const handleToggleTracking = async () => {
+    if (isTracking) {
+      await stopTracking();
+      await endSession();
+    } else {
+      await startSession();
+      await startTracking();
+    }
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <View style={styles.container}>
+      <View style={styles.syncHeader}>
+        <Text style={styles.title}>Olá, {user?.full_name || user?.email?.split('@')[0]}</Text>
+        <TouchableOpacity onPress={handleManualSync} disabled={isSyncing} style={styles.syncIconContainer}>
+          <Ionicons name={syncStatus.name as any} size={24} color={syncStatus.color} />
+          <Text style={[styles.syncLabel, { color: syncStatus.color }]}>{syncStatus.label}</Text>
+        </TouchableOpacity>
+      </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <View style={styles.statusBox}>
+        <Text style={styles.statusLabel}>Estado Atual:</Text>
+        <Text style={[styles.statusValue, { color: isTracking ? '#28a745' : '#6c757d' }]}>
+          {isTracking ? 'Trabalhando / Online' : 'Fora de Serviço / Offline'}
+        </Text>
+      </View>
+
+      <Button
+        title={isTracking ? 'Encerrar Turno' : 'Iniciar Turno'}
+        onPress={handleToggleTracking}
+        color={isTracking ? '#dc3545' : '#28a745'}
+      />
+
+      {isTracking && currentLocation && (
+        <View style={styles.locationContainer}>
+          <View style={styles.metricCard}>
+            <Ionicons name="navigate-outline" size={20} color="#666" />
+            <Text style={styles.sessionText}>
+              {(activeSession?.total_distance_km || 0).toFixed(2)} km percorridos
+            </Text>
+          </View>
+          
+          <View style={styles.metricCard}>
+            <Ionicons name="time-outline" size={20} color="#666" />
+            <Text style={styles.timeText}>
+              Ativo: {Math.floor((activeSession?.total_active_seconds || 0) / 60)}m | 
+              Ocioso: {Math.floor((activeSession?.total_idle_seconds || 0) / 60)}m
+            </Text>
+          </View>
+        </View>
+      )}
+
+      <View style={styles.footer}>
+        <Button title="Sair do Aplicativo" onPress={signOut} color="#333" />
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    padding: 24,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+  },
+  syncHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 40,
+    marginTop: -40,
+  },
+  syncIconContainer: {
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  syncLabel: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    flex: 1,
+  },
+  statusBox: {
+    alignItems: 'center',
+    marginBottom: 40,
+    backgroundColor: '#f8f9fa',
+    padding: 24,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  statusLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  statusValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 8,
+  },
+  locationContainer: {
+    marginTop: 32,
+    gap: 12,
+  },
+  metricCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    backgroundColor: '#f1f3f5',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  sessionText: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '600',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  timeText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  footer: {
+    marginTop: 60,
   },
 });
