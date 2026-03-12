@@ -8,8 +8,9 @@ import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
 const LOCATION_TASK_NAME = 'background-location-task';
-const MIN_MOVEMENT_THRESHOLD = 10; // meters
-const MIN_TIME_BETWEEN_UPDATES = 5000; // 5 seconds
+const MIN_MOVEMENT_THRESHOLD = 5; // metros
+const MIN_TIME_BETWEEN_UPDATES = 5000; // 5 segundos
+const MAX_GAP_SECONDS = 180; // 3 minutos (Cap para evitar picos de tempo)
 
 export const startTracking = async () => {
   const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
@@ -91,11 +92,20 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
         latitude, longitude
       );
       
-      const isMoving = distanceMeters > 5 && (speed === null || speed > 0.3);
+      const isMoving = distanceMeters > 3 && (speed === null || speed > 0.2);
       if (isMoving) {
         distanceDeltaKm = distanceMeters / 1000;
       }
-      timeDeltaSeconds = Math.max(0, (timestamp - lastLocation.timestamp) / 1000);
+      
+      // Cap de tempo para evitar que hiatos longos (ex: app dormindo) 
+      // adicionem horas de tempo ativo/ocioso de uma vez.
+      const rawDelta = (timestamp - lastLocation.timestamp) / 1000;
+      timeDeltaSeconds = Math.min(rawDelta, MAX_GAP_SECONDS);
+      
+      // Se o hiato for maior que o cap, ignoramos o tempo para não distorcer as métricas
+      if (rawDelta > MAX_GAP_SECONDS) {
+        timeDeltaSeconds = 0; 
+      }
     }
 
     let idleDelta = 0;
@@ -106,24 +116,49 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
       activeDelta = Math.round(timeDeltaSeconds);
     }
 
-    // 4. Atualização do Estado Global (UI)
-    trackingState.setCurrentLocation({ latitude, longitude, accuracy, timestamp });
-    sessionState.updateSessionMetrics(distanceDeltaKm, activeDelta, idleDelta);
-
-    // 5. Persistência em SQLite
+    // 4. Persistência Atômica
     try {
-      await db.runAsync(
-        `INSERT INTO gps_points (user_id, session_id, latitude, longitude, accuracy, speed, recorded_at, synced) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
-        [userId, activeSession.id, latitude, longitude, accuracy, speed, new Date(timestamp).toISOString()]
-      );
+      const recordedAtIso = new Date(timestamp).toISOString();
+      
+      await db.withTransactionAsync(async () => {
+        // Verifica se o ponto já existe para evitar duplicidade de métricas
+        const existing = await db.getFirstAsync<{ id: number }>(
+          'SELECT id FROM gps_points WHERE session_id = ? AND recorded_at = ?',
+          [activeSession.id, recordedAtIso]
+        );
 
-      await db.runAsync(
-        `UPDATE work_sessions SET total_distance_km = total_distance_km + ?, total_active_seconds = total_active_seconds + ?, total_idle_seconds = total_idle_seconds + ? WHERE id = ?`,
-        [distanceDeltaKm, activeDelta, idleDelta, activeSession.id]
-      );
+        if (existing) {
+          // console.log('[Tracking] Ponto duplicado ignorado:', recordedAtIso);
+          return;
+        }
+
+        // Insere o ponto
+        await db.runAsync(
+          `INSERT OR IGNORE INTO gps_points (user_id, session_id, latitude, longitude, accuracy, speed, recorded_at, synced) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
+          [userId, activeSession.id, latitude, longitude, accuracy, speed, recordedAtIso]
+        );
+
+        // Atualiza a sessão apenas se houver delta real e o ponto for novo
+        if (timeDeltaSeconds > 0 || distanceDeltaKm > 0) {
+          await db.runAsync(
+            `UPDATE work_sessions 
+             SET total_distance_km = total_distance_km + ?, 
+                 total_active_seconds = total_active_seconds + ?, 
+                 total_idle_seconds = total_idle_seconds + ?,
+                 synced = 0
+             WHERE id = ?`,
+            [distanceDeltaKm, activeDelta, idleDelta, activeSession.id]
+          );
+        }
+      });
+
+      // 5. Atualização do Estado Global (UI) - Apenas após sucesso no DB
+      trackingState.setCurrentLocation({ latitude, longitude, accuracy, timestamp });
+      sessionState.updateSessionMetrics(distanceDeltaKm, activeDelta, idleDelta);
+
     } catch (e) {
-      console.error('Error saving location to DB:', e);
+      console.error('[Tracking] Error in transaction:', e);
     }
   }
 };
