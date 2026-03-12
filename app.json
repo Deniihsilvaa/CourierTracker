@@ -40,7 +40,6 @@
           }
         }
       ],
-      "expo-sqlite",
       [
         "expo-location",
         {
@@ -48,8 +47,7 @@
           "locationWhenInUsePermission": "Allow Courier Tracker to use your location.",
           "isAndroidBackgroundLocationEnabled": true
         }
-      ],
-      "expo-secure-store"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
