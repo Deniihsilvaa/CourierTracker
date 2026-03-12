@@ -6,6 +6,7 @@ import { supabase } from '../../services/supabase';
 interface Profile {
   id: string;
   name: string | null;
+  full_name: string | null;
   email: string | null;
   vehicle_type: string | null;
   city: string | null;

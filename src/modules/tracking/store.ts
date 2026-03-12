@@ -4,6 +4,7 @@ interface Location {
   latitude: number;
   longitude: number;
   accuracy: number | null;
+  speed: number | null;
   timestamp: number;
 }
 

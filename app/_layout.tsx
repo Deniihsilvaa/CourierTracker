@@ -3,6 +3,16 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { Alert } from 'react-native';
+
+// Global error handler for easier mobile debugging
+if (!__DEV__) {
+  const defaultErrorHandler = ErrorUtils.getGlobalHandler();
+  ErrorUtils.setGlobalHandler((error, isFatal) => {
+    Alert.alert('Erro de Sistema', error.message || 'Ocorreu um erro inesperado.');
+    defaultErrorHandler(error, isFatal);
+  });
+}
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { initDb } from '@/src/services/sqlite';

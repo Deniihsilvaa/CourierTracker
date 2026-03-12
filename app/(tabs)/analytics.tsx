@@ -53,11 +53,11 @@ export default function AnalyticsScreen() {
 
       // 3. Process Summary & Advanced Metrics
       if (statsData && statsData.length > 0) {
-        setDailyStats(statsData);
-        const totalKm = statsData.reduce((acc, curr) => acc + (curr.total_km || 0), 0);
-        const totalHours = statsData.reduce((acc, curr) => acc + parseFloat(curr.hours_active || 0), 0);
-        const totalIdle = statsData.reduce((acc, curr) => acc + parseFloat(curr.hours_idle || 0), 0);
-        const avgSpeed = perfData?.length ? perfData.reduce((acc, curr) => acc + (curr.avg_km_per_hour || 0), 0) / perfData.length : 0;
+        setDailyStats(statsData || []);
+        const totalKm = statsData.reduce((acc, curr) => acc + (curr?.total_km || 0), 0);
+        const totalHours = statsData.reduce((acc, curr) => acc + parseFloat(curr?.hours_active || 0), 0);
+        const totalIdle = statsData.reduce((acc, curr) => acc + parseFloat(curr?.hours_idle || 0), 0);
+        const avgSpeed = perfData?.length ? perfData.reduce((acc, curr) => acc + (curr?.avg_km_per_hour || 0), 0) / perfData.length : 0;
 
         const idlePct = totalHours + totalIdle > 0 ? (totalIdle / (totalHours + totalIdle)) * 100 : 0;
         const efficiency = totalHours > 0 ? totalKm / totalHours : 0;
@@ -211,9 +211,9 @@ export default function AnalyticsScreen() {
             <Text style={styles.statLabel}>{day.sessions} turnos realizados</Text>
           </View>
           <View style={styles.cardRight}>
-            <Text style={styles.statValue}>{parseFloat(day.total_km).toFixed(1)} km</Text>
+            <Text style={styles.statValue}>{parseFloat(day?.total_km || 0).toFixed(1)} km</Text>
             <Text style={styles.timeLabel}>
-              <Ionicons name="time-outline" size={10} color="#888" /> {parseFloat(day.hours_active).toFixed(1)}h ativos
+              <Ionicons name="time-outline" size={10} color="#888" /> {parseFloat(day?.hours_active || 0).toFixed(1)}h ativos
             </Text>
           </View>
         </View>
@@ -229,7 +229,7 @@ export default function AnalyticsScreen() {
             <Text style={styles.statLabel}>{trip.distance_km} km percorridos</Text>
           </View>
           <View style={styles.cardRight}>
-            <Text style={[styles.statValue, { color: '#007AFF' }]}>{parseFloat(trip.avg_km_per_hour).toFixed(1)}</Text>
+            <Text style={[styles.statValue, { color: '#007AFF' }]}>{parseFloat(trip?.avg_km_per_hour || 0).toFixed(1)}</Text>
             <Text style={styles.timeLabel}>km/h méd.</Text>
           </View>
         </View>

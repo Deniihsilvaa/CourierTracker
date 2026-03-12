@@ -1,11 +1,9 @@
 import * as Location from 'expo-location';
-import { useTrackingStore } from './store';
-import { useSessionStore } from '../sessions/store';
-import { useAuthStore } from '../auth/store';
-import { calculateDistance, isValidLocation } from '../../utils/location';
-import { getDb } from '../../services/sqlite';
 import 'react-native-get-random-values';
-import { v4 as uuidv4 } from 'uuid';
+import { getDb } from '../../services/sqlite';
+import { calculateDistance, isValidLocation } from '../../utils/location';
+import { useSessionStore } from '../sessions/store';
+import { useTrackingStore } from './store';
 
 const LOCATION_TASK_NAME = 'background-location-task';
 const MIN_MOVEMENT_THRESHOLD = 5; // metros
@@ -15,30 +13,61 @@ const MAX_GAP_SECONDS = 180; // 3 minutos (Cap para evitar picos de tempo)
 export const startTracking = async () => {
   const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
   if (foregroundStatus !== 'granted') {
-    throw new Error('Permission to access location was denied');
+    throw new Error('Permissão de localização negada');
   }
 
   const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
-  if (backgroundStatus !== 'granted') {
-    console.warn('Background location permission denied. Tracking will only work in foreground.');
-  }
 
-  await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-    accuracy: Location.Accuracy.High,
-    distanceInterval: MIN_MOVEMENT_THRESHOLD,
-    timeInterval: 5000,
-    showsBackgroundLocationIndicator: true,
-    activityType: Location.ActivityType.AutomotiveNavigation,
-  });
+  try {
+    // Tenta o rastreamento de segundo plano (Requisito para o APK final)
+    await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+      accuracy: Location.Accuracy.High,
+      distanceInterval: MIN_MOVEMENT_THRESHOLD,
+      timeInterval: 5000,
+      showsBackgroundLocationIndicator: true,
+      activityType: Location.ActivityType.AutomotiveNavigation,
+      foregroundService: {
+        notificationTitle: "Courier Tracker Ativo",
+        notificationBody: "Rastreando sua rota para entrega",
+        notificationColor: "#007AFF"
+      }
+    });
+    console.log('[Tracking] Rastreamento de SEGUNDO PLANO iniciado.');
+  } catch (error) {
+    console.warn('[Tracking] Falha ao iniciar segundo plano (Comum no Expo Go). Usando modo Foreground.');
+
+    // Fallback: Rastreamento apenas com app aberto (Para testes no Expo Go)
+    const subscription = await Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.High,
+        distanceInterval: MIN_MOVEMENT_THRESHOLD,
+        timeInterval: 3000,
+      },
+      (location) => {
+        processLocationUpdate([location]);
+      }
+    );
+
+    // Guarda a subscrição para podermos parar depois
+    (global as any).foregroundSubscription = subscription;
+  }
 
   useTrackingStore.getState().setIsTracking(true);
 };
 
 export const stopTracking = async () => {
+  // Para o modo background
   const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
   if (hasStarted) {
     await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
   }
+
+  // Para o modo foreground se estiver ativo
+  if ((global as any).foregroundSubscription) {
+    (global as any).foregroundSubscription.remove();
+    (global as any).foregroundSubscription = null;
+  }
+
   useTrackingStore.getState().setIsTracking(false);
 };
 
@@ -91,26 +120,26 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
         lastLocation.latitude, lastLocation.longitude,
         latitude, longitude
       );
-      
+
       const isMoving = distanceMeters > 3 && (speed === null || speed > 0.2);
       if (isMoving) {
         distanceDeltaKm = distanceMeters / 1000;
       }
-      
+
       // Cap de tempo para evitar que hiatos longos (ex: app dormindo) 
       // adicionem horas de tempo ativo/ocioso de uma vez.
       const rawDelta = (timestamp - lastLocation.timestamp) / 1000;
       timeDeltaSeconds = Math.min(rawDelta, MAX_GAP_SECONDS);
-      
+
       // Se o hiato for maior que o cap, ignoramos o tempo para não distorcer as métricas
       if (rawDelta > MAX_GAP_SECONDS) {
-        timeDeltaSeconds = 0; 
+        timeDeltaSeconds = 0;
       }
     }
 
     let idleDelta = 0;
     let activeDelta = 0;
-    if (distanceDeltaKm < 0.005) { 
+    if (distanceDeltaKm < 0.005) {
       idleDelta = Math.round(timeDeltaSeconds);
     } else {
       activeDelta = Math.round(timeDeltaSeconds);
@@ -119,7 +148,7 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
     // 4. Persistência Atômica
     try {
       const recordedAtIso = new Date(timestamp).toISOString();
-      
+
       await db.withTransactionAsync(async () => {
         // Verifica se o ponto já existe para evitar duplicidade de métricas
         const existing = await db.getFirstAsync<{ id: number }>(
@@ -154,7 +183,7 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
       });
 
       // 5. Atualização do Estado Global (UI) - Apenas após sucesso no DB
-      trackingState.setCurrentLocation({ latitude, longitude, accuracy, timestamp });
+      trackingState.setCurrentLocation({ latitude, longitude, accuracy, speed, timestamp });
       sessionState.updateSessionMetrics(distanceDeltaKm, activeDelta, idleDelta);
 
     } catch (e) {
