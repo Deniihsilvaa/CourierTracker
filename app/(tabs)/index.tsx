@@ -196,7 +196,7 @@ export default function DashboardScreen() {
         <TouchableOpacity 
           activeOpacity={0.8}
           onPress={handleToggleTracking}
-          style={[styles.mainButton, { backgroundColor: isTracking ? '#FF3B30' : theme.tint }]}
+          style={[styles.mainButton, { backgroundColor: isTracking ? '#FF3B30' : '#007AFF' }]}
         >
           <Ionicons name={isTracking ? "stop" : "play"} size={28} color="#fff" />
           <Text style={styles.mainButtonText}>
