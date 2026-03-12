@@ -18,7 +18,7 @@ export const startTracking = async () => {
     throw new Error('Permissão de localização negada');
   }
 
-  const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+  await Location.requestBackgroundPermissionsAsync();
 
   try {
     // Tenta o rastreamento de segundo plano (Requisito para o APK final)
@@ -29,9 +29,9 @@ export const startTracking = async () => {
       showsBackgroundLocationIndicator: true,
       activityType: Location.ActivityType.AutomotiveNavigation,
       foregroundService: {
-        notificationTitle: "Courier Tracker Ativo",
-        notificationBody: "Rastreando sua rota para entrega",
-        notificationColor: "#007AFF"
+        notificationTitle: "🚛 Courier Tracker Ativo",
+        notificationBody: "Rastreando sua rota... Aguardando primeiro ponto GPS.",
+        notificationColor: "#007AFF",
       }
     });
     logger.info('[Tracking] Background location updates started.');
@@ -56,6 +56,35 @@ export const startTracking = async () => {
 
   useTrackingStore.getState().setIsTracking(true);
 };
+
+/** Atualiza o texto da notificação persistente com métricas ao vivo */
+const updateTrackingNotification = async (distanceKm: number, activeSeconds: number) => {
+  try {
+    const isRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+    if (!isRunning) return;
+
+    const hours = Math.floor(activeSeconds / 3600);
+    const minutes = Math.floor((activeSeconds % 3600) / 60);
+    const timeStr = hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`;
+    const kmStr = distanceKm.toFixed(2);
+
+    await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+      accuracy: Location.Accuracy.High,
+      distanceInterval: MIN_MOVEMENT_THRESHOLD,
+      timeInterval: 5000,
+      showsBackgroundLocationIndicator: true,
+      activityType: Location.ActivityType.AutomotiveNavigation,
+      foregroundService: {
+        notificationTitle: "🚛 Courier Tracker Ativo",
+        notificationBody: `📍 ${kmStr} km  ·  ⏱ ${timeStr} em movimento`,
+        notificationColor: "#007AFF",
+      }
+    });
+  } catch (e) {
+    // Silently fails if not in background mode
+  }
+};
+
 
 export const stopTracking = async () => {
   // Para o modo background
@@ -179,6 +208,15 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
       // 5. Atualização do Estado Global (UI) - Apenas após sucesso no DB
       trackingState.setCurrentLocation({ latitude, longitude, accuracy, speed, timestamp });
       sessionState.updateSessionMetrics(distanceDeltaKm, activeDelta, idleDelta);
+
+      // 6. Atualiza o texto da notificação persistente com métricas ao vivo
+      const updatedSession = useSessionStore.getState().activeSession;
+      if (updatedSession) {
+        updateTrackingNotification(
+          updatedSession.total_distance_km,
+          updatedSession.total_active_seconds
+        );
+      }
 
     } catch (e) {
       console.error('[Tracking] Error in transaction:', e);

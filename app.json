@@ -56,7 +56,13 @@
         {
           "locationAlwaysPermission": "Allow Courier Tracker to use your location even when the app is in the background.",
           "locationWhenInUsePermission": "Allow Courier Tracker to use your location.",
-          "isAndroidBackgroundLocationEnabled": true
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "foregroundService": {
+            "notificationTitle": "Rastreamento Ativo",
+            "notificationBody": "O Courier Tracker está registrando seu percurso.",
+            "notificationIcon": "./assets/images/icon.png"
+          }
         }
       ]
     ],
