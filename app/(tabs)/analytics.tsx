@@ -141,7 +141,6 @@ export default function AnalyticsScreen() {
         <View style={styles.mapCard}>
           <Text style={styles.mapTitle}>Última Rota Detectada</Text>
           <MapView
-            provider={PROVIDER_GOOGLE}
             style={styles.map}
             scrollEnabled={false}
             zoomEnabled={false}
