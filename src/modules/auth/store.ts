@@ -40,56 +40,46 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { data: { session }, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            name: name,
-          }
-        }
+        options: { data: { full_name: name } }
       });
 
       if (error) throw error;
 
       if (session?.user) {
+        // Upsert profile - sem o campo 'email' para evitar erro de schema cache
         const { data: profiles, error: profileError } = await supabase
           .from('profiles')
-          .insert([{
-            id: session.user.id,
-            name: name,
-            email: email
-          }])
+          .upsert([{ id: session.user.id, full_name: name, name: name }])
           .select();
 
         if (profileError) {
           logger.error('[AuthStore] Error creating profile during signUp:', profileError.message);
-          throw profileError;
+          // Não bloqueia o login por causa de erro no perfil
         }
 
         const profile = profiles?.[0] || null;
+        // Merge email do auth session (não está em profiles)
+        const finalProfile: Profile = {
+          id: session.user.id,
+          name: profile?.name || name,
+          full_name: profile?.full_name || name,
+          email: email, // Vem do auth, não do profiles
+          vehicle_type: profile?.vehicle_type || null,
+          city: profile?.city || null,
+        };
 
-        if (profile) {
-          logger.info('[AuthStore] Profile created after signUp.');
+        await localDatabase.update('profiles', finalProfile.id, {
+          name: finalProfile.name || null,
+          full_name: finalProfile.full_name || null,
+          email: finalProfile.email || null,
+          city: null,
+          vehicle_type: null
+        });
 
-          const finalProfile = {
-            ...profile,
-            email: profile.email || email
-          };
-
-          await localDatabase.update('profiles', finalProfile.id, {
-            name: finalProfile.name || null,
-            full_name: finalProfile.full_name || finalProfile.name || null,
-            email: finalProfile.email || null,
-            city: finalProfile.city || null,
-            vehicle_type: finalProfile.vehicle_type || null
-          });
-
-          set({ user: finalProfile, isLoading: false });
-        } else {
-          logger.warn('[AuthStore] Profile still missing after signUp.');
-          set({ isLoading: false });
-        }
+        set({ user: finalProfile, isLoading: false });
       } else {
         logger.warn('[AuthStore] No session user after signUp. Email confirmation might be required.');
-        set({ error: 'Please check your email for confirmation link.', isLoading: false });
+        set({ error: 'Verifique seu e-mail para confirmar o cadastro.', isLoading: false });
       }
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
@@ -129,16 +119,16 @@ export const useAuthStore = create<AuthState>((set) => ({
           logger.info('[AuthStore] Profile not found, creating one...');
           const { data: newProfiles, error: createError } = await supabase
             .from('profiles')
-            .insert([{
+            .upsert([{
               id: session.user.id,
-              name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || null,
-              email: session.user.email || null
+              full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || null,
+              name: session.user.user_metadata?.name || null,
             }])
             .select();
 
           if (createError) {
             logger.error('[AuthStore] Error creating profile:', createError.message);
-            throw createError;
+            // Continua mesmo sem perfil criado
           }
           profile = newProfiles?.[0] || null;
         }
@@ -249,12 +239,12 @@ export const useAuthStore = create<AuthState>((set) => ({
           logger.info('[AuthStore] checkSession: Profile not found, creating...');
           const { data: newProfiles, error: createError } = await supabase
             .from('profiles')
-            .insert([{ id: session.user.id, name: session.user.user_metadata?.name || null, email: session.user.email || null }])
+            .upsert([{ id: session.user.id, full_name: session.user.user_metadata?.full_name || null, name: session.user.user_metadata?.name || null }])
             .select();
 
           if (createError) {
             logger.error('[AuthStore] checkSession: Profile create error:', createError.message);
-            throw createError;
+            // Não bloqueia a sessão por causa de erro no perfil
           }
           profile = newProfiles?.[0] || null;
         }
