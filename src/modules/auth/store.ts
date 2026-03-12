@@ -7,8 +7,7 @@ import { logger } from '../../utils/logger';
 interface Profile {
   id: string;
   name: string | null;
-  full_name: string | null;
-  email: string | null;
+  email: string | null; // Vem do auth.users, não da tabela profiles
   vehicle_type: string | null;
   city: string | null;
 }
@@ -40,45 +39,42 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { data: { session }, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: name } }
+        options: { data: { name } }
       });
 
       if (error) throw error;
 
       if (session?.user) {
-        // Upsert profile - sem o campo 'email' para evitar erro de schema cache
+        // Upsert apenas com colunas que existem na tabela: id, name
         const { data: profiles, error: profileError } = await supabase
           .from('profiles')
-          .upsert([{ id: session.user.id, full_name: name, name: name }])
+          .upsert([{ id: session.user.id, name }])
           .select();
 
         if (profileError) {
-          logger.error('[AuthStore] Error creating profile during signUp:', profileError.message);
-          // Não bloqueia o login por causa de erro no perfil
+          logger.warn('[AuthStore] Profile upsert warning during signUp:', profileError.message);
         }
 
         const profile = profiles?.[0] || null;
-        // Merge email do auth session (não está em profiles)
+        // Email vem do auth session, não da tabela profiles
         const finalProfile: Profile = {
           id: session.user.id,
-          name: profile?.name || name,
-          full_name: profile?.full_name || name,
-          email: email, // Vem do auth, não do profiles
-          vehicle_type: profile?.vehicle_type || null,
-          city: profile?.city || null,
+          name: profile?.name ?? name,
+          email,
+          vehicle_type: profile?.vehicle_type ?? null,
+          city: profile?.city ?? null,
         };
 
         await localDatabase.update('profiles', finalProfile.id, {
-          name: finalProfile.name || null,
-          full_name: finalProfile.full_name || null,
-          email: finalProfile.email || null,
+          name: finalProfile.name,
+          email: finalProfile.email,
           city: null,
-          vehicle_type: null
+          vehicle_type: null,
         });
 
         set({ user: finalProfile, isLoading: false });
       } else {
-        logger.warn('[AuthStore] No session user after signUp. Email confirmation might be required.');
+        logger.warn('[AuthStore] No session after signUp. Email confirmation may be required.');
         set({ error: 'Verifique seu e-mail para confirmar o cadastro.', isLoading: false });
       }
     } catch (error: any) {
@@ -121,35 +117,35 @@ export const useAuthStore = create<AuthState>((set) => ({
             .from('profiles')
             .upsert([{
               id: session.user.id,
-              full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || null,
-              name: session.user.user_metadata?.name || null,
+              name: session.user.user_metadata?.name ?? null,
             }])
             .select();
 
           if (createError) {
-            logger.error('[AuthStore] Error creating profile:', createError.message);
-            // Continua mesmo sem perfil criado
+            logger.warn('[AuthStore] Profile upsert warning on signIn:', createError.message);
           }
           profile = newProfiles?.[0] || null;
         }
 
         if (profile) {
-          const finalProfile = {
-            ...profile,
-            email: profile.email || session.user.email || null
+          const finalProfile: Profile = {
+            id: profile.id,
+            name: profile.name ?? null,
+            email: session.user.email ?? null, // Vem do auth
+            vehicle_type: profile.vehicle_type ?? null,
+            city: profile.city ?? null,
           };
 
           await localDatabase.update('profiles', finalProfile.id, {
-            name: finalProfile.name || null,
-            full_name: finalProfile.full_name || finalProfile.name || null,
-            email: finalProfile.email || null,
-            city: finalProfile.city || null,
-            vehicle_type: finalProfile.vehicle_type || null
+            name: finalProfile.name,
+            email: finalProfile.email,
+            city: finalProfile.city,
+            vehicle_type: finalProfile.vehicle_type,
           });
 
           set({ user: finalProfile, isLoading: false });
         } else {
-          console.warn('[AuthStore] Profile still missing after creation attempt.');
+          logger.warn('[AuthStore] Profile still missing after creation attempt.');
           set({ isLoading: false });
         }
       } else {
@@ -239,28 +235,29 @@ export const useAuthStore = create<AuthState>((set) => ({
           logger.info('[AuthStore] checkSession: Profile not found, creating...');
           const { data: newProfiles, error: createError } = await supabase
             .from('profiles')
-            .upsert([{ id: session.user.id, full_name: session.user.user_metadata?.full_name || null, name: session.user.user_metadata?.name || null }])
+            .upsert([{ id: session.user.id, name: session.user.user_metadata?.name ?? null }])
             .select();
 
           if (createError) {
-            logger.error('[AuthStore] checkSession: Profile create error:', createError.message);
-            // Não bloqueia a sessão por causa de erro no perfil
+            logger.warn('[AuthStore] checkSession: Profile upsert warning:', createError.message);
           }
           profile = newProfiles?.[0] || null;
         }
 
         if (profile) {
-          const finalProfile = {
-            ...profile,
-            email: profile.email || session.user.email || null
+          const finalProfile: Profile = {
+            id: profile.id,
+            name: profile.name ?? null,
+            email: session.user.email ?? null, // Vem do auth
+            vehicle_type: profile.vehicle_type ?? null,
+            city: profile.city ?? null,
           };
-          
+
           await localDatabase.update('profiles', finalProfile.id, {
-            name: finalProfile.name || null,
-            full_name: finalProfile.full_name || finalProfile.name || null,
-            email: finalProfile.email || null,
-            city: finalProfile.city || null,
-            vehicle_type: finalProfile.vehicle_type || null
+            name: finalProfile.name,
+            email: finalProfile.email,
+            city: finalProfile.city,
+            vehicle_type: finalProfile.vehicle_type,
           });
 
           set({ user: finalProfile });
