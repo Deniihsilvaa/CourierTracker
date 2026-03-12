@@ -1,7 +1,8 @@
 import * as Linking from 'expo-linking';
 import { create } from 'zustand';
-import { getDb } from '../../services/sqlite';
+import { localDatabase } from '../../services/localDatabase';
 import { supabase } from '../../services/supabase';
+import { logger } from '../../utils/logger';
 
 interface Profile {
   id: string;
@@ -59,40 +60,35 @@ export const useAuthStore = create<AuthState>((set) => ({
           .select();
 
         if (profileError) {
-          console.error('[AuthStore] Error creating profile during signUp:', profileError);
+          logger.error('[AuthStore] Error creating profile during signUp:', profileError.message);
           throw profileError;
         }
 
         const profile = profiles?.[0] || null;
 
         if (profile) {
-          console.log('[AuthStore] Profile created and ready after signUp.');
+          logger.info('[AuthStore] Profile created after signUp.');
 
           const finalProfile = {
             ...profile,
             email: profile.email || email
           };
 
-          const db = getDb();
-          await db.runAsync(
-            'INSERT INTO profiles (id, name, full_name, email, city, vehicle_type) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, full_name=excluded.full_name, email=excluded.email, city=excluded.city, vehicle_type=excluded.vehicle_type',
-            [
-              finalProfile.id,
-              finalProfile.name || null,
-              finalProfile.full_name || finalProfile.name || null,
-              finalProfile.email || null,
-              finalProfile.city || null,
-              finalProfile.vehicle_type || null
-            ]
-          ).catch(e => console.error('SQLite Sync Error:', e));
+          await localDatabase.update('profiles', finalProfile.id, {
+            name: finalProfile.name || null,
+            full_name: finalProfile.full_name || finalProfile.name || null,
+            email: finalProfile.email || null,
+            city: finalProfile.city || null,
+            vehicle_type: finalProfile.vehicle_type || null
+          });
 
           set({ user: finalProfile, isLoading: false });
         } else {
-          console.warn('[AuthStore] Profile still missing after signUp.');
+          logger.warn('[AuthStore] Profile still missing after signUp.');
           set({ isLoading: false });
         }
       } else {
-        console.log('[AuthStore] No session user after signUp. Email confirmation might be required.');
+        logger.warn('[AuthStore] No session user after signUp. Email confirmation might be required.');
         set({ error: 'Please check your email for confirmation link.', isLoading: false });
       }
     } catch (error: any) {
@@ -117,7 +113,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (error) throw error;
 
       if (session?.user) {
-        console.log('[AuthStore] Session user found:', session.user.id);
+        logger.info('[AuthStore] Session user found:', session.user.id);
         let { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -125,12 +121,12 @@ export const useAuthStore = create<AuthState>((set) => ({
           .maybeSingle();
 
         if (profileError) {
-          console.error('[AuthStore] Error fetching profile:', profileError);
+          logger.error('[AuthStore] Error fetching profile:', profileError.message);
           throw profileError;
         }
 
         if (!profile) {
-          console.log('[AuthStore] Profile not found, creating one...');
+          logger.info('[AuthStore] Profile not found, creating one...');
           const { data: newProfiles, error: createError } = await supabase
             .from('profiles')
             .insert([{
@@ -141,32 +137,25 @@ export const useAuthStore = create<AuthState>((set) => ({
             .select();
 
           if (createError) {
-            console.error('[AuthStore] Error creating profile:', createError);
+            logger.error('[AuthStore] Error creating profile:', createError.message);
             throw createError;
           }
           profile = newProfiles?.[0] || null;
-          console.log('[AuthStore] New profile created:', profile?.id);
         }
 
         if (profile) {
-          console.log('[AuthStore] Profile ready, setting user.');
           const finalProfile = {
             ...profile,
             email: profile.email || session.user.email || null
           };
 
-          const db = getDb();
-          await db.runAsync(
-            'INSERT INTO profiles (id, name, full_name, email, city, vehicle_type) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, full_name=excluded.full_name, email=excluded.email, city=excluded.city, vehicle_type=excluded.vehicle_type',
-            [
-              finalProfile.id,
-              finalProfile.name || null,
-              finalProfile.full_name || finalProfile.name || null,
-              finalProfile.email || null,
-              finalProfile.city || null,
-              finalProfile.vehicle_type || null
-            ]
-          ).catch(e => console.error('SQLite Sync Error:', e));
+          await localDatabase.update('profiles', finalProfile.id, {
+            name: finalProfile.name || null,
+            full_name: finalProfile.full_name || finalProfile.name || null,
+            email: finalProfile.email || null,
+            city: finalProfile.city || null,
+            vehicle_type: finalProfile.vehicle_type || null
+          });
 
           set({ user: finalProfile, isLoading: false });
         } else {
@@ -252,56 +241,48 @@ export const useAuthStore = create<AuthState>((set) => ({
           .maybeSingle();
 
         if (profileError) {
-          console.error('[AuthStore] checkSession: Profile fetch error:', profileError);
+          logger.error('[AuthStore] checkSession: Profile fetch error:', profileError.message);
           throw profileError;
         }
 
         if (!profile) {
-          console.log('[AuthStore] checkSession: Profile not found, creating...');
+          logger.info('[AuthStore] checkSession: Profile not found, creating...');
           const { data: newProfiles, error: createError } = await supabase
             .from('profiles')
             .insert([{ id: session.user.id, name: session.user.user_metadata?.name || null, email: session.user.email || null }])
             .select();
 
           if (createError) {
-            console.error('[AuthStore] checkSession: Profile create error:', createError);
+            logger.error('[AuthStore] checkSession: Profile create error:', createError.message);
             throw createError;
           }
           profile = newProfiles?.[0] || null;
         }
 
         if (profile) {
-          console.log('[AuthStore] checkSession: Profile ready, setting user.');
           const finalProfile = {
             ...profile,
             email: profile.email || session.user.email || null
           };
-          const db = getDb();
-          try {
-            await db.runAsync(
-              'INSERT INTO profiles (id, name, full_name, email, city, vehicle_type) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, full_name=excluded.full_name, email=excluded.email, city=excluded.city, vehicle_type=excluded.vehicle_type',
-              [
-                finalProfile.id,
-                finalProfile.name || null,
-                finalProfile.full_name || finalProfile.name || null,
-                finalProfile.email || null,
-                finalProfile.city || null,
-                finalProfile.vehicle_type || null
-              ]
-            );
-          } catch (sqlError) {
-            console.error('SQLite profile sync error:', sqlError);
-          }
+          
+          await localDatabase.update('profiles', finalProfile.id, {
+            name: finalProfile.name || null,
+            full_name: finalProfile.full_name || finalProfile.name || null,
+            email: finalProfile.email || null,
+            city: finalProfile.city || null,
+            vehicle_type: finalProfile.vehicle_type || null
+          });
+
           set({ user: finalProfile });
         } else {
-          console.warn('[AuthStore] checkSession: Profile still missing after creation.');
+          logger.warn('[AuthStore] checkSession: Profile missing after creation.');
         }
       } else {
-        console.log('[AuthStore] checkSession: No session found.');
+        logger.info('[AuthStore] checkSession: No session found.');
         set({ user: null });
       }
     } catch (error: any) {
-      console.error('Session check error:', error);
+      logger.error('Session check error:', error.message);
       set({ error: error.message, user: null });
     } finally {
       set({ isLoading: false });

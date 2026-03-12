@@ -25,11 +25,11 @@ const SecureStorageAdapter = {
   },
 };
 
-// Initialize Supabase Client with persistence but NO auto-refresh to maintain stability in Expo Go
+// Initialize Supabase Client with production-ready settings
 export const supabase = createClient(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, {
   auth: {
     storage: SecureStorageAdapter,
-    autoRefreshToken: false,
+    autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
   },

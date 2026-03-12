@@ -3,7 +3,9 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, AppState } from 'react-native';
+import { logger } from '@/src/utils/logger';
+import { authSessionGuard } from '@/src/services/authSessionGuard';
 
 // Global error handler for easier mobile debugging
 if (!__DEV__) {
@@ -34,21 +36,31 @@ export default function RootLayout() {
   useEffect(() => {
     const prepare = async () => {
       try {
-        console.log('RootLayout: Initializing database...');
-        // Reset finished, setting back to false
+        logger.info('RootLayout: Initializing database...');
         await initDb(false); 
         
-        console.log('RootLayout: Checking session...');
+        logger.info('RootLayout: Checking session...');
         await checkSession();
       } catch (e) {
-        console.error('Initialization error:', e);
+        logger.error('Initialization error:', e);
       } finally {
         setIsReady(true);
-        console.log('RootLayout: Ready.');
       }
     };
 
     prepare();
+
+    // Session Guard for Background Resume
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        logger.info('[App] App returned to foreground, validating session...');
+        authSessionGuard.syncAuthStore();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -56,21 +68,13 @@ export default function RootLayout() {
 
     const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
 
-    console.log('[Auth] Navigation Check:', {
-        isReady,
-        isLoading,
-        user: user ? { id: user.id, email: user.email } : null,
-        segments,
-        inAuthGroup
-    });
-
     if (isLoading) return;
 
     if (!user && !inAuthGroup) {
-      console.log('[Auth] No user and not in auth group -> Redirecting to /login');
+      logger.info('[Auth] No user and not in auth group -> Redirecting to /login');
       router.replace('/login');
     } else if (user && inAuthGroup) {
-      console.log('[Auth] User found and in auth group -> Redirecting to /');
+      logger.info('[Auth] User found and in auth group -> Redirecting to /');
       router.replace('/');
     }
   }, [user, segments, isReady, isLoading]);

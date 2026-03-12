@@ -1,6 +1,8 @@
 import * as Location from 'expo-location';
-import 'react-native-get-random-values';
 import { getDb } from '../../services/sqlite';
+import 'react-native-get-random-values';
+import { localDatabase } from '../../services/localDatabase';
+import { logger } from '../../utils/logger';
 import { calculateDistance, isValidLocation } from '../../utils/location';
 import { useSessionStore } from '../sessions/store';
 import { useTrackingStore } from './store';
@@ -32,9 +34,9 @@ export const startTracking = async () => {
         notificationColor: "#007AFF"
       }
     });
-    console.log('[Tracking] Rastreamento de SEGUNDO PLANO iniciado.');
+    logger.info('[Tracking] Background location updates started.');
   } catch (error) {
-    console.warn('[Tracking] Falha ao iniciar segundo plano (Comum no Expo Go). Usando modo Foreground.');
+    logger.warn('[Tracking] Background updates failed (likely Expo Go). Falling back to WatchPosition.');
 
     // Fallback: Rastreamento apenas com app aberto (Para testes no Expo Go)
     const subscription = await Location.watchPositionAsync(
@@ -84,8 +86,9 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
   // Fetch the active session directly from the DB.
   let activeSession = sessionState.activeSession;
   if (!activeSession) {
-    activeSession = await db.getFirstAsync<any>(
-      'SELECT * FROM work_sessions WHERE status = "active" ORDER BY created_at DESC LIMIT 1'
+    activeSession = await localDatabase.queryFirst<any>(
+      'work_sessions', 
+      'WHERE status = "active" ORDER BY created_at DESC'
     );
     // Restore session state if found
     if (activeSession) {
@@ -96,7 +99,7 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
   if (!activeSession) return;
 
   // Fetch the current user profile
-  const userRow = await db.getFirstAsync<{ id: string }>('SELECT id FROM profiles LIMIT 1');
+  const userRow = await localDatabase.queryFirst<{ id: string }>('profiles');
   const userId = userRow?.id || null;
 
   for (const loc of locations) {
@@ -148,37 +151,28 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
     // 4. Persistência Atômica
     try {
       const recordedAtIso = new Date(timestamp).toISOString();
+      const db = getDb(); // Still need for transaction wrap if needed, but using localDatabase for operations
 
       await db.withTransactionAsync(async () => {
         // Verifica se o ponto já existe para evitar duplicidade de métricas
-        const existing = await db.getFirstAsync<{ id: number }>(
-          'SELECT id FROM gps_points WHERE session_id = ? AND recorded_at = ?',
+        const existing = await localDatabase.queryFirst<{ id: number }>(
+          'gps_points',
+          'WHERE session_id = ? AND recorded_at = ?',
           [activeSession.id, recordedAtIso]
         );
 
-        if (existing) {
-          // console.log('[Tracking] Ponto duplicado ignorado:', recordedAtIso);
-          return;
-        }
+        if (existing) return;
 
         // Insere o ponto
-        await db.runAsync(
-          `INSERT OR IGNORE INTO gps_points (user_id, session_id, latitude, longitude, accuracy, speed, recorded_at, synced) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
-          [userId, activeSession.id, latitude, longitude, accuracy, speed, recordedAtIso]
-        );
+        await localDatabase.insertGps(userId, activeSession.id, latitude, longitude, accuracy, speed, recordedAtIso);
 
         // Atualiza a sessão apenas se houver delta real e o ponto for novo
         if (timeDeltaSeconds > 0 || distanceDeltaKm > 0) {
-          await db.runAsync(
-            `UPDATE work_sessions 
-             SET total_distance_km = total_distance_km + ?, 
-                 total_active_seconds = total_active_seconds + ?, 
-                 total_idle_seconds = total_idle_seconds + ?,
-                 synced = 0
-             WHERE id = ?`,
-            [distanceDeltaKm, activeDelta, idleDelta, activeSession.id]
-          );
+          await localDatabase.update('work_sessions', activeSession.id, {
+            total_distance_km: activeSession.total_distance_km + distanceDeltaKm,
+            total_active_seconds: activeSession.total_active_seconds + activeDelta,
+            total_idle_seconds: activeSession.total_idle_seconds + idleDelta
+          });
         }
       });
 

@@ -7,10 +7,12 @@ import { startSession, endSession } from '@/src/modules/sessions/service';
 import { runFullSync } from '@/src/services/sync';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useRef } from 'react';
-import { getDb } from '@/src/services/sqlite';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import * as Haptics from 'expo-haptics';
+import { LocationDisclosureModal } from '@/src/components/LocationDisclosureModal';
+import { localDatabase } from '@/src/services/localDatabase';
+import { logger } from '@/src/utils/logger';
 
 export default function DashboardScreen() {
   const { user } = useAuthStore();
@@ -18,6 +20,7 @@ export default function DashboardScreen() {
   const { activeSession } = useSessionStore();
   const [isSyncing, setIsSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [showDisclosure, setShowDisclosure] = useState(false);
   
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
@@ -40,18 +43,17 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     const checkPending = async () => {
-      const db = getDb();
       try {
-        const gps = await db.getFirstAsync<{count: number}>('SELECT COUNT(*) as count FROM gps_points WHERE synced = 0');
-        const sessions = await db.getFirstAsync<{count: number}>('SELECT COUNT(*) as count FROM work_sessions WHERE synced = 0');
-        setPendingCount((gps?.count || 0) + (sessions?.count || 0));
+        const gpsRows = await localDatabase.query('gps_points', 'WHERE synced = 0 LIMIT 1');
+        const sessionRows = await localDatabase.query('work_sessions', 'WHERE synced = 0 LIMIT 1');
+        setPendingCount(gpsRows.length + sessionRows.length);
       } catch (e) {
-        console.error(e);
+        logger.error('[Dashboard] Error checking pending items:', e);
       }
     };
 
     checkPending();
-    const interval = setInterval(checkPending, 5000);
+    const interval = setInterval(checkPending, 10000);
     return () => clearInterval(interval);
   }, [lastSyncTime, isTracking]);
 
@@ -76,9 +78,14 @@ export default function DashboardScreen() {
       await stopTracking();
       await endSession();
     } else {
-      await startSession();
-      await startTracking();
+      setShowDisclosure(true);
     }
+  };
+
+  const confirmTracking = async () => {
+    setShowDisclosure(false);
+    await startSession();
+    await startTracking();
   };
 
   const formatTime = (seconds: number) => {
@@ -184,15 +191,12 @@ export default function DashboardScreen() {
         </View>
       </ScrollView>
 
-      {/* Main Action Button */}
+      {/* Action Button */}
       <View style={styles.actionContainer}>
         <TouchableOpacity 
           activeOpacity={0.8}
           onPress={handleToggleTracking}
-          style={[
-            styles.mainButton, 
-            { backgroundColor: isTracking ? '#FF3B30' : '#007AFF' }
-          ]}
+          style={[styles.mainButton, { backgroundColor: isTracking ? '#FF3B30' : theme.tint }]}
         >
           <Ionicons name={isTracking ? "stop" : "play"} size={28} color="#fff" />
           <Text style={styles.mainButtonText}>
@@ -200,6 +204,12 @@ export default function DashboardScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      <LocationDisclosureModal 
+        visible={showDisclosure}
+        onConfirm={confirmTracking}
+        onCancel={() => setShowDisclosure(false)} 
+      />
     </View>
   );
 }
