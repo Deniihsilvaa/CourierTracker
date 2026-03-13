@@ -2,7 +2,7 @@ import { StyleSheet, View, Text, TouchableOpacity, Alert, Animated, ScrollView, 
 import { useAuthStore } from '@/src/modules/auth/store';
 import { useTrackingStore } from '@/src/modules/tracking/store';
 import { useSessionStore } from '@/src/modules/sessions/store';
-import { startTracking, stopTracking } from '@/src/modules/tracking/service';
+import { startTracking, stopTracking, resetWaitingDetection } from '@/src/modules/tracking/service';
 import { startSession, endSession } from '@/src/modules/sessions/service';
 import { runFullSync } from '@/src/services/sync';
 import { Ionicons } from '@expo/vector-icons';
@@ -98,6 +98,10 @@ export default function DashboardScreen() {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await createRouteEvent(activeSession.id, user.id, type);
+      
+      // Reset automatic waiting detection on manual action
+      resetWaitingDetection();
+      
       ToastAndroid.show('Evento registrado.', ToastAndroid.SHORT);
     } catch (e) {
       logger.error('[Dashboard] Failed to create route event', e);
@@ -118,7 +122,7 @@ export default function DashboardScreen() {
         <View>
           <Text style={styles.greeting}>Olá,</Text>
           <Text style={[styles.userName, { color: theme.text }]}>
-            {user?.full_name || user?.email?.split('@')[0]}
+            {user?.name || user?.email?.split('@')[0]}
           </Text>
         </View>
         <TouchableOpacity 

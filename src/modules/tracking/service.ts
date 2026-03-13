@@ -20,6 +20,17 @@ const MAX_GAP_SECONDS = 180; // 3 minutos (Cap para evitar picos de tempo)
 const MAX_REASONABLE_SPEED_MPS = 40; // 144 km/h (acima disso costuma ser salto de GPS)
 const MAX_REASONABLE_JUMP_METERS = 300; // cap extra para jumps em poucos segundos
 
+// State for Automatic Waiting Detection
+let waitingCandidateStartTime: number | null = null;
+let lastAutoWaitingEventTimestamp: number | null = null;
+let lastStationaryPosition: { latitude: number; longitude: number } | null = null;
+
+const WAITING_SPEED_THRESHOLD_KMH = 2;
+const WAITING_DISTANCE_THRESHOLD_METERS = 20;
+const WAITING_DURATION_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
+const WAITING_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
+const WAITING_MAX_ACCURACY_METERS = 50;
+
 export const startTracking = async () => {
   const session = useSessionStore.getState().activeSession;
   if (!session) {
@@ -199,6 +210,103 @@ export const resumeTrackingSession = async () => {
 };
 
 /**
+ * Detects if the courier is stationary and triggers an automatic waiting event.
+ */
+const detectWaiting = async (
+  loc: Location.LocationObject,
+  sessionId: string,
+  userId: string
+) => {
+  const { latitude, longitude, speed, accuracy } = loc.coords;
+  const timestamp = loc.timestamp;
+
+  // Edge cases: No active session (handled by caller), low accuracy
+  if (accuracy && accuracy > WAITING_MAX_ACCURACY_METERS) {
+    if (__DEV__) logger.info('[Waiting] Accuracy too low for detection', { accuracy });
+    return;
+  }
+
+  // Convert speed from m/s to km/h
+  const speedKmh = speed ? speed * 3.6 : 0;
+
+  // Check if stationary
+  const isStationary = speedKmh < WAITING_SPEED_THRESHOLD_KMH;
+
+  if (isStationary) {
+    // If we have a previous stationary position, check distance
+    if (lastStationaryPosition) {
+      const distance = calculateDistance(
+        lastStationaryPosition.latitude,
+        lastStationaryPosition.longitude,
+        latitude,
+        longitude
+      );
+
+      if (distance > WAITING_DISTANCE_THRESHOLD_METERS) {
+        if (__DEV__) logger.info('[Waiting] Moved beyond threshold, resetting timer', { distance });
+        waitingCandidateStartTime = timestamp;
+        lastStationaryPosition = { latitude, longitude };
+        return;
+      }
+    } else {
+      lastStationaryPosition = { latitude, longitude };
+    }
+
+    if (!waitingCandidateStartTime) {
+      if (__DEV__) logger.info('[Waiting] Stationary detected, starting timer');
+      waitingCandidateStartTime = timestamp;
+    } else {
+      const duration = timestamp - waitingCandidateStartTime;
+
+      if (duration >= WAITING_DURATION_THRESHOLD_MS) {
+        // Check cooldown
+        if (lastAutoWaitingEventTimestamp && 
+            (timestamp - lastAutoWaitingEventTimestamp) < WAITING_COOLDOWN_MS) {
+          return;
+        }
+
+        // Check if last event was already waiting (optional but good practice)
+        const db = getDb();
+        const lastEvent = await db.getFirstAsync<any>(
+          'SELECT event_type FROM route_events WHERE session_id = ? ORDER BY created_at DESC LIMIT 1',
+          [sessionId]
+        );
+
+        if (lastEvent?.event_type === 'waiting') {
+          if (__DEV__) logger.info('[Waiting] Last event was already waiting, skipping');
+          waitingCandidateStartTime = timestamp; // Reset timer to prevent rapid checks
+          return;
+        }
+
+        // Trigger event
+        if (__DEV__) logger.info('[Waiting] Threshold met, creating automatic event');
+        await createRouteEvent(sessionId, userId, 'waiting');
+        
+        lastAutoWaitingEventTimestamp = timestamp;
+        waitingCandidateStartTime = null; // Reset detection
+      }
+    }
+  } else {
+    // Reset if moving
+    if (waitingCandidateStartTime && __DEV__) {
+      logger.info('[Waiting] Resetting due to speed', { speedKmh });
+    }
+    waitingCandidateStartTime = null;
+    lastStationaryPosition = null;
+  }
+};
+
+/**
+ * Resets the automatic waiting detection timer.
+ * Should be called when a manual event (pickup, dropoff) occurs.
+ */
+export const resetWaitingDetection = () => {
+  waitingCandidateStartTime = null;
+  lastStationaryPosition = null;
+  if (__DEV__) logger.info('[Waiting] Detection reset manually');
+};
+
+/**
  * Processa uma lista de novas localizações recebidas do GPS.
  * Aplica filtros, calcula métricas e persiste localmente.
  */
@@ -228,6 +336,9 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
   const userId = (session as any).user_id ?? null;
 
   for (const loc of locations) {
+    // 1.5. Automatic Waiting Detection (Run before noise filtering for better continuity)
+    await detectWaiting(loc, session.id, userId!);
+
     const { latitude, longitude, accuracy, speed } = loc.coords;
     const timestamp = loc.timestamp;
     const lastLocation = trackingState.currentLocation;

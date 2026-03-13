@@ -93,7 +93,7 @@ export async function updateTrackingNotificationMetrics(sessionId: string, userI
 
   const body = `📍 ${metrics.distance.toFixed(2)} km  ·  ⏱️ ${formatDuration(metrics.time)}\n📦 Eventos: ${metrics.events}`;
 
-  await Notifications.presentNotificationAsync({
+  await Notifications.scheduleNotificationAsync({
     identifier: TRACKING_NOTIFICATION_ID,
     content: {
       title: isPaused ? '⏸️ Sessão Pausada' : '🚚 Courier Tracker Ativo',
@@ -153,17 +153,20 @@ export async function handleNotificationAction(response: Notifications.Notificat
     }
 
     // Importação dinâmica para evitar dependência circular
-    const { pauseTrackingSession, resumeTrackingSession } = require('../modules/tracking/service');
+    const { pauseTrackingSession, resumeTrackingSession, resetWaitingDetection } = require('../modules/tracking/service');
 
     switch (actionId) {
       case ACTION_PICKUP:
         await createRouteEvent(sessionId, userId, 'pickup');
+        resetWaitingDetection();
         break;
       case ACTION_DROPOFF:
         await createRouteEvent(sessionId, userId, 'dropoff');
+        resetWaitingDetection();
         break;
       case ACTION_WAITING:
         await createRouteEvent(sessionId, userId, 'waiting');
+        resetWaitingDetection();
         break;
       case ACTION_PAUSE:
         await pauseTrackingSession();

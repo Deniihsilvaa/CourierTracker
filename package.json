@@ -28,6 +28,7 @@
     "expo-splash-screen": "~0.27.5",
     "expo-sqlite": "14.0.6",
     "expo-status-bar": "~1.12.1",
+    "expo-symbols": "~0.1.5",
     "expo-system-ui": "~3.0.7",
     "expo-task-manager": "~11.8.2",
     "expo-web-browser": "~13.0.3",
@@ -46,6 +47,9 @@
   },
   "devDependencies": {
     "@types/react": "~18.2.79",
+    "@types/uuid": "^10.0.0",
+    "eslint": "^8.57.0",
+    "eslint-config-expo": "~7.1.2",
     "typescript": "~5.3.3"
   },
   "private": true,
