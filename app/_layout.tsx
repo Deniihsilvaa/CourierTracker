@@ -20,6 +20,7 @@ if (!__DEV__) {
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { initDb } from '@/src/services/sqlite';
 import { useAuthStore } from '@/src/modules/auth/store';
+import { sessionManager } from '@/src/modules/tracking/session-manager';
 import '@/src/infrastructure/location-provider';
 import * as Notifications from 'expo-notifications';
 import { handleNotificationAction, setupNotificationCategories } from '@/src/infrastructure/tracking-notification';
@@ -56,6 +57,9 @@ export default function RootLayout() {
       try {
         logger.info('RootLayout: Initializing database...');
         await initDb(false); 
+        
+        logger.info('RootLayout: Recovering tracking session...');
+        await sessionManager.initializeSession();
         
         logger.info('RootLayout: Checking session...');
         await checkSession();

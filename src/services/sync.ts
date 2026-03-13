@@ -123,6 +123,10 @@ export const runFullSync = async () => {
         const profilesOk = await syncTable(db, 'profiles');
         if (!profilesOk.success) return false;
 
+        // 1️⃣ Tracking Sessions MUST be synced before any data that references them
+        const trackingSessionsOk = await syncTable(db, 'tracking_sessions');
+        if (!trackingSessionsOk.success) return false;
+
         const sessionsOk = await syncTable(db, 'work_sessions');
         if (!sessionsOk.success) return false;
 
@@ -139,6 +143,8 @@ export const runFullSync = async () => {
             gpsSyncs++;
         }
 
+        await syncTable(db, 'route_segments');
+        await syncTable(db, 'analytics_sessions');
         await syncTable(db, 'log_system');
         
         if (activeSession) {

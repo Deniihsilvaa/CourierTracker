@@ -12,24 +12,27 @@ export const trackingRecorder = {
    */
   recordGpsPoint: async (
     userId: string | null,
-    sessionId: string, // This is the higher level work session
+    sessionId: string, // This is the work shift ID
     location: LocationObject
   ): Promise<boolean> => {
     const { latitude, longitude, accuracy, speed } = location.coords;
     const recordedAt = new Date(location.timestamp).toISOString();
 
     // The granular tracking_session ID from SessionManager
-    const trackingSessionId = sessionManager.getCurrentSessionId();
+    // Robust check: getCurrentSessionId is now async and handles recovery
+    const trackingSessionId = await sessionManager.getCurrentSessionId();
+
+    // GUARD: If no active tracking session is found even after recovery attempt,
+    // we do NOT record the GPS point to prevent orphan data in the analytics pipeline.
+    if (!trackingSessionId) {
+      logger.warn('[Recorder] GPS Point skipped: No active tracking session detected.');
+      return false;
+    }
 
     try {
-      // We keep the legacy sessionId (work session) for sync compatibility
-      // But ensure trackingSessionId is also available if needed.
-      // In this refactor, we are using the existing session_id field 
-      // to point to the granular tracking_session if it's active.
-      
       return await localDatabase.insertGps(
         userId,
-        trackingSessionId || sessionId, 
+        trackingSessionId, 
         latitude,
         longitude,
         accuracy,

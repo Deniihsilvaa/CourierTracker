@@ -1,18 +1,26 @@
-import { v4 as uuid } from 'uuid';
+import { logger } from '@/src/utils/logger';
 import * as Location from 'expo-location';
+import { v4 as uuid } from 'uuid';
 import { getDb } from '../../services/sqlite';
-import type { RouteEventType, RouteEvent } from '../../types/route-events';
+import type { RouteEvent, RouteEventType } from '../../types/route-events';
 import { sessionManager } from './session-manager';
 
 export async function createRouteEvent(
-  sessionId: string, // This is the work session
+  sessionId: string, // This is the work shift ID
   userId: string,
   eventType: RouteEventType
 ): Promise<RouteEvent> {
-  const location = await Location.getCurrentPositionAsync({});
+  // 1. GUARANTEE SESSION EXISTENCE
+  const activeTrackingSession = await sessionManager.getCurrentSessionId();
 
-  // Use granular tracking session if available
-  const activeTrackingSession = sessionManager.getCurrentSessionId() || sessionId;
+  if (!activeTrackingSession) {
+    logger.warn(`[EventService] Event ${eventType} discarded: No active tracking session.`);
+    throw new Error('No active tracking session');
+  }
+
+  logger.info(`[EventService] Creating ${eventType} event for session: ${activeTrackingSession}`);
+
+  const location = await Location.getCurrentPositionAsync({});
 
   const event: RouteEvent = {
     id: uuid(),

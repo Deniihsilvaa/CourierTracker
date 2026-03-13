@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useTrackingStore } from '@/src/modules/tracking/store';
 import { sessionManager } from '@/src/modules/tracking/session-manager';
 import { getDb } from '@/src/services/sqlite';
@@ -16,7 +16,7 @@ interface DebugStats {
 
 export const TrackingDebugPanel = () => {
   const isTracking = useTrackingStore((state) => state.isTracking);
-  const sessionId = sessionManager.getCurrentSessionId();
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [stats, setStats] = useState<DebugStats>({
     gpsCount: 0,
     eventCount: 0,
@@ -24,7 +24,10 @@ export const TrackingDebugPanel = () => {
   });
 
   const fetchStats = async () => {
-    if (!sessionId) {
+    const currentId = await sessionManager.getCurrentSessionId();
+    setSessionId(currentId);
+
+    if (!currentId) {
       setStats({ gpsCount: 0, eventCount: 0, lastEvent: null });
       return;
     }
@@ -35,19 +38,19 @@ export const TrackingDebugPanel = () => {
       // 1. Count GPS Points for current session
       const gpsResult = await db.getFirstAsync<{ count: number }>(
         'SELECT COUNT(*) as count FROM gps_points WHERE session_id = ?',
-        [sessionId]
+        [currentId]
       );
 
       // 2. Count Route Events for current session
       const eventResult = await db.getFirstAsync<{ count: number }>(
         'SELECT COUNT(*) as count FROM route_events WHERE session_id = ?',
-        [sessionId]
+        [currentId]
       );
 
       // 3. Get Last Event
       const lastEventResult = await db.getFirstAsync<any>(
         'SELECT event_type, created_at FROM route_events WHERE session_id = ? ORDER BY created_at DESC LIMIT 1',
-        [sessionId]
+        [currentId]
       );
 
       setStats({
@@ -78,50 +81,50 @@ export const TrackingDebugPanel = () => {
   }, [isTracking, sessionId]);
 
   return (
-    <View className="mx-6 my-4 p-4 bg-white border border-gray-100 rounded-3xl shadow-sm">
-      <View className="flex-row items-center justify-between mb-3">
-        <Text className="text-gray-500 text-xs font-bold uppercase tracking-widest">
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerText}>
           Debug: Tracking Session
         </Text>
-        <View className={`w-2 h-2 rounded-full ${isTracking ? 'bg-green-500' : 'bg-gray-300'}`} />
+        <View style={[styles.indicator, { backgroundColor: isTracking ? '#22c55e' : '#d1d5db' }]} />
       </View>
 
-      <View className="flex-row justify-between mb-4">
+      <View style={styles.row}>
         <View>
-          <Text className="text-gray-400 text-[10px] uppercase font-medium">Status</Text>
-          <Text className={`font-bold ${isTracking ? 'text-green-600' : 'text-gray-500'}`}>
+          <Text style={styles.label}>Status</Text>
+          <Text style={[styles.statusValue, { color: isTracking ? '#16a34a' : '#6b7280' }]}>
             {isTracking ? 'Active' : 'Stopped'}
           </Text>
         </View>
-        <View className="items-end">
-          <Text className="text-gray-400 text-[10px] uppercase font-medium">Session ID</Text>
-          <Text className="text-gray-700 font-mono text-xs">
+        <View style={styles.alignEnd}>
+          <Text style={styles.label}>Session ID</Text>
+          <Text style={styles.sessionValue}>
             {sessionId ? `${sessionId.substring(0, 8)}...` : 'N/A'}
           </Text>
         </View>
       </View>
 
-      <View className="flex-row space-x-8 mb-4">
-        <View className="flex-1 p-2 bg-gray-50 rounded-xl">
-          <Text className="text-gray-400 text-[10px] uppercase font-medium">GPS Points</Text>
-          <Text className="text-lg font-bold text-gray-800">{stats.gpsCount}</Text>
+      <View style={styles.statsGrid}>
+        <View style={styles.statBox}>
+          <Text style={styles.label}>GPS Points</Text>
+          <Text style={styles.statValue}>{stats.gpsCount}</Text>
         </View>
-        <View className="flex-1 p-2 bg-gray-50 rounded-xl">
-          <Text className="text-gray-400 text-[10px] uppercase font-medium">Route Events</Text>
-          <Text className="text-lg font-bold text-gray-800">{stats.eventCount}</Text>
+        <View style={styles.statBox}>
+          <Text style={styles.label}>Route Events</Text>
+          <Text style={styles.statValue}>{stats.eventCount}</Text>
         </View>
       </View>
 
       {stats.lastEvent && (
-        <View className="pt-3 border-t border-gray-50">
-          <Text className="text-gray-400 text-[10px] uppercase font-medium mb-1">Last Event</Text>
-          <View className="flex-row justify-between items-center">
-            <View className="bg-blue-50 px-2 py-0.5 rounded-md">
-              <Text className="text-blue-600 text-[10px] font-bold uppercase">
+        <View style={styles.lastEventContainer}>
+          <Text style={styles.label}>Last Event</Text>
+          <View style={styles.lastEventRow}>
+            <View style={styles.eventTypeBadge}>
+              <Text style={styles.eventTypeText}>
                 {stats.lastEvent.type}
               </Text>
             </View>
-            <Text className="text-gray-400 text-[10px] font-medium">
+            <Text style={styles.eventTimeText}>
               {stats.lastEvent.time}
             </Text>
           </View>
@@ -130,3 +133,104 @@ export const TrackingDebugPanel = () => {
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    marginHorizontal: 24,
+    marginVertical: 16,
+    padding: 16,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  headerText: {
+    color: '#6b7280',
+    fontSize: 10,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  indicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  label: {
+    color: '#9ca3af',
+    fontSize: 10,
+    textTransform: 'uppercase',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  statusValue: {
+    fontWeight: 'bold',
+  },
+  alignEnd: {
+    alignItems: 'flex-end',
+  },
+  sessionValue: {
+    color: '#374151',
+    fontFamily: 'monospace',
+    fontSize: 12,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+  },
+  statBox: {
+    flex: 1,
+    padding: 8,
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1f2937',
+  },
+  lastEventContainer: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f9fafb',
+  },
+  lastEventRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  eventTypeBadge: {
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  eventTypeText: {
+    color: '#2563eb',
+    fontSize: 10,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  eventTimeText: {
+    color: '#9ca3af',
+    fontSize: 10,
+    fontWeight: '500',
+  },
+});

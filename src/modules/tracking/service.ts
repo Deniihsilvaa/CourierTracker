@@ -27,59 +27,87 @@ export const resetWaitingDetection = eventDetector.resetWaitingDetection;
 export const startTracking = async () => {
   const session = useSessionStore.getState().activeSession;
   if (!session) {
-    logger.error('[Tracking] Cannot start tracking without active session');
+    logger.error('[Tracking] Cannot start tracking without active work session');
     return;
   }
 
-  // Inicia a sessão granular de rastreamento
-  const trackingSessionId = await sessionManager.startTrackingSession(session.user_id!);
-
   try {
+    logger.info('[Tracking] Initializing tracking pipeline...');
+
+    // 1. GUARANTEE SESSION CREATION
+    // This MUST succeed before we enable any GPS listeners
+    const trackingSessionId = await sessionManager.startTrackingSession(session.user_id!);
+    
+    if (!trackingSessionId) {
+      throw new Error('Failed to generate tracking session ID');
+    }
+
     const alreadyRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
     if (alreadyRunning) {
+      logger.info('[Tracking] Pipeline already active, reusing existing service.');
       useTrackingStore.getState().setIsTracking(true);
       await startTrackingNotification(session.id, session.user_id!);
       return;
     }
-  } catch (e) {}
 
-  const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
-  if (foregroundStatus !== 'granted') throw new Error('Permissão de localização negada');
+    const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+    if (foregroundStatus !== 'granted') throw new Error('Permissão de localização negada');
 
-  await Location.requestBackgroundPermissionsAsync();
+    await Location.requestBackgroundPermissionsAsync();
 
-  try {
-    await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-      accuracy: Location.Accuracy.High,
-      distanceInterval: MIN_MOVEMENT_THRESHOLD,
-      timeInterval: 5000,
-      showsBackgroundLocationIndicator: true,
-      activityType: Location.ActivityType.AutomotiveNavigation,
-      foregroundService: {
-        notificationTitle: "🚛 Courier Tracker Ativo",
-        notificationBody: "Rastreando sua rota... Aguardando primeiro ponto GPS.",
-        notificationColor: "#007AFF",
-      }
-    });
-    await startTrackingNotification(session.id, session.user_id!);
-  } catch (error) {
-    logger.warn('[Tracking] Background updates failed. Falling back to WatchPosition.');
-    const subscription = await Location.watchPositionAsync(
-      {
+    // 2. ENABLE GPS
+    try {
+      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
         accuracy: Location.Accuracy.High,
         distanceInterval: MIN_MOVEMENT_THRESHOLD,
-        timeInterval: 3000,
-      },
-      (location) => processLocationUpdate([location])
-    );
-    (global as any).foregroundSubscription = subscription;
+        timeInterval: 5000,
+        showsBackgroundLocationIndicator: true,
+        activityType: Location.ActivityType.AutomotiveNavigation,
+        foregroundService: {
+          notificationTitle: "🚛 Courier Tracker Ativo",
+          notificationBody: "Rastreando sua rota... Aguardando primeiro ponto GPS.",
+          notificationColor: "#007AFF",
+        }
+      });
+      logger.info('[Tracking] Background GPS enabled.');
+    } catch (error: any) {
+      if (error.message.includes('foreground service') || error.message.includes('permissions')) {
+        logger.warn('[Tracking] Background GPS failed (Missing permissions in manifest). Falling back to watchPosition.');
+        
+        // Inform user that background tracking might be limited
+        if (__DEV__) {
+          console.warn('CRITICAL: Foreground Service permissions not found. Ensure you have rebuilt the APK/Development Build after modifying app.json.');
+        }
+
+        const subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            distanceInterval: MIN_MOVEMENT_THRESHOLD,
+            timeInterval: 3000,
+          },
+          (location) => processLocationUpdate([location])
+        );
+        (global as any).foregroundSubscription = subscription;
+      } else {
+        throw error;
+      }
+    }
+
     await startTrackingNotification(session.id, session.user_id!);
+    logger.info('[Tracking] Tracking started successfully.');
+
+  } catch (error: any) {
+    logger.error('[Tracking] Pipeline stabilization failure:', { error: error.message });
+    // Cleanup if partially started
+    await sessionManager.stopTrackingSession();
+    throw error;
   }
 
   useTrackingStore.getState().setIsTracking(true);
 };
 
 export const stopTracking = async () => {
+  logger.info('[Tracking] Stopping tracking pipeline...');
   const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
   if (hasStarted) await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
 
@@ -88,9 +116,9 @@ export const stopTracking = async () => {
     (global as any).foregroundSubscription = null;
   }
 
-  const currentSessionId = sessionManager.getCurrentSessionId();
+  const currentSessionId = await sessionManager.getCurrentSessionId();
 
-  // Finaliza a sessão granular de rastreamento
+  // GUARANTEE SESSION CLOSE
   await sessionManager.stopTrackingSession();
 
   // Aciona os placeholders de análise e segmentação para o futuro
@@ -101,6 +129,7 @@ export const stopTracking = async () => {
 
   await stopTrackingNotification();
   useTrackingStore.getState().setIsTracking(false);
+  logger.info('[Tracking] Tracking stopped and session closed.');
 };
 
 export const pauseTrackingSession = async () => {

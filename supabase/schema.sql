@@ -76,3 +76,38 @@ CREATE TABLE route_events (
 -- Index for session and time-based analysis
 CREATE INDEX idx_route_events_session_id ON route_events(session_id);
 CREATE INDEX idx_route_events_created_at ON route_events(created_at);
+
+-- 6. Tracking Sessions (Granular tracking lifecycle)
+CREATE TABLE tracking_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    started_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    ended_at TIMESTAMP WITH TIME ZONE,
+    status TEXT DEFAULT 'active'
+);
+
+CREATE INDEX idx_tracking_sessions_user_id ON tracking_sessions(user_id);
+
+-- 7. Route Segments (Future segmentation engine)
+CREATE TABLE route_segments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    session_id UUID NOT NULL REFERENCES tracking_sessions(id) ON DELETE CASCADE,
+    segment_type TEXT NOT NULL,
+    started_at TIMESTAMP WITH TIME ZONE,
+    ended_at TIMESTAMP WITH TIME ZONE,
+    distance_km DOUBLE PRECISION,
+    duration_seconds INTEGER,
+    metadata JSONB
+);
+
+CREATE INDEX idx_route_segments_session_id ON route_segments(session_id);
+
+-- 8. Analytics Sessions (Future analytics engine)
+CREATE TABLE analytics_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    session_id UUID NOT NULL REFERENCES tracking_sessions(id) ON DELETE CASCADE,
+    metrics_json JSONB,
+    generated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_analytics_sessions_session_id ON analytics_sessions(session_id);

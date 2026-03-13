@@ -228,6 +228,10 @@ export const initDb = async (forceReset = false) => {
       } catch (e) {}
 
       try {
+        await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_gps_points_session ON gps_points(session_id);`);
+      } catch (e) {}
+
+      try {
         await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_route_events_session ON route_events(session_id);`);
       } catch (e) {}
 
