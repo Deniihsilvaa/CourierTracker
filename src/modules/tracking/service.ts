@@ -104,35 +104,6 @@ export const startTracking = async () => {
   useTrackingStore.getState().setIsTracking(true);
 };
 
-/** Atualiza o texto da notificação persistente com métricas ao vivo */
-const updateLiveTrackingNotification = async (distanceKm: number, activeSeconds: number) => {
-  try {
-    const isRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
-    if (!isRunning) return;
-
-    const hours = Math.floor(activeSeconds / 3600);
-    const minutes = Math.floor((activeSeconds % 3600) / 60);
-    const timeStr = hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`;
-    const kmStr = distanceKm.toFixed(2);
-
-    await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-      accuracy: Location.Accuracy.High,
-      distanceInterval: MIN_MOVEMENT_THRESHOLD,
-      timeInterval: 5000,
-      showsBackgroundLocationIndicator: true,
-      activityType: Location.ActivityType.AutomotiveNavigation,
-      foregroundService: {
-        notificationTitle: "🚛 Courier Tracker Ativo",
-        notificationBody: `📍 ${kmStr} km  ·  ⏱ ${timeStr} em movimento`,
-        notificationColor: "#007AFF",
-      }
-    });
-  } catch (e) {
-    // Silently fails if not in background mode
-  }
-};
-
-
 export const stopTracking = async () => {
   // Para o modo background
   const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
@@ -437,18 +408,6 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
       // 5. Atualização do Estado Global (UI) - Apenas após sucesso no DB
       trackingState.setCurrentLocation({ latitude, longitude, accuracy, speed, timestamp });
       sessionState.updateSessionMetrics(distanceDeltaKm, activeDelta, idleDelta);
-
-      // 6. Atualiza o texto da notificação persistente com métricas ao vivo
-      const updatedSession = useSessionStore.getState().activeSession;
-      if (updatedSession) {
-        updateLiveTrackingNotification(
-          updatedSession.total_distance_km,
-          updatedSession.total_active_seconds
-        );
-        
-        // Também atualiza a notificação de ações se estiver rodando
-        updateTrackingNotificationMetrics(updatedSession.id, userId);
-      }
 
     } catch (e) {
       console.error('[Tracking] Error in transaction:', e);
