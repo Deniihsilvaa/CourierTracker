@@ -6,6 +6,7 @@ import { logger } from '../../utils/logger';
 import { calculateDistance, isValidLocation } from '../../utils/location';
 import { useSessionStore } from '../sessions/store';
 import { useTrackingStore } from './store';
+import { startTrackingNotification, stopTrackingNotification } from '../../infrastructure/tracking-notification';
 
 const LOCATION_TASK_NAME = 'background-location-task';
 const MIN_MOVEMENT_THRESHOLD = 5; // metros
@@ -15,12 +16,21 @@ const MAX_REASONABLE_SPEED_MPS = 40; // 144 km/h (acima disso costuma ser salto 
 const MAX_REASONABLE_JUMP_METERS = 300; // cap extra para jumps em poucos segundos
 
 export const startTracking = async () => {
+  const session = useSessionStore.getState().activeSession;
+  if (!session) {
+    logger.error('[Tracking] Cannot start tracking without active session');
+    return;
+  }
+
   // Proteção: não iniciar tracking se já estiver rodando
   try {
     const alreadyRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
     if (alreadyRunning) {
       logger.warn('[Tracking] startTracking called but task already running.');
       useTrackingStore.getState().setIsTracking(true);
+      
+      // Garante que a notificação de ações rápidas também esteja rodando
+      await startTrackingNotification(session.id, session.user_id!);
       return;
     }
   } catch (e) {
@@ -49,6 +59,10 @@ export const startTracking = async () => {
       }
     });
     logger.info('[Tracking] Background location updates started.');
+    
+    // Inicia a notificação persistente com botões de ação
+    await startTrackingNotification(session.id, session.user_id!);
+
   } catch (error) {
     logger.warn('[Tracking] Background updates failed (likely Expo Go). Falling back to WatchPosition.');
 
@@ -66,6 +80,9 @@ export const startTracking = async () => {
 
     // Guarda a subscrição para podermos parar depois
     (global as any).foregroundSubscription = subscription;
+
+    // Inicia a notificação persistente com botões de ação mesmo no fallback
+    await startTrackingNotification(session.id, session.user_id!);
   }
 
   useTrackingStore.getState().setIsTracking(true);
@@ -112,6 +129,9 @@ export const stopTracking = async () => {
     (global as any).foregroundSubscription.remove();
     (global as any).foregroundSubscription = null;
   }
+
+  // Para a notificação de ações rápidas
+  await stopTrackingNotification();
 
   useTrackingStore.getState().setIsTracking(false);
 };

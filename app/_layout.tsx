@@ -21,6 +21,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { initDb } from '@/src/services/sqlite';
 import { useAuthStore } from '@/src/modules/auth/store';
 import '@/src/infrastructure/location-provider';
+import * as Notifications from 'expo-notifications';
+import { handleNotificationAction, setupNotificationCategories } from '@/src/infrastructure/tracking-notification';
 
 export const unstable_settings = {
   initialRouteName: 'login',
@@ -35,6 +37,14 @@ export default function RootLayout() {
   const { user, checkSession, isLoading } = useAuthStore();
 
   useEffect(() => {
+    // Configura categorias de notificação (botões de ação)
+    setupNotificationCategories();
+
+    // Listener para ações de notificação (funciona em background)
+    const notificationSubscription = Notifications.addNotificationResponseReceivedListener(response => {
+      handleNotificationAction(response);
+    });
+
     const prepare = async () => {
       try {
         logger.info('RootLayout: Initializing database...');
@@ -73,6 +83,7 @@ export default function RootLayout() {
 
     return () => {
       subscription.remove();
+      notificationSubscription.remove();
     };
   }, []);
 

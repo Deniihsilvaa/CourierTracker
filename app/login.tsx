@@ -16,6 +16,8 @@ import {
   View
 } from 'react-native';
 
+import { requestNotificationPermissions } from '@/src/utils/notification-permissions';
+
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,6 +27,8 @@ export default function LoginScreen() {
   const handleSignIn = async () => {
     try {
       await signIn(email, password);
+      // Após login, solicitar permissões de notificação
+      await requestNotificationPermissions();
     } catch (e: any) {
       console.error(e);
     }
@@ -33,6 +37,8 @@ export default function LoginScreen() {
   const handleGoogleSignIn = async () => {
     try {
       await signInWithGoogle();
+      // Após login, solicitar permissões de notificação
+      await requestNotificationPermissions();
     } catch (e: any) {
       Alert.alert('Error', e.message);
     }
