@@ -100,7 +100,8 @@ export const localDatabase = {
       await db.runAsync(query, [createdAt, message, level, data ?? null, metaText]);
       return true;
     } catch (e) {
-      logger.error('[DB] log_system insert failed:', e);
+      // NÃO usar logger aqui para evitar recursão com logSystem/logger
+      console.error('[DB] log_system insert failed:', e);
       return false;
     }
   },
