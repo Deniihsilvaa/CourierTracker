@@ -2,18 +2,22 @@ import { v4 as uuid } from 'uuid';
 import * as Location from 'expo-location';
 import { getDb } from '../../services/sqlite';
 import type { RouteEventType, RouteEvent } from '../../types/route-events';
+import { sessionManager } from './session-manager';
 
 export async function createRouteEvent(
-  sessionId: string,
+  sessionId: string, // This is the work session
   userId: string,
   eventType: RouteEventType
 ): Promise<RouteEvent> {
   const location = await Location.getCurrentPositionAsync({});
 
+  // Use granular tracking session if available
+  const activeTrackingSession = sessionManager.getCurrentSessionId() || sessionId;
+
   const event: RouteEvent = {
     id: uuid(),
     user_id: userId,
-    session_id: sessionId,
+    session_id: activeTrackingSession,
     event_type: eventType,
     latitude: location.coords.latitude,
     longitude: location.coords.longitude,

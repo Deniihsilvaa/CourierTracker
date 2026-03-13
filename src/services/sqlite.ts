@@ -113,6 +113,44 @@ export const initDb = async (forceReset = false) => {
         );
       `);
 
+      // Tracking Sessions
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS tracking_sessions (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          started_at TEXT NOT NULL,
+          ended_at TEXT,
+          status TEXT DEFAULT 'active',
+          synced INTEGER DEFAULT 0
+        );
+      `);
+
+      // Route Segments
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS route_segments (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          segment_type TEXT,
+          started_at TEXT,
+          ended_at TEXT,
+          distance_km REAL,
+          duration_seconds INTEGER,
+          metadata TEXT,
+          synced INTEGER DEFAULT 0
+        );
+      `);
+
+      // Analytics Sessions
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS analytics_sessions (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          metrics_json TEXT,
+          generated_at TEXT,
+          synced INTEGER DEFAULT 0
+        );
+      `);
+
       // Log System
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS log_system (

@@ -58,3 +58,21 @@ CREATE TABLE locations (
 CREATE INDEX idx_work_sessions_user_id ON work_sessions(user_id);
 CREATE INDEX idx_trips_session_id ON trips(session_id);
 CREATE INDEX idx_locations_session_id ON locations(session_id);
+
+-- 5. Route Events (Semantic markers for actions)
+CREATE TYPE route_event_type AS ENUM ('pickup', 'dropoff', 'waiting', 'pause', 'resume');
+
+CREATE TABLE route_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    session_id UUID NOT NULL REFERENCES work_sessions(id) ON DELETE CASCADE,
+    event_type route_event_type NOT NULL,
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- Index for session and time-based analysis
+CREATE INDEX idx_route_events_session_id ON route_events(session_id);
+CREATE INDEX idx_route_events_created_at ON route_events(created_at);

@@ -14,6 +14,7 @@ import { LocationDisclosureModal } from '@/src/components/LocationDisclosureModa
 import { localDatabase } from '@/src/services/localDatabase';
 import { logger } from '@/src/utils/logger';
 import { createRouteEvent } from '@/src/modules/tracking/routeEventService';
+import { TrackingDebugPanel } from '@/src/components/tracking/TrackingDebugPanel';
 
 export default function DashboardScreen() {
   const { user } = useAuthStore();
@@ -159,6 +160,9 @@ export default function DashboardScreen() {
               : 'Inicie um turno para começar o rastreamento GPS.'}
           </Text>
         </View>
+
+        {/* Debug Panel for Session Validation */}
+        <TrackingDebugPanel />
 
         {/* Metrics Grid */}
         <View style={styles.metricsGrid}>
