@@ -35,7 +35,16 @@ const syncTable = async (db: any, localTableName: string) => {
             }
 
             if (localTableName === 'gps_points') {
-                delete (rest as any).id;
+                return {
+                    user_id: rest.user_id,
+                    session_id: rest.session_id,
+                    trip_id: rest.trip_id || null,
+                    latitude: rest.latitude,
+                    longitude: rest.longitude,
+                    speed: rest.speed,
+                    accuracy: rest.accuracy,
+                    recorded_at: rest.recorded_at
+                };
             }
 
             if (localTableName === 'trips') {
