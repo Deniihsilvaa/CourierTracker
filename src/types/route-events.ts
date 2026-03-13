@@ -1,7 +1,9 @@
 export type RouteEventType =
   | 'pickup'
   | 'dropoff'
-  | 'waiting';
+  | 'waiting'
+  | 'pause'
+  | 'resume';
 
 export interface RouteEvent {
   id: string;

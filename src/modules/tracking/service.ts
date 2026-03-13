@@ -6,7 +6,12 @@ import { logger } from '../../utils/logger';
 import { calculateDistance, isValidLocation } from '../../utils/location';
 import { useSessionStore } from '../sessions/store';
 import { useTrackingStore } from './store';
-import { startTrackingNotification, stopTrackingNotification } from '../../infrastructure/tracking-notification';
+import { 
+  startTrackingNotification, 
+  stopTrackingNotification, 
+  updateTrackingNotificationMetrics 
+} from '../../infrastructure/tracking-notification';
+import { createRouteEvent } from './routeEventService';
 
 const LOCATION_TASK_NAME = 'background-location-task';
 const MIN_MOVEMENT_THRESHOLD = 5; // metros
@@ -89,7 +94,7 @@ export const startTracking = async () => {
 };
 
 /** Atualiza o texto da notificação persistente com métricas ao vivo */
-const updateTrackingNotification = async (distanceKm: number, activeSeconds: number) => {
+const updateLiveTrackingNotification = async (distanceKm: number, activeSeconds: number) => {
   try {
     const isRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
     if (!isRunning) return;
@@ -134,6 +139,63 @@ export const stopTracking = async () => {
   await stopTrackingNotification();
 
   useTrackingStore.getState().setIsTracking(false);
+};
+
+/**
+ * Pausa o rastreamento GPS e registra o evento de pausa.
+ */
+export const pauseTrackingSession = async () => {
+  const session = useSessionStore.getState().activeSession;
+  if (!session) return;
+
+  try {
+    // 1. Para o GPS
+    const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+    if (hasStarted) {
+      await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+    }
+    
+    if ((global as any).foregroundSubscription) {
+      (global as any).foregroundSubscription.remove();
+      (global as any).foregroundSubscription = null;
+    }
+
+    // 2. Registra evento de pausa
+    await createRouteEvent(session.id, session.user_id!, 'pause');
+
+    // 3. Atualiza estado global
+    useTrackingStore.getState().setIsTracking(false);
+
+    // 4. Atualiza notificação para estado pausado
+    await updateTrackingNotificationMetrics(session.id, session.user_id!, true);
+
+    logger.info('[Tracking] Session paused.');
+  } catch (error) {
+    logger.error('[Tracking] Error pausing session', { error });
+  }
+};
+
+/**
+ * Retoma o rastreamento GPS e registra o evento de retomada.
+ */
+export const resumeTrackingSession = async () => {
+  const session = useSessionStore.getState().activeSession;
+  if (!session) return;
+
+  try {
+    // 1. Reinicia o GPS (reutiliza lógica do startTracking mas sem recriar notificação base)
+    await startTracking();
+
+    // 2. Registra evento de retomada
+    await createRouteEvent(session.id, session.user_id!, 'resume');
+
+    // 3. Atualiza notificação para estado ativo
+    await updateTrackingNotificationMetrics(session.id, session.user_id!, false);
+
+    logger.info('[Tracking] Session resumed.');
+  } catch (error) {
+    logger.error('[Tracking] Error resuming session', { error });
+  }
 };
 
 /**
@@ -268,10 +330,13 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
       // 6. Atualiza o texto da notificação persistente com métricas ao vivo
       const updatedSession = useSessionStore.getState().activeSession;
       if (updatedSession) {
-        updateTrackingNotification(
+        updateLiveTrackingNotification(
           updatedSession.total_distance_km,
           updatedSession.total_active_seconds
         );
+        
+        // Também atualiza a notificação de ações se estiver rodando
+        updateTrackingNotificationMetrics(updatedSession.id, userId);
       }
 
     } catch (e) {

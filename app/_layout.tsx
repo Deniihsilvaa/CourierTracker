@@ -45,6 +45,13 @@ export default function RootLayout() {
       handleNotificationAction(response);
     });
 
+    // Processa ação de notificação se o app foi aberto através de um botão (App Kill recovery)
+    Notifications.getLastNotificationResponseAsync().then(response => {
+      if (response) {
+        handleNotificationAction(response);
+      }
+    });
+
     const prepare = async () => {
       try {
         logger.info('RootLayout: Initializing database...');
