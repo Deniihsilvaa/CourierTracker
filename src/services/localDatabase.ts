@@ -7,7 +7,7 @@ import { logger } from '../utils/logger';
  */
 
 // Whitelist of allowed tables to prevent arbitrary table access
-const ALLOWED_TABLES = ['profiles', 'work_sessions', 'trips', 'gps_points','log_system'];
+const ALLOWED_TABLES = ['profiles', 'work_sessions', 'trips', 'gps_points', 'route_events', 'log_system'];
 
 export const localDatabase = {
   /**

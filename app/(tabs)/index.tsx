@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, TouchableOpacity, Alert, Animated, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Alert, Animated, ScrollView, ToastAndroid } from 'react-native';
 import { useAuthStore } from '@/src/modules/auth/store';
 import { useTrackingStore } from '@/src/modules/tracking/store';
 import { useSessionStore } from '@/src/modules/sessions/store';
@@ -13,6 +13,7 @@ import * as Haptics from 'expo-haptics';
 import { LocationDisclosureModal } from '@/src/components/LocationDisclosureModal';
 import { localDatabase } from '@/src/services/localDatabase';
 import { logger } from '@/src/utils/logger';
+import { createRouteEvent } from '@/src/modules/tracking/routeEventService';
 
 export default function DashboardScreen() {
   const { user } = useAuthStore();
@@ -86,6 +87,22 @@ export default function DashboardScreen() {
     setShowDisclosure(false);
     await startSession();
     await startTracking();
+  };
+
+  const handleRouteEvent = async (type: 'pickup' | 'dropoff' | 'waiting') => {
+    if (!activeSession || !user) {
+      ToastAndroid.show('Inicie um turno antes de registrar eventos.', ToastAndroid.SHORT);
+      return;
+    }
+
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await createRouteEvent(activeSession.id, user.id, type);
+      ToastAndroid.show('Evento registrado.', ToastAndroid.SHORT);
+    } catch (e) {
+      logger.error('[Dashboard] Failed to create route event', e);
+      ToastAndroid.show('Não foi possível registrar o evento.', ToastAndroid.SHORT);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -193,6 +210,36 @@ export default function DashboardScreen() {
 
       {/* Action Button */}
       <View style={styles.actionContainer}>
+        {/* Route Event Quick Actions */}
+        {isTracking && (
+          <View style={styles.routeActionsContainer}>
+            <TouchableOpacity
+              style={[styles.routeActionButton, { backgroundColor: '#007AFF' }]}
+              onPress={() => handleRouteEvent('pickup')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="cube-outline" size={18} color="#fff" />
+              <Text style={styles.routeActionLabel}>Pickup</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.routeActionButton, { backgroundColor: '#4CAF50' }]}
+              onPress={() => handleRouteEvent('dropoff')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="checkmark-done-outline" size={18} color="#fff" />
+              <Text style={styles.routeActionLabel}>Dropoff</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.routeActionButton, { backgroundColor: '#FF9800' }]}
+              onPress={() => handleRouteEvent('waiting')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="time-outline" size={18} color="#fff" />
+              <Text style={styles.routeActionLabel}>Waiting</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <TouchableOpacity 
           activeOpacity={0.8}
           onPress={handleToggleTracking}
@@ -322,6 +369,27 @@ const styles = StyleSheet.create({
   actionContainer: {
     padding: 24,
     paddingBottom: 40,
+  },
+  routeActionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  routeActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    marginHorizontal: 4,
+    borderRadius: 20,
+    gap: 8,
+    elevation: 4,
+  },
+  routeActionLabel: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   mainButton: {
     flexDirection: 'row',

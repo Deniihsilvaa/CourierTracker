@@ -52,6 +52,24 @@ const syncTable = async (db: any, localTableName: string) => {
                 };
 
             }
+            if (localTableName === 'route_events') {
+                let metadata: any = null;
+                try {
+                    metadata = rest.metadata ? JSON.parse(rest.metadata) : null;
+                } catch {
+                    metadata = { parse_error: true, raw: String(rest.metadata) };
+                }
+                return {
+                    id: rest.id,
+                    user_id: rest.user_id,
+                    session_id: rest.session_id,
+                    event_type: rest.event_type,
+                    latitude: rest.latitude,
+                    longitude: rest.longitude,
+                    created_at: rest.created_at,
+                    metadata,
+                };
+            }
             if (localTableName === 'log_system') {
                 let meta: any = null;
                 try {
@@ -109,6 +127,9 @@ export const runFullSync = async () => {
         if (!sessionsOk.success) return false;
 
         await syncTable(db, 'trips');
+
+        // Route events should be synced before raw GPS points
+        await syncTable(db, 'route_events');
         
         // GPS points can be many, so we loop up to 5 times to clear backlogs of up to 2500 points
         let gpsSyncs = 0;

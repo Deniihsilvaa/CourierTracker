@@ -98,6 +98,21 @@ export const initDb = async (forceReset = false) => {
         );
       `);
 
+      // Route Events
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS route_events (
+          id TEXT PRIMARY KEY,
+          user_id TEXT,
+          session_id TEXT,
+          event_type TEXT,
+          latitude REAL,
+          longitude REAL,
+          created_at TEXT,
+          metadata TEXT,
+          synced INTEGER DEFAULT 0
+        );
+      `);
+
       // Log System
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS log_system (
@@ -152,9 +167,34 @@ export const initDb = async (forceReset = false) => {
         } catch (e) {}
       }
 
+      // Route Events migrations
+      const routeEventCols = [
+        { name: 'user_id', type: 'TEXT' },
+        { name: 'session_id', type: 'TEXT' },
+        { name: 'event_type', type: 'TEXT' },
+        { name: 'latitude', type: 'REAL' },
+        { name: 'longitude', type: 'REAL' },
+        { name: 'created_at', type: 'TEXT' },
+        { name: 'metadata', type: 'TEXT' },
+        { name: 'synced', type: 'INTEGER DEFAULT 0' },
+      ];
+      for (const col of routeEventCols) {
+        try {
+          await db.execAsync(`ALTER TABLE route_events ADD COLUMN ${col.name} ${col.type};`);
+        } catch (e) {}
+      }
+
       // Indices
       try {
         await db.execAsync(`CREATE UNIQUE INDEX IF NOT EXISTS idx_gps_dedup ON gps_points (session_id, recorded_at);`);
+      } catch (e) {}
+
+      try {
+        await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_route_events_session ON route_events(session_id);`);
+      } catch (e) {}
+
+      try {
+        await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_route_events_time ON route_events(created_at);`);
       } catch (e) {}
 
       // Log system migrations
