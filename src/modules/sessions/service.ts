@@ -69,6 +69,14 @@ export const endSession = async () => {
         [tripId, sessionData.id, sessionData.user_id, sessionData.total_distance_km, duration, sessionData.start_time, endTime]
       );
       console.log(`Trip ${tripId} created for session ${sessionData.id}`);
+
+      // Vincula todos os pontos GPS da sessão ao trip criado (evita trip_id null no Supabase)
+      await db.runAsync(
+        `UPDATE gps_points
+         SET trip_id = ?, synced = 0
+         WHERE session_id = ? AND (trip_id IS NULL OR trip_id = '')`,
+        [tripId, sessionData.id]
+      );
     }
 
     // 3. Clear state

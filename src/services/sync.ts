@@ -50,6 +50,23 @@ const syncTable = async (db: any, localTableName: string) => {
                     status: rest.status,
                     created_at: rest.created_at
                 };
+
+            }
+            if (localTableName === 'log_system') {
+                let meta: any = null;
+                try {
+                    meta = rest.meta_dados ? JSON.parse(rest.meta_dados) : null;
+                } catch {
+                    meta = { parse_error: true, raw: String(rest.meta_dados) };
+                }
+                return {
+                    id: rest.id,
+                    created_at: rest.created_at,
+                    level: rest.level,
+                    message: rest.message,
+                    data: rest.data,
+                    meta_dados: meta,
+                };
             }
 
             return rest;
@@ -100,6 +117,8 @@ export const runFullSync = async () => {
             if (!res.success || res.count === 0) break;
             gpsSyncs++;
         }
+
+        await syncTable(db, 'log_system');
         
         if (activeSession) {
             const updatedSession = await db.getFirstAsync<any>(

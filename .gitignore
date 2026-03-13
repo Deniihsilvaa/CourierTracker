@@ -5,6 +5,9 @@ node_modules/
 # IA
 .antigravity/
 .agent/
+.logs/
+.cursor/
+agent/
 
 # Expo
 .expo/

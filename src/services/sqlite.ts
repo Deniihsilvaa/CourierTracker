@@ -20,6 +20,7 @@ export const initDb = async (forceReset = false) => {
       DROP TABLE IF EXISTS trips;
       DROP TABLE IF EXISTS work_sessions;
       DROP TABLE IF EXISTS profiles;
+      DROP TABLE IF EXISTS log_system;
     `);
   }
 
@@ -97,6 +98,18 @@ export const initDb = async (forceReset = false) => {
         );
       `);
 
+      // Log System
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS log_system (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          message TEXT,
+          level TEXT,
+          data TEXT,
+          meta_dados TEXT,
+          synced INTEGER DEFAULT 0
+        );
+      `);
       // --- 2. RUN MIGRATIONS (Ensure all columns exist) ---
 
       // Profiles
@@ -143,6 +156,25 @@ export const initDb = async (forceReset = false) => {
       try {
         await db.execAsync(`CREATE UNIQUE INDEX IF NOT EXISTS idx_gps_dedup ON gps_points (session_id, recorded_at);`);
       } catch (e) {}
+
+      // Log system migrations
+      const logCols = [
+        { name: 'created_at', type: 'TEXT DEFAULT CURRENT_TIMESTAMP' },
+        { name: 'message', type: 'TEXT' },
+        { name: 'level', type: 'TEXT' },
+        { name: 'data', type: 'TEXT' },
+        { name: 'meta_dados', type: 'TEXT' },
+        { name: 'synced', type: 'INTEGER DEFAULT 0' },
+      ];
+      for (const col of logCols) {
+        try {
+          await db.execAsync(`ALTER TABLE log_system ADD COLUMN ${col.name} ${col.type};`);
+        } catch (e) {}
+      }
+
+      try {
+        await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_log_system_synced ON log_system (synced, created_at);`);
+      } catch (e) {}
     });
 
     console.log('[Storage] Local database initialized successfully.');
@@ -167,6 +199,15 @@ export const cleanupSyncedData = async () => {
     await db.runAsync(
       'DELETE FROM gps_points WHERE synced = 1 AND recorded_at < ?',
       [isoDate]
+    );
+
+    // Delete synced logs older than 14 days
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+    const logsIso = fourteenDaysAgo.toISOString();
+    await db.runAsync(
+      'DELETE FROM log_system WHERE synced = 1 AND created_at < ?',
+      [logsIso]
     );
 
     console.log(`[Storage] Cleanup completed. Removed old synced points.`);

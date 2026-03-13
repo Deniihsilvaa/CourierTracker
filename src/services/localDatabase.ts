@@ -7,7 +7,7 @@ import { logger } from '../utils/logger';
  */
 
 // Whitelist of allowed tables to prevent arbitrary table access
-const ALLOWED_TABLES = ['profiles', 'work_sessions', 'trips', 'gps_points'];
+const ALLOWED_TABLES = ['profiles', 'work_sessions', 'trips', 'gps_points','log_system'];
 
 export const localDatabase = {
   /**
@@ -88,5 +88,20 @@ export const localDatabase = {
       logger.error('[DB] GPS Insert failed:', e);
       return false;
     }
-  }
+  },
+
+  insertLogSystem: async (level: string, message: string, data?: string | null, metaDados?: any) => {
+    const db = getDb();
+    const createdAt = new Date().toISOString();
+    const metaText = metaDados == null ? null : JSON.stringify(metaDados);
+    const query = `INSERT INTO log_system (created_at, message, level, data, meta_dados, synced)
+                   VALUES (?, ?, ?, ?, ?, 0)`;
+    try {
+      await db.runAsync(query, [createdAt, message, level, data ?? null, metaText]);
+      return true;
+    } catch (e) {
+      logger.error('[DB] log_system insert failed:', e);
+      return false;
+    }
+  },
 };

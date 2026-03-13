@@ -11,8 +11,22 @@ const LOCATION_TASK_NAME = 'background-location-task';
 const MIN_MOVEMENT_THRESHOLD = 5; // metros
 const MIN_TIME_BETWEEN_UPDATES = 5000; // 5 segundos
 const MAX_GAP_SECONDS = 180; // 3 minutos (Cap para evitar picos de tempo)
+const MAX_REASONABLE_SPEED_MPS = 40; // 144 km/h (acima disso costuma ser salto de GPS)
+const MAX_REASONABLE_JUMP_METERS = 300; // cap extra para jumps em poucos segundos
 
 export const startTracking = async () => {
+  // Proteção: não iniciar tracking se já estiver rodando
+  try {
+    const alreadyRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+    if (alreadyRunning) {
+      logger.warn('[Tracking] startTracking called but task already running.');
+      useTrackingStore.getState().setIsTracking(true);
+      return;
+    }
+  } catch (e) {
+    // ignore
+  }
+
   const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
   if (foregroundStatus !== 'granted') {
     throw new Error('Permissão de localização negada');
@@ -126,10 +140,10 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
   }
 
   if (!activeSession) return;
+  const session = activeSession;
 
-  // Fetch the current user profile
-  const userRow = await localDatabase.queryFirst<{ id: string }>('profiles');
-  const userId = userRow?.id || null;
+  // Fonte da verdade: user_id vem da sessão ativa (evita null em background)
+  const userId = (session as any).user_id ?? null;
 
   for (const loc of locations) {
     const { latitude, longitude, accuracy, speed } = loc.coords;
@@ -153,19 +167,41 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
         latitude, longitude
       );
 
-      const isMoving = distanceMeters > 3 && (speed === null || speed > 0.2);
-      if (isMoving) {
-        distanceDeltaKm = distanceMeters / 1000;
-      }
-
-      // Cap de tempo para evitar que hiatos longos (ex: app dormindo) 
-      // adicionem horas de tempo ativo/ocioso de uma vez.
       const rawDelta = (timestamp - lastLocation.timestamp) / 1000;
-      timeDeltaSeconds = Math.min(rawDelta, MAX_GAP_SECONDS);
 
-      // Se o hiato for maior que o cap, ignoramos o tempo para não distorcer as métricas
+      // Se o app ficou muito tempo sem atualizar, tratamos como "reacquire" do GPS:
+      // gravamos o ponto, mas NÃO somamos distância/tempo para evitar picos ao voltar do background.
       if (rawDelta > MAX_GAP_SECONDS) {
+        logger.warn('[Tracking] Large gap detected, ignoring distance/time deltas', {
+          rawDeltaSeconds: rawDelta,
+          distanceMeters,
+          last: { lat: lastLocation.latitude, lon: lastLocation.longitude, ts: lastLocation.timestamp },
+          curr: { lat: latitude, lon: longitude, ts: timestamp },
+        });
+        distanceDeltaKm = 0;
         timeDeltaSeconds = 0;
+      } else {
+        // Proteção contra saltos de GPS: velocidade implícita absurda ou jump grande demais
+        const impliedSpeed = rawDelta > 0 ? distanceMeters / rawDelta : Infinity;
+        if (distanceMeters > MAX_REASONABLE_JUMP_METERS || impliedSpeed > MAX_REASONABLE_SPEED_MPS) {
+          logger.warn('[Tracking] GPS jump detected, ignoring distance delta', {
+            distanceMeters,
+            rawDeltaSeconds: rawDelta,
+            impliedSpeedMps: impliedSpeed,
+            last: { lat: lastLocation.latitude, lon: lastLocation.longitude, ts: lastLocation.timestamp },
+            curr: { lat: latitude, lon: longitude, ts: timestamp },
+          });
+          distanceDeltaKm = 0;
+          timeDeltaSeconds = Math.min(rawDelta, MAX_GAP_SECONDS);
+        } else {
+          const isMoving = distanceMeters > 3 && (speed === null || speed > 0.2);
+          if (isMoving) {
+            distanceDeltaKm = distanceMeters / 1000;
+          }
+
+          // Cap de tempo para evitar picos
+          timeDeltaSeconds = Math.min(rawDelta, MAX_GAP_SECONDS);
+        }
       }
     }
 
@@ -187,20 +223,20 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
         const existing = await localDatabase.queryFirst<{ id: number }>(
           'gps_points',
           'WHERE session_id = ? AND recorded_at = ?',
-          [activeSession.id, recordedAtIso]
+          [session.id, recordedAtIso]
         );
 
         if (existing) return;
 
         // Insere o ponto
-        await localDatabase.insertGps(userId, activeSession.id, latitude, longitude, accuracy, speed, recordedAtIso);
+        await localDatabase.insertGps(userId, session.id, latitude, longitude, accuracy, speed, recordedAtIso);
 
         // Atualiza a sessão apenas se houver delta real e o ponto for novo
         if (timeDeltaSeconds > 0 || distanceDeltaKm > 0) {
-          await localDatabase.update('work_sessions', activeSession.id, {
-            total_distance_km: activeSession.total_distance_km + distanceDeltaKm,
-            total_active_seconds: activeSession.total_active_seconds + activeDelta,
-            total_idle_seconds: activeSession.total_idle_seconds + idleDelta
+          await localDatabase.update('work_sessions', session.id, {
+            total_distance_km: session.total_distance_km + distanceDeltaKm,
+            total_active_seconds: session.total_active_seconds + activeDelta,
+            total_idle_seconds: session.total_idle_seconds + idleDelta
           });
         }
       });

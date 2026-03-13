@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Alert, AppState } from 'react-native';
 import { logger } from '@/src/utils/logger';
 import { authSessionGuard } from '@/src/services/authSessionGuard';
+import { logSystem } from '@/src/services/logSystem';
 
 // Global error handler for easier mobile debugging
 if (!__DEV__) {
@@ -51,10 +52,22 @@ export default function RootLayout() {
     prepare();
 
     // Session Guard for Background Resume
+    let lastState = AppState.currentState;
     const subscription = AppState.addEventListener('change', nextAppState => {
+      void logSystem.enqueue('info', '[AppState] change', null, {
+        from: lastState,
+        to: nextAppState,
+        at: new Date().toISOString(),
+      });
+
+      lastState = nextAppState;
+
       if (nextAppState === 'active') {
         logger.info('[App] App returned to foreground, validating session...');
-        authSessionGuard.syncAuthStore();
+        void logSystem.enqueue('info', '[App] foreground resume', null, {
+          at: new Date().toISOString(),
+        });
+        void authSessionGuard.syncAuthStore();
       }
     });
 
