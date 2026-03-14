@@ -1,65 +1,44 @@
-import { useState } from 'react';
-import { 
-  StyleSheet, 
-  TextInput, 
-  View, 
-  Button, 
-  Text, 
-  ActivityIndicator, 
-  KeyboardAvoidingView, 
-  Platform, 
-  ScrollView,
-  TouchableWithoutFeedback,
+import { useRegister } from '@/src/hooks/useRegister';
+import { stylesRegister } from '@/src/styles';
+import {
+  ActivityIndicator,
+  Button,
   Keyboard,
-  Alert
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useAuthStore } from '@/src/modules/auth/store';
 
 export default function RegisterScreen() {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const { signUp, isLoading, error } = useAuthStore();
-  const router = useRouter();
-
-  const handleSignUp = async () => {
-    if (!fullName || !email || !password) {
-      Alert.alert('Error', 'Please fill in all fields.');
-      return;
-    }
-    
-    try {
-      await signUp(email, password, fullName);
-      // Success is handled by RootLayout redirect (user is set)
-    } catch (e: any) {
-      console.error(e);
-    }
-  };
+  const { fullName, setFullName, email, setEmail, password, setPassword, handleSignUp, isLoading, error, router } = useRegister();
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={stylesRegister.container}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.title}>Create Account</Text>
-          
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Full Name</Text>
+        <ScrollView contentContainerStyle={stylesRegister.scrollContent}>
+          <Text style={stylesRegister.title}>Create Account</Text>
+
+          <View style={stylesRegister.inputContainer}>
+            <Text style={stylesRegister.label}>Full Name</Text>
             <TextInput
-              style={styles.input}
+              style={stylesRegister.input}
               placeholder="John Doe"
               value={fullName}
               onChangeText={setFullName}
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email Address</Text>
+          <View style={stylesRegister.inputContainer}>
+            <Text style={stylesRegister.label}>Email Address</Text>
             <TextInput
-              style={styles.input}
+              style={stylesRegister.input}
               placeholder="email@example.com"
               value={email}
               onChangeText={setEmail}
@@ -68,10 +47,10 @@ export default function RegisterScreen() {
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
+          <View style={stylesRegister.inputContainer}>
+            <Text style={stylesRegister.label}>Password</Text>
             <TextInput
-              style={styles.input}
+              style={stylesRegister.input}
               placeholder="••••••••"
               value={password}
               onChangeText={setPassword}
@@ -79,16 +58,16 @@ export default function RegisterScreen() {
             />
           </View>
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {error ? <Text style={stylesRegister.errorText}>{error}</Text> : null}
 
           {isLoading ? (
             <ActivityIndicator size="large" color="#0000ff" />
           ) : (
-            <View style={styles.buttonGroup}>
+            <View style={stylesRegister.buttonGroup}>
               <Button title="Register" onPress={handleSignUp} />
-              
-              <Text 
-                style={styles.loginLink} 
+
+              <Text
+                style={stylesRegister.loginLink}
                 onPress={() => router.back()}
               >
                 Already have an account? Login
@@ -101,51 +80,4 @@ export default function RegisterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 24,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 40,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    marginBottom: 8,
-    color: '#333',
-  },
-  input: {
-    height: 48,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
-  },
-  errorText: {
-    color: 'red',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  buttonGroup: {
-    gap: 15,
-    marginTop: 10,
-  },
-  loginLink: {
-    color: '#007AFF',
-    textAlign: 'center',
-    marginTop: 10,
-    textDecorationLine: 'underline',
-  }
-});
+
