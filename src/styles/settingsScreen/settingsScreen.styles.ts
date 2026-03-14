@@ -1,0 +1,27 @@
+import { StyleSheet } from "react-native";
+
+export const stylesSettings = StyleSheet.create({
+    container: { flex: 1 },
+    scrollContent: { padding: 20, paddingTop: 10 },
+    diagnosticBanner: { backgroundColor: '#007AFF', padding: 18, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, shadowColor: '#007AFF', shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
+    diagnosticLeft: { flexDirection: 'row', gap: 15, alignItems: 'center' },
+    diagnosticTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+    diagnosticSub: { color: 'rgba(255,255,255,0.8)', fontSize: 12 },
+    profileCard: { flexDirection: 'row', padding: 20, borderRadius: 20, alignItems: 'center', marginBottom: 30, elevation: 2 },
+    avatar: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center' },
+    avatarText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+    profileInfo: { flex: 1, marginLeft: 15 },
+    userName: { fontSize: 18, fontWeight: 'bold' },
+    userEmail: { fontSize: 13 },
+    syncBadge: { backgroundColor: 'rgba(0,122,255,0.1)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+    syncBadgeText: { color: '#007AFF', fontSize: 10, fontWeight: 'bold' },
+    sectionTitle: { fontSize: 12, fontWeight: '700', color: '#8e8e93', marginBottom: 8, marginLeft: 4, textTransform: 'uppercase' },
+    section: { borderRadius: 16, overflow: 'hidden', marginBottom: 24, elevation: 2 },
+    row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
+    rowLeft: { flexDirection: 'row', alignItems: 'center' },
+    iconContainer: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+    rowText: { fontSize: 15, fontWeight: '500' },
+    separator: { height: StyleSheet.hairlineWidth, backgroundColor: '#c7c7cc', marginLeft: 64 },
+    logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 18, borderRadius: 16, marginTop: 10, marginBottom: 40, gap: 10, elevation: 2 },
+    logoutText: { color: '#FF3B30', fontSize: 16, fontWeight: 'bold' },
+});
