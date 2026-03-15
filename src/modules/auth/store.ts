@@ -4,7 +4,7 @@ import { localDatabase } from '../../services/localDatabase';
 import { supabase } from '../../services/supabase';
 import { logger } from '../../utils/logger';
 
-interface Profile {
+export interface Profile {
   id: string;
   name: string | null;
   email: string | null; // Vem do auth.users, não da tabela profiles
@@ -12,7 +12,7 @@ interface Profile {
   city: string | null;
 }
 
-interface AuthState {
+export interface AuthState {
   user: Profile | null;
   isLoading: boolean;
   error: string | null;
