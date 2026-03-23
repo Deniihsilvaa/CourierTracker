@@ -64,23 +64,24 @@ export default function LoginScreen() {
                 title="Login with Google"
                 onPress={handleGoogleSignIn}
                 color="#DB4437"
-              />
+                />
 
               <View style={stylesAuth.spacer} />
 
               <Text
                 style={stylesAuth.registerLink}
                 onPress={handleRegister}
-              >
+                >
                 Não tem uma conta? Cadastre-se
               </Text>
 
               <Text
                 style={stylesAuth.forgotPassword}
                 onPress={handleForgotPassword}
-              >
+                >
                 Esqueceu a senha?
               </Text>
+              <Text style={stylesAuth.subTitle}> desenvolvido por Denilson Silva</Text>
             </View>
           )}
         </ScrollView>

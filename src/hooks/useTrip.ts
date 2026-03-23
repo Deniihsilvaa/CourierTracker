@@ -19,7 +19,7 @@ export default function useTrip() {
 
     const loadTrips = async () => {
         if (!user) return;
-
+        // TODO: Mover essa funcao para o service
         try {
             const { data, error } = await visualization
                 .from('trip_performance')

@@ -1,7 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { Colors } from '@/constants/theme';
@@ -51,6 +51,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Ionicons size={24} name="person" color={color} />,
         }}
       />
+      <Tabs.Screen 
+      name='rastreamento'
+      options={{
+        title: 'Rastreamento'
+      }}
+      />
+      
     </Tabs>
   );
 }

@@ -1,9 +1,8 @@
 import { LocationDisclosureModal } from '@/src/components/LocationDisclosureModal';
-import { TrackingDebugPanel } from '@/src/components/tracking/TrackingDebugPanel';
 import useDashboardScreen from '@/src/hooks/useDashboardScreen';
 import { stylesDashboard } from '@/src/styles';
 import { Ionicons } from '@expo/vector-icons';
-import { Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 export default function DashboardScreen() {
   const { user, isTracking, currentLocation, isSyncing, pendingCount, showDisclosure, theme, pulseAnim, handleManualSync, handleToggleTracking, confirmTracking, handleRouteEvent, formatTime, setShowDisclosure, activeSession, } = useDashboardScreen();
@@ -13,7 +12,6 @@ export default function DashboardScreen() {
       {/* Header */}
       <View style={stylesDashboard.header}>
         <View>
-          <Text style={stylesDashboard.greeting}>Olá,</Text>
           <Text style={[stylesDashboard.userName, { color: theme.text }]}>
             {user?.name || user?.email?.split('@')[0]}
           </Text>
@@ -35,122 +33,11 @@ export default function DashboardScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Status Card */}
-        <View style={[stylesDashboard.statusCard, { backgroundColor: isTracking ? '#E3F2FD' : '#F5F5F5' }]}>
-          <View style={stylesDashboard.statusInfo}>
-            <View style={[stylesDashboard.indicator, { backgroundColor: isTracking ? '#2196F3' : '#9E9E9E' }]}>
-              {isTracking && (
-                <Animated.View style={[stylesDashboard.pulse, { transform: [{ scale: pulseAnim }] }]} />
-              )}
-            </View>
-            <Text style={[stylesDashboard.statusTitle, { color: isTracking ? '#1565C0' : '#616161' }]}>
-              {isTracking ? 'RODANDO EM SEGUNDO PLANO' : 'SISTEMA EM ESPERA'}
-            </Text>
-          </View>
-          <Text style={stylesDashboard.statusDescription}>
-            {isTracking
-              ? 'Seu deslocamento está sendo registrado com precisão.'
-              : 'Inicie um turno para começar o rastreamento GPS.'}
-          </Text>
-        </View>
 
-        {/* Debug Panel for Session Validation */}
-        <TrackingDebugPanel />
 
-        {/* Metrics Grid */}
-        <View style={stylesDashboard.metricsGrid}>
-          <View style={[stylesDashboard.metricBox, { backgroundColor: theme.background, borderColor: '#eee' }]}>
-            <Ionicons name="navigate-circle" size={24} color="#007AFF" />
-            <Text style={[stylesDashboard.metricValue, { color: theme.text }]}>
-              {(activeSession?.total_distance_km || 0).toFixed(2)}
-            </Text>
-            <Text style={stylesDashboard.metricLabel}>Km Totais</Text>
-          </View>
 
-          <View style={[stylesDashboard.metricBox, { backgroundColor: theme.background, borderColor: '#eee' }]}>
-            <Ionicons name="stopwatch" size={24} color="#4CAF50" />
-            <Text style={[stylesDashboard.metricValue, { color: theme.text }]}>
-              {formatTime(activeSession?.total_active_seconds || 0)}
-            </Text>
-            <Text style={stylesDashboard.metricLabel}>Tempo Méd.</Text>
-          </View>
-        </View>
-
-        <View style={stylesDashboard.metricsGrid}>
-          <View style={[stylesDashboard.metricBox, { backgroundColor: theme.background, borderColor: '#eee' }]}>
-            <Ionicons name="cafe" size={24} color="#FF9800" />
-            <Text style={[stylesDashboard.metricValue, { color: theme.text }]}>
-              {formatTime(activeSession?.total_idle_seconds || 0)}
-            </Text>
-            <Text style={stylesDashboard.metricLabel}>Ocioso</Text>
-          </View>
-
-          <View style={[stylesDashboard.metricBox, { backgroundColor: theme.background, borderColor: '#eee' }]}>
-            <Ionicons name="map" size={24} color="#9C27B0" />
-            <Text style={[stylesDashboard.metricValue, { color: theme.text }]}>
-              {currentLocation && (currentLocation as any).speed != null
-                ? `${((currentLocation as any).speed * 3.6).toFixed(0)}`
-                : '--'}
-            </Text>
-            <Text style={stylesDashboard.metricLabel}>Km/h Atual</Text>
-          </View>
-        </View>
-
-        {/* GPS Health */}
-        <View style={stylesDashboard.gpsHealth}>
-          <Ionicons
-            name="radio-outline"
-            size={16}
-            color={(currentLocation?.accuracy || 100) < 20 ? "#28a745" : "#ffc107"}
-          />
-          <Text style={stylesDashboard.gpsText}>
-            Precisão GPS: {currentLocation?.accuracy ? `${currentLocation.accuracy.toFixed(1)}m` : 'Buscando sinal...'}
-          </Text>
-        </View>
       </ScrollView>
 
-      {/* Action Button */}
-      <View style={stylesDashboard.actionContainer}>
-        {/* Route Event Quick Actions */}
-        {isTracking && (
-          <View style={stylesDashboard.routeActionsContainer}>
-            <TouchableOpacity
-              style={[stylesDashboard.routeActionButton, { backgroundColor: '#007AFF' }]}
-              onPress={() => handleRouteEvent('pickup')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="cube-outline" size={18} color="#fff" />
-              <Text style={stylesDashboard.routeActionLabel}>Pickup</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[stylesDashboard.routeActionButton, { backgroundColor: '#4CAF50' }]}
-              onPress={() => handleRouteEvent('dropoff')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="checkmark-done-outline" size={18} color="#fff" />
-              <Text style={stylesDashboard.routeActionLabel}>Dropoff</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[stylesDashboard.routeActionButton, { backgroundColor: '#FF9800' }]}
-              onPress={() => handleRouteEvent('waiting')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="time-outline" size={18} color="#fff" />
-              <Text style={stylesDashboard.routeActionLabel}>Waiting</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={handleToggleTracking}
-          style={[stylesDashboard.mainButton, { backgroundColor: isTracking ? '#FF3B30' : '#007AFF' }]}
-        >
-          <Ionicons name={isTracking ? "stop" : "play"} size={28} color="#fff" />
-          <Text style={stylesDashboard.mainButtonText}>
-            {isTracking ? "ENCERRAR TURNO" : "INICIAR TURNO"}
-          </Text>
-        </TouchableOpacity>
-      </View>
 
       <LocationDisclosureModal
         visible={showDisclosure}
