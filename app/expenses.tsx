@@ -1,17 +1,14 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { categoryTypesService, CategoryType } from '@/src/services/categoryTypes.service';
-import { expensesService, Expense } from '@/src/services/expenses.service';
-import { useSessionStore } from '@/src/modules/sessions/store';
+import { Expense } from '@/src/services/expenses.service';
+import useExpensesScreen from '@/src/hooks/useExpensesScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   FlatList,
-  LayoutAnimation,
   Platform,
   Text,
   TextInput,
@@ -31,136 +28,41 @@ export default function ExpensesScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const isDark = colorScheme === 'dark';
-  const { activeSession } = useSessionStore();
 
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [categories, setCategories] = useState<CategoryType[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [formExpanded, setFormExpanded] = useState(false);
-
-  // Form state
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [categoryTypeId, setCategoryTypeId] = useState('');
-
-  // Edit state
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editAmount, setEditAmount] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editCategoryTypeId, setEditCategoryTypeId] = useState('');
-
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [expData, catData] = await Promise.all([
-        expensesService.list(),
-        categoryTypesService.list(),
-      ]);
-      setExpenses(expData);
-      
-      const expenseCats = catData.filter(c => c.type === 'expenses');
-      setCategories(expenseCats);
-      if (expenseCats.length > 0) {
-        setCategoryTypeId(expenseCats[0].id);
-      }
-    } catch (e) {
-      Alert.alert('Erro', 'Não foi possível carregar os dados.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const toggleForm = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    const toExpanded = !formExpanded;
-    setFormExpanded(toExpanded);
-    Animated.timing(rotateAnim, {
-      toValue: toExpanded ? 1 : 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const rotate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '45deg'],
-  });
-
-  const handleCreate = async () => {
-    if (!amount.trim() || isNaN(Number(amount.trim()))) {
-      Alert.alert('Atenção', 'Informe um valor válido.');
-      return;
-    }
-    if (!categoryTypeId) {
-      Alert.alert('Atenção', 'Selecione uma categoria.');
-      return;
-    }
-    if (!activeSession) {
-      Alert.alert('Atenção', 'É necessário uma sessão ativa para criar uma despesa.');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      const created = await expensesService.create({
-        amount: Number(amount.trim()),
-        description: description.trim(),
-        sessionId: activeSession.id,
-        categoryTypeId,
-      });
-      setExpenses(prev => [created, ...prev]);
-      setAmount('');
-      setDescription('');
-      toggleForm();
-    } catch (e) {
-      Alert.alert('Erro', 'Não foi possível criar a despesa.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const startEdit = (exp: Expense) => {
-    setEditingId(exp.id);
-    setEditAmount(exp.amount.toString());
-    setEditDescription(exp.description);
+  const {
+    expenses,
+    categories,
+    loading,
+    saving,
+    formExpanded,
     
-    // Find category ID by name
-    const cat = categories.find(c => c.name === exp.category);
-    setEditCategoryTypeId(cat ? cat.id : categories[0]?.id || '');
-  };
+    // Creation State
+    amount, setAmount,
+    description, setDescription,
+    categoryTypeId, setCategoryTypeId,
 
-  const handleUpdate = async () => {
-    if (!editingId || isNaN(Number(editAmount))) return;
-    if (!activeSession) return;
+    // Edit State
+    editingId, setEditingId,
+    editAmount, setEditAmount,
+    editDescription, setEditDescription,
+    editCategoryTypeId, setEditCategoryTypeId,
 
-    try {
-      setSaving(true);
-      const updated = await expensesService.update(editingId, {
-        amount: Number(editAmount),
-        description: editDescription.trim(),
-        sessionId: activeSession.id,
-        categoryTypeId: editCategoryTypeId,
-      });
-      setExpenses(prev => prev.map(e => (e.id === editingId ? updated : e)));
-      setEditingId(null);
-    } catch (e) {
-      Alert.alert('Erro', 'Não foi possível atualizar a despesa.');
-    } finally {
-      setSaving(false);
-    }
-  };
+    rotateAnim,
+    toggleForm,
+    handleCreate,
+    handleUpdate,
+    startEdit
+  } = useExpensesScreen();
 
   const cardBg = isDark ? '#1e1e1e' : '#ffffff';
   const inputBg = isDark ? '#2a2a2a' : '#f5f5f5';
   const borderColor = isDark ? '#333' : '#e0e0e0';
   const subtleBg = isDark ? '#252525' : '#fafafa';
+
+  const rotate = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '45deg'],
+  });
 
   const renderItem = ({ item }: { item: Expense }) => {
     const isEditing = editingId === item.id;
@@ -180,7 +82,7 @@ export default function ExpensesScreen() {
         >
           {isEditing ? (
             <View style={{ flex: 1 }}>
-              <Text style={[styles.editHint, { color: theme.tint }]}>Editando</Text>
+              <Text style={[styles.editHint, { color: theme.tint }]}>Editando Despesa</Text>
               <View style={styles.formRow}>
                 <TextInput
                   value={editAmount}
@@ -191,10 +93,20 @@ export default function ExpensesScreen() {
                   placeholderTextColor={theme.text + '60'}
                 />
                 <View style={{ flex: 1.5 }}>
-                   <Text style={{ color: theme.text, fontSize: 13, marginBottom: 4 }}>{categories.find(c => c.id === editCategoryTypeId)?.name || 'Cat.'}</Text>
+                   <Text style={{ color: theme.text, fontSize: 13, marginBottom: 4 }}>
+                      {categories.find(c => c.id === editCategoryTypeId)?.name || 'Cat.'}
+                   </Text>
                    <View style={styles.formGrid}>
                         {categories.map(c => (
-                            <TouchableOpacity key={c.id} onPress={() => setEditCategoryTypeId(c.id)} style={[styles.catPill, { backgroundColor: editCategoryTypeId === c.id ? theme.tint : inputBg, borderColor: editCategoryTypeId === c.id ? theme.tint : borderColor, paddingVertical: 4 }]}>
+                            <TouchableOpacity 
+                              key={c.id} 
+                              onPress={() => setEditCategoryTypeId(c.id)} 
+                              style={[styles.catPill, { 
+                                backgroundColor: editCategoryTypeId === c.id ? theme.tint : inputBg, 
+                                borderColor: editCategoryTypeId === c.id ? theme.tint : borderColor, 
+                                paddingVertical: 4 
+                              }]}
+                            >
                                 <Text style={{ color: editCategoryTypeId === c.id ? '#fff' : theme.text + '80', fontSize: 10 }}>{c.name}</Text>
                             </TouchableOpacity>
                         ))}
