@@ -13,11 +13,11 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   UIManager,
   View,
 } from 'react-native';
 import { crudStyles as styles } from '@/src/styles';
+import { FinancialListItem } from '@/src/components/Financial/FinancialListItem';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -57,7 +57,6 @@ export default function ExpensesScreen() {
   const cardBg = isDark ? '#1e1e1e' : '#ffffff';
   const inputBg = isDark ? '#2a2a2a' : '#f5f5f5';
   const borderColor = isDark ? '#333' : '#e0e0e0';
-  const subtleBg = isDark ? '#252525' : '#fafafa';
 
   const rotate = rotateAnim.interpolate({
     inputRange: [0, 1],
@@ -66,82 +65,72 @@ export default function ExpensesScreen() {
 
   const renderItem = ({ item }: { item: Expense }) => {
     const isEditing = editingId === item.id;
-    return (
-      <TouchableWithoutFeedback
-        onLongPress={() => startEdit(item)}
-        delayLongPress={600}
-      >
-        <View
-          style={[
-            styles.listItem,
-            {
-              backgroundColor: isEditing ? (isDark ? '#2a2a3a' : '#eef2ff') : subtleBg,
-              borderColor: isEditing ? theme.tint : borderColor,
-            },
-          ]}
-        >
-          {isEditing ? (
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.editHint, { color: theme.tint }]}>Editando Despesa</Text>
-              <View style={styles.formRow}>
-                <TextInput
-                  value={editAmount}
-                  onChangeText={setEditAmount}
-                  style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor }]}
-                  placeholder="Valor"
-                  keyboardType="numeric"
-                  placeholderTextColor={theme.text + '60'}
-                />
-                <View style={{ flex: 1.5 }}>
-                   <Text style={{ color: theme.text, fontSize: 13, marginBottom: 4 }}>
-                      {categories.find(c => c.id === editCategoryTypeId)?.name || 'Cat.'}
-                   </Text>
-                   <View style={styles.formGrid}>
-                        {categories.map(c => (
-                            <TouchableOpacity 
-                              key={c.id} 
-                              onPress={() => setEditCategoryTypeId(c.id)} 
-                              style={[styles.catPill, { 
-                                backgroundColor: editCategoryTypeId === c.id ? theme.tint : inputBg, 
-                                borderColor: editCategoryTypeId === c.id ? theme.tint : borderColor, 
-                                paddingVertical: 4 
-                              }]}
-                            >
-                                <Text style={{ color: editCategoryTypeId === c.id ? '#fff' : theme.text + '80', fontSize: 10 }}>{c.name}</Text>
-                            </TouchableOpacity>
-                        ))}
-                   </View>
-                </View>
-              </View>
-              <TextInput
-                value={editDescription}
-                onChangeText={setEditDescription}
-                style={[styles.editInput, { color: theme.text, borderColor: borderColor, backgroundColor: inputBg, marginTop: 10 }]}
-                placeholder="Descrição"
-                placeholderTextColor={theme.text + '60'}
-              />
-
-              <View style={styles.editActions}>
-                <TouchableOpacity style={[styles.editSaveBtn, { backgroundColor: theme.tint }]} onPress={handleUpdate} disabled={saving}>
-                  {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.editSaveBtnText}>Salvar</Text>}
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.cancelBtn, { borderColor }]} onPress={() => setEditingId(null)}>
-                  <Text style={[styles.cancelBtnText, { color: theme.text }]}>Cancelar</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.itemName, { color: theme.text }]} numberOfLines={1}>{item.description || 'Despesa'}</Text>
-                <Text style={[styles.itemCat, { color: theme.text + '60' }]}>{item.category}</Text>
-                <Text style={[styles.itemDate, { color: theme.text + '40' }]}>{new Date(item.created_at).toLocaleDateString()}</Text>
-              </View>
-              <Text style={[styles.itemAmount, { color: '#FF5252' }]}>R$ {item.amount.toFixed(2)}</Text>
-            </>
-          )}
+    
+    const renderEditForm = (
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.editHint, { color: theme.tint }]}>Editando Despesa</Text>
+        <View style={styles.formRow}>
+          <TextInput
+            value={editAmount}
+            onChangeText={setEditAmount}
+            style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor }]}
+            placeholder="Valor"
+            keyboardType="numeric"
+            placeholderTextColor={theme.text + '60'}
+          />
+          <View style={{ flex: 1.5 }}>
+             <Text style={{ color: theme.text, fontSize: 13, marginBottom: 4 }}>
+                {categories.find(c => c.id === editCategoryTypeId)?.name || 'Cat.'}
+             </Text>
+             <View style={styles.formGrid}>
+                  {categories.map(c => (
+                      <TouchableOpacity 
+                        key={c.id} 
+                        onPress={() => setEditCategoryTypeId(c.id)} 
+                        style={[styles.catPill, { 
+                          backgroundColor: editCategoryTypeId === c.id ? theme.tint : inputBg, 
+                          borderColor: editCategoryTypeId === c.id ? theme.tint : borderColor, 
+                          paddingVertical: 4 
+                        }]}
+                      >
+                          <Text style={{ color: editCategoryTypeId === c.id ? '#fff' : theme.text + '80', fontSize: 10 }}>{c.name}</Text>
+                      </TouchableOpacity>
+                  ))}
+             </View>
+          </View>
         </View>
-      </TouchableWithoutFeedback>
+        <TextInput
+          value={editDescription}
+          onChangeText={setEditDescription}
+          style={[styles.editInput, { color: theme.text, borderColor: borderColor, backgroundColor: inputBg, marginTop: 10 }]}
+          placeholder="Descrição"
+          placeholderTextColor={theme.text + '60'}
+        />
+
+        <View style={styles.editActions}>
+          <TouchableOpacity style={[styles.editSaveBtn, { backgroundColor: theme.tint }]} onPress={handleUpdate} disabled={saving}>
+            {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.editSaveBtnText}>Salvar</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.cancelBtn, { borderColor }]} onPress={() => setEditingId(null)}>
+            <Text style={[styles.cancelBtnText, { color: theme.text }]}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+
+    return (
+      <FinancialListItem
+        title={item.description || 'Despesa'}
+        subtitle={item.category}
+        date={item.created_at}
+        amount={item.amount}
+        amountColor="#FF5252"
+        isEditing={isEditing}
+        onLongPress={() => startEdit(item)}
+        renderEditForm={renderEditForm}
+        theme={theme}
+        isDark={isDark}
+      />
     );
   };
 

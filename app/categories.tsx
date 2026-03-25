@@ -13,11 +13,11 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   UIManager,
   View,
 } from 'react-native';
 import { crudStyles as styles } from '@/src/styles';
+import { FinancialListItem } from '@/src/components/Financial/FinancialListItem';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -62,7 +62,6 @@ export default function CategoriesScreen() {
   const cardBg = isDark ? '#1e1e1e' : '#ffffff';
   const inputBg = isDark ? '#2a2a2a' : '#f5f5f5';
   const borderColor = isDark ? '#333' : '#e0e0e0';
-  const subtleBg = isDark ? '#252525' : '#fafafa';
 
   const typeColor = (t: CategoryTypeType) => (t === 'expenses' ? '#FF5252' : '#4CAF50');
   const typeLabel = (t: CategoryTypeType) => (t === 'expenses' ? 'Despesa' : 'Receita');
@@ -74,85 +73,75 @@ export default function CategoriesScreen() {
 
   const renderItem = ({ item }: { item: CategoryType }) => {
     const isEditing = editingId === item.id;
-    return (
-      <TouchableWithoutFeedback
-        onLongPress={() => startEdit(item)}
-        delayLongPress={600}
-      >
-        <View
-          style={[
-            styles.listItem,
-            {
-              backgroundColor: isEditing ? (isDark ? '#2a2a3a' : '#eef2ff') : subtleBg,
-              borderColor: isEditing ? theme.tint : borderColor,
-            },
-          ]}
-        >
-          {isEditing ? (
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.editHint, { color: theme.tint }]}>Editando Categoria</Text>
-              <TextInput
-                value={editName}
-                onChangeText={setEditName}
-                style={[styles.editInput, { color: theme.text, borderColor: theme.tint, backgroundColor: inputBg }]}
-                placeholder="Nome"
-                placeholderTextColor={theme.text + '60'}
-              />
-              <TextInput
-                value={editDescription}
-                onChangeText={setEditDescription}
-                style={[styles.editInput, { color: theme.text, borderColor: borderColor, backgroundColor: inputBg }]}
-                placeholder="Descrição"
-                placeholderTextColor={theme.text + '60'}
-              />
+    
+    const renderEditForm = (
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.editHint, { color: theme.tint }]}>Editando Categoria</Text>
+        <TextInput
+          value={editName}
+          onChangeText={setEditName}
+          style={[styles.editInput, { color: theme.text, borderColor: theme.tint, backgroundColor: inputBg }]}
+          placeholder="Nome"
+          placeholderTextColor={theme.text + '60'}
+        />
+        <TextInput
+          value={editDescription}
+          onChangeText={setEditDescription}
+          style={[styles.editInput, { color: theme.text, borderColor: borderColor, backgroundColor: inputBg }]}
+          placeholder="Descrição"
+          placeholderTextColor={theme.text + '60'}
+        />
 
-              <View style={[styles.formRow, { marginBottom: 10 }]}>
-                {TYPE_OPTIONS.map(opt => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    style={[
-                      styles.typeOption,
-                      {
-                        backgroundColor: editType === opt.value ? typeColor(opt.value) + '22' : 'transparent',
-                        borderColor: editType === opt.value ? typeColor(opt.value) : borderColor,
-                        borderWidth: 1,
-                        borderRadius: 8,
-                        height: 36
-                      },
-                    ]}
-                    onPress={() => setEditType(opt.value)}
-                  >
-                    <Text style={{ color: editType === opt.value ? typeColor(opt.value) : theme.text + '80', fontWeight: '600', fontSize: 13 }}>
-                      {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <View style={styles.editActions}>
-                <TouchableOpacity style={[styles.editSaveBtn, { backgroundColor: theme.tint }]} onPress={handleUpdate} disabled={saving}>
-                  {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.editSaveBtnText}>Salvar</Text>}
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.cancelBtn, { borderColor }]} onPress={cancelEdit}>
-                  <Text style={[styles.cancelBtnText, { color: theme.text }]}>Cancelar</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.itemName, { color: theme.text }]} numberOfLines={1}>{item.name}</Text>
-                {!!item.description && (
-                  <Text style={[styles.itemDesc, { color: theme.text + '70' }]} numberOfLines={1}>{item.description}</Text>
-                )}
-              </View>
-              <View style={[styles.typeBadge, { backgroundColor: typeColor(item.type) + '22', borderColor: typeColor(item.type) }]}>
-                <Text style={[styles.typeBadgeText, { color: typeColor(item.type) }]}>{typeLabel(item.type)}</Text>
-              </View>
-            </>
-          )}
+        <View style={[styles.formRow, { marginBottom: 10 }]}>
+          {TYPE_OPTIONS.map(opt => (
+            <TouchableOpacity
+              key={opt.value}
+              style={[
+                styles.typeOption,
+                {
+                  backgroundColor: editType === opt.value ? typeColor(opt.value) + '22' : 'transparent',
+                  borderColor: editType === opt.value ? typeColor(opt.value) : borderColor,
+                  borderWidth: 1,
+                  borderRadius: 8,
+                  height: 36
+                },
+              ]}
+              onPress={() => setEditType(opt.value)}
+            >
+              <Text style={{ color: editType === opt.value ? typeColor(opt.value) : theme.text + '80', fontWeight: '600', fontSize: 13 }}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
-      </TouchableWithoutFeedback>
+
+        <View style={styles.editActions}>
+          <TouchableOpacity style={[styles.editSaveBtn, { backgroundColor: theme.tint }]} onPress={handleUpdate} disabled={saving}>
+            {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.editSaveBtnText}>Salvar</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.cancelBtn, { borderColor }]} onPress={cancelEdit}>
+            <Text style={[styles.cancelBtnText, { color: theme.text }]}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+
+    return (
+      <FinancialListItem
+        title={item.name}
+        subtitle={typeLabel(item.type)}
+        description={item.description}
+        isEditing={isEditing}
+        onLongPress={() => startEdit(item)}
+        renderEditForm={renderEditForm}
+        rightElement={
+          <View style={[styles.typeBadge, { backgroundColor: typeColor(item.type) + '22', borderColor: typeColor(item.type) }]}>
+            <Text style={[styles.typeBadgeText, { color: typeColor(item.type) }]}>{typeLabel(item.type)}</Text>
+          </View>
+        }
+        theme={theme}
+        isDark={isDark}
+      />
     );
   };
 

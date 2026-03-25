@@ -1,6 +1,5 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { CategoryType } from '@/src/services/categoryTypes.service';
 import { Income } from '@/src/services/incomes.service';
 import useIncomesScreen from '@/src/hooks/useIncomesScreen';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,11 +13,11 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   UIManager,
   View,
 } from 'react-native';
 import { crudStyles as styles } from '@/src/styles';
+import { FinancialListItem } from '@/src/components/Financial/FinancialListItem';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -64,7 +63,6 @@ export default function IncomesScreen() {
   const cardBg = isDark ? '#1e1e1e' : '#ffffff';
   const inputBg = isDark ? '#2a2a2a' : '#f5f5f5';
   const borderColor = isDark ? '#333' : '#e0e0e0';
-  const subtleBg = isDark ? '#252525' : '#fafafa';
 
   const rotate = rotateAnim.interpolate({
     inputRange: [0, 1],
@@ -75,87 +73,83 @@ export default function IncomesScreen() {
     const isEditing = editingId === item.id;
     const catName = categories.find(c => c.id === item.category_id)?.name || 'Receita';
 
-    return (
-      <TouchableWithoutFeedback onPress={() => startEdit(item)}>
-        <View style={[styles.listItem, { backgroundColor: isEditing ? (isDark ? '#2a2a3a' : '#eef2ff') : subtleBg, borderColor: isEditing ? theme.tint : borderColor }]}>
-          {isEditing ? (
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.editHint, { color: theme.tint }]}>Editando Receita</Text>
-              <View style={styles.formRow}>
-                <TextInput
-                  value={editAmount}
-                  onChangeText={setEditAmount}
-                  style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor }]}
-                  placeholder="Valor"
-                  keyboardType="numeric"
-                />
-                <TextInput
-                  value={editSource}
-                  onChangeText={setEditSource}
-                  style={[styles.formInput, { flex: 2, color: theme.text, backgroundColor: inputBg, borderColor }]}
-                  placeholder="Fonte"
-                />
-              </View>
-
-              <View style={styles.formRow}>
-                <TextInput
-                  value={editDateCompetition}
-                  onChangeText={setEditDateCompetition}
-                  style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, marginTop: 8 }]}
-                  placeholder="Data"
-                />
-                <TextInput
-                  value={editDescription}
-                  onChangeText={setEditDescription}
-                  style={[styles.formInput, { flex: 2, color: theme.text, backgroundColor: inputBg, borderColor, marginTop: 8 }]}
-                  placeholder="Descrição"
-                />
-              </View>
-
-              <View style={styles.catGrid}>
-                {categories.map(c => (
-                  <TouchableOpacity
-                    key={c.id}
-                    style={[
-                      styles.catPill,
-                      {
-                        backgroundColor: editCategoryId === c.id ? '#4CAF50' : inputBg,
-                        borderColor: editCategoryId === c.id ? '#4CAF50' : borderColor
-                      }
-                    ]}
-                    onPress={() => setEditCategoryId(c.id)}
-                  >
-                    <Text style={{ color: editCategoryId === c.id ? '#fff' : theme.text + '80', fontSize: 11 }}>{c.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <View style={styles.editActions}>
-                <TouchableOpacity style={[styles.editSaveBtn, { backgroundColor: theme.tint }]} onPress={handleUpdate} disabled={saving}>
-                  {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.editSaveBtnText}>Salvar</Text>}
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.cancelBtn, { borderColor }]} onPress={() => setEditingId(null)}>
-                  <Text style={[styles.cancelBtnText, { color: theme.text }]}>Cancelar</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.itemName, { color: theme.text }]} numberOfLines={1}>{item.source}</Text>
-                <Text style={[styles.itemCat, { color: theme.tint, fontWeight: '700' }]}>{catName}</Text>
-                {!!item.description && (
-                  <Text style={[styles.itemDesc, { color: theme.text + '60' }]} numberOfLines={1}>{item.description}</Text>
-                )}
-              </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={[styles.itemAmount, { color: '#4CAF50' }]}>R$ {item.amount.toFixed(2)}</Text>
-                <Text style={[styles.itemDate, { color: theme.text + '40' }]}>{new Date(item.date_competition).toLocaleDateString()}</Text>
-              </View>
-            </>
-          )}
+    const renderEditForm = (
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.editHint, { color: theme.tint }]}>Editando Receita</Text>
+        <View style={styles.formRow}>
+          <TextInput
+            value={editAmount}
+            onChangeText={setEditAmount}
+            style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor }]}
+            placeholder="Valor"
+            keyboardType="numeric"
+          />
+          <TextInput
+            value={editSource}
+            onChangeText={setEditSource}
+            style={[styles.formInput, { flex: 2, color: theme.text, backgroundColor: inputBg, borderColor }]}
+            placeholder="Fonte"
+          />
         </View>
-      </TouchableWithoutFeedback>
+
+        <View style={styles.formRow}>
+          <TextInput
+            value={editDateCompetition}
+            onChangeText={setEditDateCompetition}
+            style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, marginTop: 8 }]}
+            placeholder="Data"
+          />
+          <TextInput
+            value={editDescription}
+            onChangeText={setEditDescription}
+            style={[styles.formInput, { flex: 2, color: theme.text, backgroundColor: inputBg, borderColor, marginTop: 8 }]}
+            placeholder="Descrição"
+          />
+        </View>
+
+        <View style={styles.catGrid}>
+          {categories.map(c => (
+            <TouchableOpacity
+              key={c.id}
+              style={[
+                styles.catPill,
+                {
+                  backgroundColor: editCategoryId === c.id ? '#4CAF50' : inputBg,
+                  borderColor: editCategoryId === c.id ? '#4CAF50' : borderColor
+                }
+              ]}
+              onPress={() => setEditCategoryId(c.id)}
+            >
+              <Text style={{ color: editCategoryId === c.id ? '#fff' : theme.text + '80', fontSize: 11 }}>{c.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={styles.editActions}>
+          <TouchableOpacity style={[styles.editSaveBtn, { backgroundColor: theme.tint }]} onPress={handleUpdate} disabled={saving}>
+            {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.editSaveBtnText}>Salvar</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.cancelBtn, { borderColor }]} onPress={() => setEditingId(null)}>
+            <Text style={[styles.cancelBtnText, { color: theme.text }]}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+
+    return (
+      <FinancialListItem
+        title={item.source}
+        subtitle={catName}
+        description={item.description}
+        amount={item.amount}
+        date={item.date_competition}
+        amountColor="#4CAF50"
+        isEditing={isEditing}
+        onPress={() => startEdit(item)}
+        renderEditForm={renderEditForm}
+        theme={theme}
+        isDark={isDark}
+      />
     );
   };
 

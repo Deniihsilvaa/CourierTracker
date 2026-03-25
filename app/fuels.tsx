@@ -9,13 +9,19 @@ import {
   ActivityIndicator,
   Animated,
   FlatList,
+  Platform,
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
+  UIManager,
   View,
 } from 'react-native';
 import { crudStyles as styles } from '@/src/styles';
+import { FinancialListItem } from '@/src/components/Financial/FinancialListItem';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function FuelsScreen() {
   const router = useRouter();
@@ -64,7 +70,6 @@ export default function FuelsScreen() {
   const cardBg = isDark ? '#1e1e1e' : '#ffffff';
   const inputBg = isDark ? '#2a2a2a' : '#f5f5f5';
   const borderColor = isDark ? '#333' : '#e0e0e0';
-  const subtleBg = isDark ? '#252525' : '#fafafa';
   const brandColor = '#FF9800'; 
 
   const rotate = rotateAnim.interpolate({
@@ -75,109 +80,103 @@ export default function FuelsScreen() {
   const renderItem = ({ item }: { item: FuelLog }) => {
     const isEditing = editingId === item.id;
     
-    return (
-      <TouchableWithoutFeedback onPress={() => startEdit(item)}>
-        <View style={[styles.listItem, { backgroundColor: isEditing ? (isDark ? '#3a2e1e' : '#fff4e5') : subtleBg, borderColor: isEditing ? brandColor : borderColor }]}>
-          {isEditing ? (
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.editHint, { color: brandColor }]}>Editando Abastecimento</Text>
-              
-              <View style={styles.formRow}>
-                  <TextInput
-                    value={editPricePerLiter}
-                    onChangeText={setEditPricePerLiter}
-                    style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor }]}
-                    placeholder="R$/L"
-                    keyboardType="numeric"
-                  />
-                  <TextInput
-                    value={editLiters}
-                    onChangeText={setEditLiters}
-                    style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor }]}
-                    placeholder="Ltrs"
-                    keyboardType="numeric"
-                  />
-                  <TextInput
-                    value={editAmount}
-                    onChangeText={setEditAmount}
-                    style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, fontWeight: '700' }]}
-                    placeholder="Total R$"
-                    keyboardType="numeric"
-                  />
-              </View>
-
-              <View style={styles.formRow}>
-                  <TextInput
-                    value={editOdometer}
-                    onChangeText={setEditOdometer}
-                    style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, marginTop: 8 }]}
-                    placeholder="Odômetro"
-                    keyboardType="numeric"
-                  />
-                  <TextInput
-                    value={editGasStation}
-                    onChangeText={setEditGasStation}
-                    style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, marginTop: 8 }]}
-                    placeholder="Posto"
-                  />
-              </View>
-
-              <View style={styles.formRow}>
-                  <TextInput
-                    value={editDateCompetition}
-                    onChangeText={setEditDateCompetition}
-                    style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, marginTop: 8 }]}
-                    placeholder="Data"
-                  />
-                  <View style={[styles.typeToggle, { flex: 1, marginTop: 8 }]}>
-                    <TouchableOpacity 
-                        onPress={() => setEditType('gasoline')} 
-                        style={[styles.typeOption, { backgroundColor: editType === 'gasoline' ? brandColor : inputBg }]}
-                    >
-                        <Text style={{ color: editType === 'gasoline' ? '#fff' : theme.text + '80', fontSize: 10 }}>GAS</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                        onPress={() => setEditType('Ethanol')} 
-                        style={[styles.typeOption, { backgroundColor: editType === 'Ethanol' ? brandColor : inputBg }]}
-                    >
-                        <Text style={{ color: editType === 'Ethanol' ? '#fff' : theme.text + '80', fontSize: 10 }}>ETA</Text>
-                    </TouchableOpacity>
-                  </View>
-              </View>
-
-              <View style={styles.editActions}>
-                <TouchableOpacity style={[styles.editSaveBtn, { backgroundColor: brandColor }]} onPress={handleUpdate} disabled={saving}>
-                  {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.editSaveBtnText}>Salvar</Text>}
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.cancelBtn, { borderColor }]} onPress={() => setEditingId(null)}>
-                  <Text style={[styles.cancelBtnText, { color: theme.text }]}>Cancelar</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={[styles.itemName, { color: theme.text }]} numberOfLines={1}>{item.gas_station || 'Abastecimento'}</Text>
-                    <View style={[styles.typeBadge, { backgroundColor: item.type === 'gasoline' ? '#4CAF50' : '#8BC34A', borderColor: 'transparent' }]}>
-                        <Text style={[styles.typeBadgeText, { color: '#fff', fontSize: 10 }]}>{item.type === 'gasoline' ? 'Gas' : 'Eta'}</Text>
-                    </View>
-                </View>
-                <Text style={[styles.itemDetail, { color: theme.text + '60' }]}>
-                  {item.liters}L • R$ {item.price_per_liter.toFixed(2)}/L • {item.odometer} km
-                </Text>
-                {!!item.description && (
-                  <Text style={[styles.itemDesc, { color: theme.text + '50' }]} numberOfLines={1}>{item.description}</Text>
-                )}
-              </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                 <Text style={[styles.itemAmount, { color: brandColor }]}>R$ {item.amount.toFixed(2)}</Text>
-                 <Text style={[styles.itemDate, { color: theme.text + '40' }]}>{new Date(item.date_competition).toLocaleDateString()}</Text>
-              </View>
-            </>
-          )}
+    const renderEditForm = (
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.editHint, { color: brandColor }]}>Editando Abastecimento</Text>
+        
+        <View style={styles.formRow}>
+            <TextInput
+              value={editPricePerLiter}
+              onChangeText={setEditPricePerLiter}
+              style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor }]}
+              placeholder="R$/L"
+              keyboardType="numeric"
+            />
+            <TextInput
+              value={editLiters}
+              onChangeText={setEditLiters}
+              style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor }]}
+              placeholder="Ltrs"
+              keyboardType="numeric"
+            />
+            <TextInput
+              value={editAmount}
+              onChangeText={setEditAmount}
+              style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, fontWeight: '700' }]}
+              placeholder="Total R$"
+              keyboardType="numeric"
+            />
         </View>
-      </TouchableWithoutFeedback>
+
+        <View style={styles.formRow}>
+            <TextInput
+              value={editOdometer}
+              onChangeText={setEditOdometer}
+              style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, marginTop: 8 }]}
+              placeholder="Odômetro"
+              keyboardType="numeric"
+            />
+            <TextInput
+              value={editGasStation}
+              onChangeText={setEditGasStation}
+              style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, marginTop: 8 }]}
+              placeholder="Posto"
+            />
+        </View>
+
+        <View style={styles.formRow}>
+            <TextInput
+              value={editDateCompetition}
+              onChangeText={setEditDateCompetition}
+              style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, marginTop: 8 }]}
+              placeholder="Data"
+            />
+            <View style={[styles.typeToggle, { flex: 1, marginTop: 8 }]}>
+              <TouchableOpacity 
+                  onPress={() => setEditType('gasoline')} 
+                  style={[styles.typeOption, { backgroundColor: editType === 'gasoline' ? brandColor : inputBg }]}
+              >
+                  <Text style={{ color: editType === 'gasoline' ? '#fff' : theme.text + '80', fontSize: 10 }}>GAS</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                  onPress={() => setEditType('Ethanol')} 
+                  style={[styles.typeOption, { backgroundColor: editType === 'Ethanol' ? brandColor : inputBg }]}
+              >
+                  <Text style={{ color: editType === 'Ethanol' ? '#fff' : theme.text + '80', fontSize: 10 }}>ETA</Text>
+              </TouchableOpacity>
+            </View>
+        </View>
+
+        <View style={styles.editActions}>
+          <TouchableOpacity style={[styles.editSaveBtn, { backgroundColor: brandColor }]} onPress={handleUpdate} disabled={saving}>
+            {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.editSaveBtnText}>Salvar</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.cancelBtn, { borderColor }]} onPress={() => setEditingId(null)}>
+            <Text style={[styles.cancelBtnText, { color: theme.text }]}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+
+    return (
+      <FinancialListItem
+        title={item.gas_station || 'Abastecimento'}
+        titleExtra={
+          <View style={[styles.typeBadge, { backgroundColor: item.type === 'gasoline' ? '#4CAF50' : '#8BC34A', borderColor: 'transparent', marginLeft: 6 }]}>
+            <Text style={[styles.typeBadgeText, { color: '#fff', fontSize: 10 }]}>{item.type === 'gasoline' ? 'Gas' : 'Eta'}</Text>
+          </View>
+        }
+        subtitle={`${item.liters}L • R$ ${item.price_per_liter.toFixed(2)}/L • ${item.odometer} km`}
+        description={item.description}
+        amount={item.amount}
+        date={item.date_competition}
+        amountColor={brandColor}
+        isEditing={isEditing}
+        onPress={() => startEdit(item)}
+        renderEditForm={renderEditForm}
+        theme={theme}
+        isDark={isDark}
+      />
     );
   };
 
