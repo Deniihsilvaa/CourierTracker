@@ -145,7 +145,7 @@ export default function IncomesScreen() {
         date={item.date_competition}
         amountColor="#4CAF50"
         isEditing={isEditing}
-        onPress={() => startEdit(item)}
+        onLongPress={() => startEdit(item)}
         renderEditForm={renderEditForm}
         theme={theme}
         isDark={isDark}

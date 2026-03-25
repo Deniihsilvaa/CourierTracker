@@ -1,15 +1,21 @@
 import { fuelLogsService, FuelLog, FuelType } from '@/src/services/fuelLogs.service';
 import { useSessionStore } from '@/src/modules/sessions/store';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, LayoutAnimation } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
+import { useBaseCrud } from './useBaseCrud';
 
 export default function useFuelsScreen() {
   const { activeSession } = useSessionStore();
+  const {
+      loading, setLoading,
+      saving, setSaving,
+      formExpanded, toggleForm,
+      rotateAnim,
+      editingId, setEditingId,
+      startEditBase
+  } = useBaseCrud();
 
   const [fuelLogs, setFuelLogs] = useState<FuelLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [formExpanded, setFormExpanded] = useState(false);
 
   // Filters state
   const [typeFilter, setTypeFilter] = useState<FuelType | ''>('');
@@ -26,7 +32,6 @@ export default function useFuelsScreen() {
   const [type, setType] = useState<FuelType>('gasoline');
 
   // Edit state
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState('');
   const [editLiters, setEditLiters] = useState('');
   const [editPricePerLiter, setEditPricePerLiter] = useState('');
@@ -36,19 +41,13 @@ export default function useFuelsScreen() {
   const [editDateCompetition, setEditDateCompetition] = useState('');
   const [editType, setEditType] = useState<FuelType>('gasoline');
 
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-
   // Auto-calculate Total (Amount) for Creation
   useEffect(() => {
-    if (pricePerLiter && liters && !amount.trim()) {
+    if (pricePerLiter && liters) {
       const total = (Number(pricePerLiter) * Number(liters)).toFixed(2);
-      setAmount(total);
-    } else if (pricePerLiter && liters) {
-        // Update if already focused or changed
-        const total = (Number(pricePerLiter) * Number(liters)).toFixed(2);
-        if (total !== amount) setAmount(total);
+      if (total !== amount) setAmount(total);
     }
-  }, [pricePerLiter, liters]);
+  }, [pricePerLiter, liters, amount]);
 
   // Auto-calculate Total (Amount) for Editing
   useEffect(() => {
@@ -56,7 +55,7 @@ export default function useFuelsScreen() {
       const total = (Number(editPricePerLiter) * Number(editLiters)).toFixed(2);
       if (total !== editAmount) setEditAmount(total);
     }
-  }, [editingId, editPricePerLiter, editLiters]);
+  }, [editingId, editPricePerLiter, editLiters, editAmount]);
 
   const loadData = useCallback(async () => {
     try {
@@ -71,22 +70,11 @@ export default function useFuelsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [dateFilter, typeFilter]);
+  }, [dateFilter, typeFilter, setLoading]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  const toggleForm = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    const toExpanded = !formExpanded;
-    setFormExpanded(toExpanded);
-    Animated.timing(rotateAnim, {
-      toValue: toExpanded ? 1 : 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  };
 
   const handleCreate = async () => {
     if (!amount.trim() || isNaN(Number(amount.trim()))) {
@@ -116,7 +104,6 @@ export default function useFuelsScreen() {
         dateCompetition: dateCompetition ? new Date(dateCompetition).toISOString() : new Date().toISOString(),
       });
       setFuelLogs(prev => [created, ...prev]);
-      // Reset form
       setAmount('');
       setLiters('');
       setPricePerLiter('');
@@ -132,7 +119,7 @@ export default function useFuelsScreen() {
   };
 
   const startEdit = (item: FuelLog) => {
-    setEditingId(item.id);
+    startEditBase(item.id);
     setEditAmount(item.amount.toString());
     setEditLiters(item.liters);
     setEditPricePerLiter(item.price_per_liter.toString());

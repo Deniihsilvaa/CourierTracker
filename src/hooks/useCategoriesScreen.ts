@@ -1,12 +1,20 @@
 import { CategoryType, CategoryTypeType, categoryTypesService } from '@/src/services/categoryTypes.service';
-import { useRef, useState } from 'react';
-import { Alert, Animated, LayoutAnimation } from 'react-native';
+import { useState } from 'react';
+import { Alert } from 'react-native';
 import { useCategories } from './useCategories';
+import { useBaseCrud } from './useBaseCrud';
 
 export default function useCategoriesScreen() {
-  const { categories, loading, refresh: loadCategories } = useCategories();
-  const [saving, setSaving] = useState(false);
-  const [formExpanded, setFormExpanded] = useState(false);
+  const { categories, loading: loadingCats, refresh: loadCategories } = useCategories();
+  const {
+      loading, setLoading,
+      saving, setSaving,
+      formExpanded, toggleForm,
+      rotateAnim,
+      editingId, setEditingId,
+      startEditBase,
+      cancelEditBase
+  } = useBaseCrud();
 
   // Form state
   const [name, setName] = useState('');
@@ -14,23 +22,9 @@ export default function useCategoriesScreen() {
   const [type, setType] = useState<CategoryTypeType>('expenses');
 
   // Edit state
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editType, setEditType] = useState<CategoryTypeType>('expenses');
-
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-
-  const toggleForm = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    const toExpanded = !formExpanded;
-    setFormExpanded(toExpanded);
-    Animated.timing(rotateAnim, {
-      toValue: toExpanded ? 1 : 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  };
 
   const handleCreate = async () => {
     if (!name.trim()) {
@@ -39,12 +33,11 @@ export default function useCategoriesScreen() {
     }
     try {
       setSaving(true);
-      const created = await categoryTypesService.create({
+      await categoryTypesService.create({
         name: name.trim(),
         description: description.trim(),
         type,
       });
-      // Refresh the list after creation
       await loadCategories();
       
       setName('');
@@ -59,14 +52,14 @@ export default function useCategoriesScreen() {
   };
 
   const startEdit = (cat: CategoryType) => {
-    setEditingId(cat.id);
+    startEditBase(cat.id);
     setEditName(cat.name);
     setEditDescription(cat.description);
     setEditType(cat.type);
   };
 
   const cancelEdit = () => {
-    setEditingId(null);
+    cancelEditBase();
   };
 
   const handleUpdate = async () => {
@@ -78,7 +71,6 @@ export default function useCategoriesScreen() {
         description: editDescription.trim(),
         type: editType,
       });
-      // Refresh the list after update
       await loadCategories();
       setEditingId(null);
     } catch (e) {
@@ -90,7 +82,7 @@ export default function useCategoriesScreen() {
 
   return {
     categories,
-    loading,
+    loading: loading || loadingCats,
     saving,
     formExpanded,
     

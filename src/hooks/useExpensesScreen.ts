@@ -1,17 +1,23 @@
 import { expensesService, Expense } from '@/src/services/expenses.service';
 import { useSessionStore } from '@/src/modules/sessions/store';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, LayoutAnimation } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import { useCategories } from './useCategories';
+import { useBaseCrud } from './useBaseCrud';
 
 export default function useExpensesScreen() {
   const { activeSession } = useSessionStore();
   const { categories, loading: loadingCats } = useCategories('expenses');
+  const {
+      loading, setLoading,
+      saving, setSaving,
+      formExpanded, toggleForm,
+      rotateAnim,
+      editingId, setEditingId,
+      startEditBase
+  } = useBaseCrud();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [formExpanded, setFormExpanded] = useState(false);
 
   // Form state
   const [amount, setAmount] = useState('');
@@ -19,12 +25,9 @@ export default function useExpensesScreen() {
   const [categoryTypeId, setCategoryTypeId] = useState('');
 
   // Edit state
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editCategoryTypeId, setEditCategoryTypeId] = useState('');
-
-  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   // Sync categoryTypeId with loaded categories
   useEffect(() => {
@@ -43,22 +46,11 @@ export default function useExpensesScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setLoading]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  const toggleForm = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    const toExpanded = !formExpanded;
-    setFormExpanded(toExpanded);
-    Animated.timing(rotateAnim, {
-      toValue: toExpanded ? 1 : 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  };
 
   const handleCreate = async () => {
     if (!amount.trim() || isNaN(Number(amount.trim()))) {
@@ -94,7 +86,7 @@ export default function useExpensesScreen() {
   };
 
   const startEdit = (exp: Expense) => {
-    setEditingId(exp.id);
+    startEditBase(exp.id);
     setEditAmount(exp.amount.toString());
     setEditDescription(exp.description);
     

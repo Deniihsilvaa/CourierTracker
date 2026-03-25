@@ -1,17 +1,23 @@
 import { incomesService, Income } from '@/src/services/incomes.service';
 import { useSessionStore } from '@/src/modules/sessions/store';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, LayoutAnimation } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import { useCategories } from './useCategories';
+import { useBaseCrud } from './useBaseCrud';
 
 export default function useIncomesScreen() {
   const { activeSession } = useSessionStore();
   const { categories, loading: loadingCats } = useCategories('incomes');
+  const {
+      loading, setLoading,
+      saving, setSaving,
+      formExpanded, toggleForm,
+      rotateAnim,
+      editingId, setEditingId,
+      startEditBase
+  } = useBaseCrud();
 
   const [incomes, setIncomes] = useState<Income[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [formExpanded, setFormExpanded] = useState(false);
 
   // Filters state
   const [nameFilter, setNameFilter] = useState('');
@@ -25,14 +31,11 @@ export default function useIncomesScreen() {
   const [dateCompetition, setDateCompetition] = useState(new Date().toISOString().split('T')[0]);
 
   // Edit state
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState('');
   const [editSource, setEditSource] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editCategoryId, setEditCategoryId] = useState('');
   const [editDateCompetition, setEditDateCompetition] = useState('');
-
-  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   // Sync categoryId with loaded categories
   useEffect(() => {
@@ -54,22 +57,11 @@ export default function useIncomesScreen() {
     } finally {
       setLoading(false);
     }
-  }, [nameFilter, dateFilter]);
+  }, [nameFilter, dateFilter, setLoading]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  const toggleForm = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    const toExpanded = !formExpanded;
-    setFormExpanded(toExpanded);
-    Animated.timing(rotateAnim, {
-      toValue: toExpanded ? 1 : 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  };
 
   const handleCreate = async () => {
     if (!amount.trim() || isNaN(Number(amount.trim()))) {
@@ -112,7 +104,7 @@ export default function useIncomesScreen() {
   };
 
   const startEdit = (item: Income) => {
-    setEditingId(item.id);
+    startEditBase(item.id);
     setEditAmount(item.amount.toString());
     setEditSource(item.source);
     setEditDescription(item.description);

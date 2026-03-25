@@ -172,7 +172,7 @@ export default function FuelsScreen() {
         date={item.date_competition}
         amountColor={brandColor}
         isEditing={isEditing}
-        onPress={() => startEdit(item)}
+        onLongPress={() => startEdit(item)}
         renderEditForm={renderEditForm}
         theme={theme}
         isDark={isDark}
