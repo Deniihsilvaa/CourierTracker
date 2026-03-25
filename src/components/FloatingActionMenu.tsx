@@ -39,7 +39,7 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({ onPressI
 
   const menuItems: { label: string; icon: string; color: string; route?: string }[] = [
     { label: 'Abastecimento', icon: 'speedometer-outline', color: '#FF9800' },
-    { label: 'Receita', icon: 'wallet-outline', color: '#4CAF50' },
+    { label: 'Receita', icon: 'wallet-outline', color: '#4CAF50', route: '/incomes' },
     { label: 'Despesas', icon: 'receipt-outline', color: '#FF5252', route: '/expenses' },
     { label: 'Categorias', icon: 'list-outline', color: '#6C63FF', route: '/categories' },
   ];

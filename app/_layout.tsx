@@ -158,6 +158,13 @@ export default function RootLayout() {
           }} 
         />
         <Stack.Screen 
+          name="incomes" 
+          options={{ 
+            headerShown: false,
+            animation: 'slide_from_bottom',
+          }} 
+        />
+        <Stack.Screen 
           name="expenses" 
           options={{ 
             headerShown: false,
