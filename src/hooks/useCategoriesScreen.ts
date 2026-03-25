@@ -1,10 +1,10 @@
 import { CategoryType, CategoryTypeType, categoryTypesService } from '@/src/services/categoryTypes.service';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, Animated, LayoutAnimation } from 'react-native';
+import { useCategories } from './useCategories';
 
 export default function useCategoriesScreen() {
-  const [categories, setCategories] = useState<CategoryType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { categories, loading, refresh: loadCategories } = useCategories();
   const [saving, setSaving] = useState(false);
   const [formExpanded, setFormExpanded] = useState(false);
 
@@ -20,22 +20,6 @@ export default function useCategoriesScreen() {
   const [editType, setEditType] = useState<CategoryTypeType>('expenses');
 
   const rotateAnim = useRef(new Animated.Value(0)).current;
-
-  const loadCategories = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await categoryTypesService.list();
-      setCategories(data);
-    } catch (e) {
-      Alert.alert('Erro', 'Não foi possível carregar as categorias.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadCategories();
-  }, [loadCategories]);
 
   const toggleForm = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -60,7 +44,9 @@ export default function useCategoriesScreen() {
         description: description.trim(),
         type,
       });
-      setCategories(prev => [created, ...prev]);
+      // Refresh the list after creation
+      await loadCategories();
+      
       setName('');
       setDescription('');
       setType('expenses');
@@ -87,12 +73,13 @@ export default function useCategoriesScreen() {
     if (!editingId || !editName.trim()) return;
     try {
       setSaving(true);
-      const updated = await categoryTypesService.update(editingId, {
+      await categoryTypesService.update(editingId, {
         name: editName.trim(),
         description: editDescription.trim(),
         type: editType,
       });
-      setCategories(prev => prev.map(c => (c.id === editingId ? updated : c)));
+      // Refresh the list after update
+      await loadCategories();
       setEditingId(null);
     } catch (e) {
       Alert.alert('Erro', 'Não foi possível atualizar a categoria.');

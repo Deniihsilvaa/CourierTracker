@@ -1,14 +1,14 @@
 import { incomesService, Income } from '@/src/services/incomes.service';
-import { CategoryType, categoryTypesService } from '@/src/services/categoryTypes.service';
 import { useSessionStore } from '@/src/modules/sessions/store';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Animated, LayoutAnimation } from 'react-native';
+import { useCategories } from './useCategories';
 
 export default function useIncomesScreen() {
   const { activeSession } = useSessionStore();
+  const { categories, loading: loadingCats } = useCategories('incomes');
 
   const [incomes, setIncomes] = useState<Income[]>([]);
-  const [categories, setCategories] = useState<CategoryType[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formExpanded, setFormExpanded] = useState(false);
@@ -34,29 +34,27 @@ export default function useIncomesScreen() {
 
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
+  // Sync categoryId with loaded categories
+  useEffect(() => {
+    if (!categoryId && categories.length > 0) {
+      setCategoryId(categories[0].id);
+    }
+  }, [categories, categoryId]);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [incData, catData] = await Promise.all([
-        incomesService.list({
-          name: nameFilter || undefined,
-          date: dateFilter || undefined
-        }),
-        categoryTypesService.list(),
-      ]);
+      const incData = await incomesService.list({
+        name: nameFilter || undefined,
+        date: dateFilter || undefined
+      });
       setIncomes(incData);
-
-      const incomeCats = catData.filter(c => c.type === 'incomes');
-      setCategories(incomeCats);
-      if (!categoryId && incomeCats.length > 0) {
-        setCategoryId(incomeCats[0].id);
-      }
     } catch (e) {
       console.warn('[Incomes] LoadData failed', e);
     } finally {
       setLoading(false);
     }
-  }, [nameFilter, dateFilter, categoryId]);
+  }, [nameFilter, dateFilter]);
 
   useEffect(() => {
     loadData();
@@ -152,7 +150,7 @@ export default function useIncomesScreen() {
     activeSession,
     incomes,
     categories,
-    loading,
+    loading: loading || loadingCats,
     saving,
     formExpanded,
     nameFilter, setNameFilter,

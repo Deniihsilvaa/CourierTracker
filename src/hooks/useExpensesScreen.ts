@@ -1,14 +1,14 @@
 import { expensesService, Expense } from '@/src/services/expenses.service';
-import { CategoryType, categoryTypesService } from '@/src/services/categoryTypes.service';
 import { useSessionStore } from '@/src/modules/sessions/store';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Animated, LayoutAnimation } from 'react-native';
+import { useCategories } from './useCategories';
 
 export default function useExpensesScreen() {
   const { activeSession } = useSessionStore();
+  const { categories, loading: loadingCats } = useCategories('expenses');
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [categories, setCategories] = useState<CategoryType[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formExpanded, setFormExpanded] = useState(false);
@@ -26,26 +26,24 @@ export default function useExpensesScreen() {
 
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
+  // Sync categoryTypeId with loaded categories
+  useEffect(() => {
+    if (!categoryTypeId && categories.length > 0) {
+      setCategoryTypeId(categories[0].id);
+    }
+  }, [categories, categoryTypeId]);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [expData, catData] = await Promise.all([
-        expensesService.list(),
-        categoryTypesService.list(),
-      ]);
+      const expData = await expensesService.list();
       setExpenses(expData);
-      
-      const expenseCats = catData.filter(c => c.type === 'expenses');
-      setCategories(expenseCats);
-      if (expenseCats.length > 0 && !categoryTypeId) {
-        setCategoryTypeId(expenseCats[0].id);
-      }
     } catch (e) {
       Alert.alert('Erro', 'Não foi possível carregar os dados.');
     } finally {
       setLoading(false);
     }
-  }, [categoryTypeId]);
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -102,7 +100,7 @@ export default function useExpensesScreen() {
     
     // Find category ID by name
     const cat = categories.find(c => c.name === exp.category);
-    setEditCategoryTypeId(cat ? cat.id : categories[0]?.id || '');
+    setEditCategoryTypeId(cat ? cat.id : (categories[0]?.id || ''));
   };
 
   const handleUpdate = async () => {
@@ -130,7 +128,7 @@ export default function useExpensesScreen() {
     activeSession,
     expenses,
     categories,
-    loading,
+    loading: loading || loadingCats,
     saving,
     formExpanded,
     
