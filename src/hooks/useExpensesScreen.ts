@@ -72,7 +72,7 @@ export default function useExpensesScreen() {
         amount: Number(amount.trim()),
         description: description.trim(),
         sessionId: activeSession.id,
-        categoryTypeId,
+        categoryTypeId: Number(categoryTypeId),
       });
       setExpenses(prev => [created, ...prev]);
       setAmount('');
@@ -105,7 +105,7 @@ export default function useExpensesScreen() {
         amount: Number(editAmount),
         description: editDescription.trim(),
         sessionId: activeSession.id,
-        categoryTypeId: editCategoryTypeId,
+        categoryTypeId: Number(editCategoryTypeId),
       });
       setExpenses(prev => prev.map(e => (e.id === editingId ? updated : e)));
       setEditingId(null);

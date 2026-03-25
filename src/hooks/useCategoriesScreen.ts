@@ -1,5 +1,5 @@
 import { CategoryType, CategoryTypeType, categoryTypesService } from '@/src/services/categoryTypes.service';
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Added useEffect import
 import { Alert } from 'react-native';
 import { useCategories } from './useCategories';
 import { useBaseCrud } from './useBaseCrud';
@@ -15,6 +15,13 @@ export default function useCategoriesScreen() {
       startEditBase,
       cancelEditBase
   } = useBaseCrud();
+
+  // Sync loading state with useCategories
+  useEffect(() => {
+    if (!loadingCats && loading) {
+      setLoading(false);
+    }
+  }, [loadingCats, loading, setLoading]);
 
   // Form state
   const [name, setName] = useState('');

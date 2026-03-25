@@ -14,7 +14,7 @@ export interface CreateExpensePayload {
   amount: number;
   description: string;
   sessionId: string;
-  categoryTypeId: string;
+  categoryTypeId: number;
 }
 
 export const expensesService = {

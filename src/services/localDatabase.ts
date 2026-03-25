@@ -7,7 +7,19 @@ import { getDb } from './sqlite';
  */
 
 // Whitelist of allowed tables to prevent arbitrary table access
-const ALLOWED_TABLES = ['profiles', 'work_sessions', 'trips', 'gps_points', 'route_events', 'log_system'];
+const ALLOWED_TABLES = [
+  'profiles', 
+  'work_sessions', 
+  'trips', 
+  'gps_points', 
+  'route_events', 
+  'log_system',
+  'category_types',
+  'expenses',
+  'incomes',
+  'fuel_logs',
+  'maintenance_logs'
+];
 
 export const localDatabase = {
   /**

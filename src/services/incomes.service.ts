@@ -17,7 +17,7 @@ export interface CreateIncomePayload {
   source: string;
   description: string;
   sessionId: string;
-  categoryId: string;
+  categoryId: number;
   dateCompetition: string;
 }
 

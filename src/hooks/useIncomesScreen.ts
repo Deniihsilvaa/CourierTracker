@@ -88,7 +88,7 @@ export default function useIncomesScreen() {
         source: source.trim(),
         description: description.trim(),
         sessionId: activeSession.id,
-        categoryId,
+        categoryId: Number(categoryId),
         dateCompetition: dateCompetition ? new Date(dateCompetition).toISOString() : new Date().toISOString(),
       });
       setIncomes(prev => [created, ...prev]);
@@ -126,7 +126,7 @@ export default function useIncomesScreen() {
         source: editSource.trim(),
         description: editDescription.trim(),
         sessionId: activeSession.id,
-        categoryId: editCategoryId,
+        categoryId: Number(editCategoryId),
         dateCompetition: new Date(editDateCompetition).toISOString(),
       });
       setIncomes(prev => prev.map(inc => inc.id === editingId ? updated : inc));

@@ -163,6 +163,82 @@ export const initDb = async (forceReset = false) => {
           synced INTEGER DEFAULT 0
         );
       `);
+
+      // Category Types
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS category_types (
+          id TEXT PRIMARY KEY,
+          user_id TEXT,
+          name TEXT,
+          description TEXT,
+          type TEXT,
+          synced INTEGER DEFAULT 0
+        );
+      `);
+
+      // Expenses
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS expenses (
+          id TEXT PRIMARY KEY,
+          user_id TEXT,
+          session_id TEXT,
+          amount REAL,
+          category_id TEXT,
+          description TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          synced INTEGER DEFAULT 0
+        );
+      `);
+
+      // Incomes
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS incomes (
+          id TEXT PRIMARY KEY,
+          user_id TEXT,
+          session_id TEXT,
+          amount REAL,
+          source TEXT,
+          description TEXT,
+          category_id TEXT,
+          date_competition TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          synced INTEGER DEFAULT 0
+        );
+      `);
+
+      // Fuel Logs
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS fuel_logs (
+          id TEXT PRIMARY KEY,
+          user_id TEXT,
+          session_id TEXT,
+          amount REAL,
+          liters TEXT,
+          price_per_liter REAL,
+          odometer TEXT,
+          description TEXT,
+          gas_station TEXT,
+          date_competition TEXT,
+          type TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          synced INTEGER DEFAULT 0
+        );
+      `);
+
+      // Maintenance Logs
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS maintenance_logs (
+          id TEXT PRIMARY KEY,
+          user_id TEXT,
+          type TEXT,
+          amount REAL,
+          odometer TEXT,
+          description TEXT,
+          date_m TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          synced INTEGER DEFAULT 0
+        );
+      `);
       // --- 2. RUN MIGRATIONS (Ensure all columns exist) ---
 
       // Profiles
@@ -183,7 +259,9 @@ export const initDb = async (forceReset = false) => {
       const sessionCols = [
         { name: 'total_distance_km', type: 'REAL DEFAULT 0.0' },
         { name: 'total_active_seconds', type: 'INTEGER DEFAULT 0' },
-        { name: 'total_idle_seconds', type: 'INTEGER DEFAULT 0' }
+        { name: 'total_idle_seconds', type: 'INTEGER DEFAULT 0' },
+        { name: 'start_odometer', type: 'TEXT DEFAULT "0"' },
+        { name: 'end_odometer', type: 'TEXT DEFAULT "0"' }
       ];
       for (const col of sessionCols) {
         try {

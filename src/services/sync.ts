@@ -11,7 +11,7 @@ const syncTable = async (db: any, localTableName: string) => {
         const unsyncedRows = await db.getAllAsync(`SELECT * FROM ${localTableName} WHERE synced = 0 LIMIT ${BATCH_SIZE}`);
         if (!unsyncedRows || unsyncedRows.length === 0) return { success: true, count: 0 };
 
-        const remoteTableName = localTableName;
+        const remoteTableName = localTableName === 'category_types' ? 'categoryTypes' : localTableName;
 
         const payload = unsyncedRows.map((row: any) => {
             const { synced, ...rest } = row;
@@ -30,6 +30,8 @@ const syncTable = async (db: any, localTableName: string) => {
                     total_distance_km: rest.total_distance_km,
                     total_active_seconds: rest.total_active_seconds,
                     total_idle_seconds: rest.total_idle_seconds,
+                    start_odometer: rest.start_odometer,
+                    end_odometer: rest.end_odometer,
                     created_at: rest.created_at
                 };
             }
@@ -96,6 +98,72 @@ const syncTable = async (db: any, localTableName: string) => {
                 };
             }
 
+            if (localTableName === 'category_types') {
+                return {
+                    id: rest.id,
+                    user_id: rest.user_id,
+                    name: rest.name,
+                    description: rest.description,
+                    type: rest.type
+                };
+            }
+
+            if (localTableName === 'expenses') {
+                return {
+                    id: rest.id,
+                    user_id: rest.user_id,
+                    session_id: rest.session_id,
+                    amount: rest.amount,
+                    category: rest.category_id, // Map to Prisma column name
+                    description: rest.description,
+                    created_at: rest.created_at
+                };
+            }
+
+            if (localTableName === 'incomes') {
+                return {
+                    id: rest.id,
+                    user_id: rest.user_id,
+                    session_id: rest.session_id,
+                    amount: rest.amount,
+                    source: rest.source,
+                    description: rest.description,
+                    category_id: rest.category_id,
+                    date_competition: rest.date_competition,
+                    created_at: rest.created_at
+                };
+            }
+
+            if (localTableName === 'fuel_logs') {
+                return {
+                    id: rest.id,
+                    user_id: rest.user_id,
+                    session_id: rest.session_id,
+                    amount: rest.amount,
+                    liters: rest.liters,
+                    price_per_liter: rest.price_per_liter,
+                    odometer: rest.odometer,
+                    description: rest.description,
+                    "gas station": rest.gas_station, // DB column has a space
+                    date_competition: rest.date_competition,
+                    type: rest.type,
+                    created_at: rest.created_at
+                };
+            }
+
+            if (localTableName === 'maintenance_logs') {
+                return {
+                    id: rest.id,
+                    user_id: rest.user_id,
+                    type: rest.type,
+                    amount: rest.amount,
+                    odometer: rest.odometer,
+                    description: rest.description,
+                    date_m: rest.date_m,
+                    created_at: rest.created_at
+                };
+            }
+
             return rest;
         });
 
@@ -155,6 +223,13 @@ export const runFullSync = async () => {
         await syncTable(db, 'route_segments');
         await syncTable(db, 'analytics_sessions');
         await syncTable(db, 'log_system');
+
+        // Sync Financial Data
+        await syncTable(db, 'category_types');
+        await syncTable(db, 'expenses');
+        await syncTable(db, 'incomes');
+        await syncTable(db, 'fuel_logs');
+        await syncTable(db, 'maintenance_logs');
         
         if (activeSession) {
             const updatedSession = await db.getFirstAsync<any>(
