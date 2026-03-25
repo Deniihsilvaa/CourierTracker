@@ -1,5 +1,5 @@
-import { getDb } from './sqlite';
 import { logger } from '../utils/logger';
+import { getDb } from './sqlite';
 
 /**
  * Hardened database access layer to prevent SQL injection 
@@ -21,7 +21,7 @@ export const localDatabase = {
 
     const db = getDb();
     const query = `SELECT * FROM ${tableName} ${whereClause}`;
-    
+
     try {
       return await db.getAllAsync(query, params);
     } catch (e) {
@@ -41,7 +41,7 @@ export const localDatabase = {
 
     const db = getDb();
     const query = `SELECT * FROM ${tableName} ${whereClause} LIMIT 1`;
-    
+
     try {
       return await db.getFirstAsync<T>(query, params);
     } catch (e) {
@@ -62,9 +62,9 @@ export const localDatabase = {
     const keys = Object.keys(data);
     const setClause = keys.map(k => `${k} = ?`).join(', ');
     const values = Object.values(data);
-    
+
     const query = `UPDATE ${tableName} SET ${setClause}, synced = 0 WHERE id = ?`;
-    
+
     try {
       await db.runAsync(query, [...values, id]);
       return true;
@@ -102,6 +102,19 @@ export const localDatabase = {
     } catch (e) {
       // NÃO usar logger aqui para evitar recursão com logSystem/logger
       console.error('[DB] log_system insert failed:', e);
+      return false;
+    }
+  },
+
+  insertWorkSession: async (id: string, userId: string, startTime: string, synced: number, startOdometer?: number) => {
+    const db = getDb();
+    const query = `INSERT INTO work_sessions (id, user_id, start_time, status, synced) 
+                   VALUES (?, ?, ?, 'active', ?)`;
+    try {
+      await db.runAsync(query, [id, userId, startTime, synced]);
+      return true;
+    } catch (e) {
+      logger.error('[DB] Work Session insert failed:', e);
       return false;
     }
   },

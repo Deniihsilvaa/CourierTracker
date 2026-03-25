@@ -4,7 +4,7 @@ import { stylesDashboard } from '@/src/styles';
 import { Ionicons } from '@expo/vector-icons';
 import { Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
-export default function DashboardScreen() {
+export default function RastreamentoScreen() {
   const { user, isTracking, currentLocation, isSyncing, pendingCount, showDisclosure, theme, pulseAnim, handleManualSync, handleToggleTracking, confirmTracking, handleRouteEvent, formatTime, setShowDisclosure, activeSession, } = useDashboardScreen();
 
   return (
