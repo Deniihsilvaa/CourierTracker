@@ -15,7 +15,6 @@ import {
   FlatList,
   LayoutAnimation,
   Platform,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -23,6 +22,7 @@ import {
   UIManager,
   View,
 } from 'react-native';
+import { crudStyles as styles } from '@/src/styles';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -55,8 +55,6 @@ export default function CategoriesScreen() {
   const [editDescription, setEditDescription] = useState('');
   const [editType, setEditType] = useState<CategoryTypeType>('expenses');
 
-  // Animation for form expansion
-  const formHeight = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
   const loadCategories = useCallback(async () => {
@@ -107,7 +105,7 @@ export default function CategoriesScreen() {
       setName('');
       setDescription('');
       setType('expenses');
-      toggleForm(); // collapse form
+      toggleForm(); 
     } catch (e) {
       Alert.alert('Erro', 'Não foi possível criar a categoria.');
     } finally {
@@ -170,7 +168,7 @@ export default function CategoriesScreen() {
         >
           {isEditing ? (
             <View style={{ flex: 1 }}>
-              <Text style={[styles.editHint, { color: theme.tint }]}>Editando</Text>
+              <Text style={[styles.editHint, { color: theme.tint }]}>Editando Categoria</Text>
               <TextInput
                 value={editName}
                 onChangeText={setEditName}
@@ -186,16 +184,18 @@ export default function CategoriesScreen() {
                 placeholderTextColor={theme.text + '60'}
               />
 
-              {/* Type toggle */}
-              <View style={styles.typeRow}>
+              <View style={[styles.formRow, { marginBottom: 10 }]}>
                 {TYPE_OPTIONS.map(opt => (
                   <TouchableOpacity
                     key={opt.value}
                     style={[
-                      styles.typeChip,
+                      styles.typeOption,
                       {
                         backgroundColor: editType === opt.value ? typeColor(opt.value) + '22' : 'transparent',
                         borderColor: editType === opt.value ? typeColor(opt.value) : borderColor,
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        height: 36
                       },
                     ]}
                     onPress={() => setEditType(opt.value)}
@@ -236,7 +236,6 @@ export default function CategoriesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Header card */}
       <View style={[styles.headerCard, { backgroundColor: cardBg, borderColor }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
@@ -255,7 +254,6 @@ export default function CategoriesScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Expandable form — "Modo Expansão" */}
         {formExpanded && (
           <View style={styles.form}>
             <View style={styles.formRow}>
@@ -273,9 +271,8 @@ export default function CategoriesScreen() {
                 placeholder="description"
                 placeholderTextColor={theme.text + '60'}
               />
-              {/* Type selector */}
               <TouchableOpacity
-                style={[styles.typeToggle, { backgroundColor: typeColor(type) + '22', borderColor: typeColor(type) }]}
+                style={[styles.typeBadge, { height: 44, justifyContent: 'center', backgroundColor: typeColor(type) + '22', borderColor: typeColor(type) }]}
                 onPress={() => setType(prev => (prev === 'expenses' ? 'incomes' : 'expenses'))}
               >
                 <Text style={{ fontSize: 11, fontWeight: '700', color: typeColor(type) }}>
@@ -299,7 +296,6 @@ export default function CategoriesScreen() {
         )}
       </View>
 
-      {/* List */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.tint} />
@@ -317,197 +313,8 @@ export default function CategoriesScreen() {
               <Text style={[styles.emptySubText, { color: theme.text + '40' }]}>Toque no + para adicionar.</Text>
             </View>
           }
-          ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: borderColor }]} />}
         />
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 60,
-  },
-  headerCard: {
-    marginHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  backBtn: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  addBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  form: {
-    marginTop: 14,
-    gap: 8,
-  },
-  formRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  formInput: {
-    height: 38,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    fontSize: 13,
-  },
-  typeToggle: {
-    height: 38,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minWidth: 50,
-  },
-  createBtn: {
-    height: 42,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  createBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
-  listItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginVertical: 4,
-  },
-  itemName: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  itemDesc: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  typeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginLeft: 8,
-  },
-  typeBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  separator: {
-    height: 0,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    paddingTop: 60,
-    alignItems: 'center',
-    gap: 8,
-  },
-  emptyText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  emptySubText: {
-    fontSize: 13,
-  },
-  editHint: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  editInput: {
-    height: 38,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    fontSize: 13,
-    marginBottom: 6,
-  },
-  typeRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 10,
-  },
-  typeChip: {
-    flex: 1,
-    height: 36,
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  editActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  editSaveBtn: {
-    flex: 1,
-    height: 38,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  editSaveBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  cancelBtn: {
-    flex: 1,
-    height: 38,
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cancelBtnText: {
-    fontWeight: '600',
-    fontSize: 14,
-  },
-});

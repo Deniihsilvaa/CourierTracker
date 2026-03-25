@@ -13,7 +13,6 @@ import {
   FlatList,
   LayoutAnimation,
   Platform,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -21,6 +20,7 @@ import {
   UIManager,
   View,
 } from 'react-native';
+import { crudStyles as styles } from '@/src/styles';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -61,7 +61,6 @@ export default function ExpensesScreen() {
       ]);
       setExpenses(expData);
       
-      // Filter categories to only 'expenses'
       const expenseCats = catData.filter(c => c.type === 'expenses');
       setCategories(expenseCats);
       if (expenseCats.length > 0) {
@@ -132,7 +131,7 @@ export default function ExpensesScreen() {
     setEditAmount(exp.amount.toString());
     setEditDescription(exp.description);
     
-    // Find category ID by name (since response only has name)
+    // Find category ID by name
     const cat = categories.find(c => c.name === exp.category);
     setEditCategoryTypeId(cat ? cat.id : categories[0]?.id || '');
   };
@@ -191,12 +190,12 @@ export default function ExpensesScreen() {
                   keyboardType="numeric"
                   placeholderTextColor={theme.text + '60'}
                 />
-                <View style={[styles.selectWrapper, { flex: 1.5, backgroundColor: inputBg, borderColor }]}>
-                   <Text style={{ color: theme.text, fontSize: 13 }}>{categories.find(c => c.id === editCategoryTypeId)?.name || 'Cat.'}</Text>
-                   <View style={styles.catPicker}>
+                <View style={{ flex: 1.5 }}>
+                   <Text style={{ color: theme.text, fontSize: 13, marginBottom: 4 }}>{categories.find(c => c.id === editCategoryTypeId)?.name || 'Cat.'}</Text>
+                   <View style={styles.formGrid}>
                         {categories.map(c => (
-                            <TouchableOpacity key={c.id} onPress={() => setEditCategoryTypeId(c.id)} style={{ padding: 4 }}>
-                                <Text style={{ color: editCategoryTypeId === c.id ? theme.tint : theme.text + '80', fontSize: 11 }}>{c.name}</Text>
+                            <TouchableOpacity key={c.id} onPress={() => setEditCategoryTypeId(c.id)} style={[styles.catPill, { backgroundColor: editCategoryTypeId === c.id ? theme.tint : inputBg, borderColor: editCategoryTypeId === c.id ? theme.tint : borderColor, paddingVertical: 4 }]}>
+                                <Text style={{ color: editCategoryTypeId === c.id ? '#fff' : theme.text + '80', fontSize: 10 }}>{c.name}</Text>
                             </TouchableOpacity>
                         ))}
                    </View>
@@ -236,7 +235,6 @@ export default function ExpensesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Header card with toggle form */}
       <View style={[styles.headerCard, { backgroundColor: cardBg, borderColor }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
@@ -337,187 +335,3 @@ export default function ExpensesScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 60,
-  },
-  headerCard: {
-    marginHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  backBtn: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  addBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  form: {
-    marginTop: 14,
-    gap: 8,
-  },
-  formRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  formInput: {
-    height: 44,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    fontSize: 14,
-  },
-  catGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
-  },
-  catPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  createBtn: {
-    height: 44,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  createBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
-  listItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginVertical: 6,
-  },
-  itemName: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  itemCat: {
-    fontSize: 12,
-    marginTop: 2,
-    fontWeight: '600',
-  },
-  itemDate: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  itemAmount: {
-    fontSize: 15,
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    paddingTop: 60,
-    alignItems: 'center',
-    gap: 8,
-  },
-  emptyText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  emptySubText: {
-    fontSize: 13,
-  },
-  editHint: {
-    fontSize: 11,
-    fontWeight: '800',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-  },
-  editInput: {
-    height: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    fontSize: 13,
-  },
-  selectWrapper: {
-    height: 44,
-    borderColor: '#e0e0e0',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    justifyContent: 'center',
-  },
-  catPicker: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginTop: 4,
-  },
-  editActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-  },
-  editSaveBtn: {
-    flex: 1,
-    height: 40,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  editSaveBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-  cancelBtn: {
-    flex: 1,
-    height: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cancelBtnText: {
-    fontWeight: '600',
-  },
-});

@@ -9,13 +9,13 @@ import {
   ActivityIndicator,
   Animated,
   FlatList,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { crudStyles as styles } from '@/src/styles';
 
 export default function FuelsScreen() {
   const router = useRouter();
@@ -159,8 +159,8 @@ export default function FuelsScreen() {
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={[styles.itemName, { color: theme.text }]} numberOfLines={1}>{item.gas_station || 'Abastecimento'}</Text>
-                    <View style={[styles.typeTag, { backgroundColor: item.type === 'gasoline' ? '#4CAF50' : '#8BC34A' }]}>
-                        <Text style={styles.typeTagText}>{item.type === 'gasoline' ? 'Gas' : 'Eta'}</Text>
+                    <View style={[styles.typeBadge, { backgroundColor: item.type === 'gasoline' ? '#4CAF50' : '#8BC34A', borderColor: 'transparent' }]}>
+                        <Text style={[styles.typeBadgeText, { color: '#fff', fontSize: 10 }]}>{item.type === 'gasoline' ? 'Gas' : 'Eta'}</Text>
                     </View>
                 </View>
                 <Text style={[styles.itemDetail, { color: theme.text + '60' }]}>
@@ -289,15 +289,15 @@ export default function FuelsScreen() {
 
       <View style={[styles.filterBar, { backgroundColor: cardBg, borderColor }]}>
         <Ionicons name="funnel-outline" size={18} color={theme.text + '60'} style={{ marginRight: 8 }} />
-        <View style={styles.filterOptions}>
-            <TouchableOpacity onPress={() => setTypeFilter('')} style={[styles.filterChip, !typeFilter && { backgroundColor: brandColor }]}>
-                <Text style={[styles.filterChipText, !typeFilter && { color: '#fff' }]}>Todos</Text>
+        <View style={styles.formRow}>
+            <TouchableOpacity onPress={() => setTypeFilter('')} style={[styles.typeBadge, !typeFilter && { backgroundColor: brandColor, borderColor: 'transparent' }]}>
+                <Text style={{ fontSize: 10, color: !typeFilter ? '#fff' : theme.text + '80' }}>Todos</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setTypeFilter('gasoline')} style={[styles.filterChip, typeFilter === 'gasoline' && { backgroundColor: brandColor }]}>
-                <Text style={[styles.filterChipText, typeFilter === 'gasoline' && { color: '#fff' }]}>Gas</Text>
+            <TouchableOpacity onPress={() => setTypeFilter('gasoline')} style={[styles.typeBadge, typeFilter === 'gasoline' && { backgroundColor: brandColor, borderColor: 'transparent' }]}>
+                <Text style={{ fontSize: 10, color: typeFilter === 'gasoline' ? '#fff' : theme.text + '80' }}>Gas</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setTypeFilter('Ethanol')} style={[styles.filterChip, typeFilter === 'Ethanol' && { backgroundColor: brandColor }]}>
-                <Text style={[styles.filterChipText, typeFilter === 'Ethanol' && { color: '#fff' }]}>Eta</Text>
+            <TouchableOpacity onPress={() => setTypeFilter('Ethanol')} style={[styles.typeBadge, typeFilter === 'Ethanol' && { backgroundColor: brandColor, borderColor: 'transparent' }]}>
+                <Text style={{ fontSize: 10, color: typeFilter === 'Ethanol' ? '#fff' : theme.text + '80' }}>Eta</Text>
             </TouchableOpacity>
         </View>
         <TextInput
@@ -331,224 +331,3 @@ export default function FuelsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 60,
-  },
-  headerCard: {
-    marginHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  backBtn: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  addBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  form: {
-    marginTop: 14,
-    gap: 8,
-  },
-  formRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  formInput: {
-    height: 44,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    fontSize: 14,
-  },
-  typeToggle: {
-    flexDirection: 'row',
-    height: 44,
-    borderRadius: 10,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  typeOption: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  createBtn: {
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  createBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
-  listItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginVertical: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  itemName: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  typeTag: {
-    marginLeft: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  typeTagText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-  },
-  itemDetail: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  itemDesc: {
-    fontSize: 12,
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-  itemDate: {
-    fontSize: 11,
-    marginTop: 4,
-  },
-  itemAmount: {
-    fontSize: 17,
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  filterBar: {
-    marginHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 10,
-  },
-  filterOptions: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: 4,
-  },
-  filterChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-  },
-  filterChipText: {
-    fontSize: 11,
-    color: '#666',
-  },
-  filterInputDate: {
-    width: 90,
-    fontSize: 11,
-    height: '100%',
-    textAlign: 'right',
-    borderLeftWidth: 1,
-    paddingLeft: 8,
-    marginLeft: 8,
-  },
-  emptyContainer: {
-    paddingTop: 80,
-    alignItems: 'center',
-    gap: 12,
-  },
-  emptyText: {
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  emptySubText: {
-    fontSize: 14,
-    textAlign: 'center',
-    paddingHorizontal: 40,
-  },
-  editHint: {
-    fontSize: 11,
-    fontWeight: '800',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-  },
-  editActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-  },
-  editSaveBtn: {
-    flex: 1,
-    height: 40,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  editSaveBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-  cancelBtn: {
-    flex: 1,
-    height: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cancelBtnText: {
-    fontWeight: '600',
-  },
-});
