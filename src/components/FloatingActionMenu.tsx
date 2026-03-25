@@ -38,7 +38,7 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({ onPressI
   };
 
   const menuItems: { label: string; icon: string; color: string; route?: string }[] = [
-    { label: 'Abastecimento', icon: 'speedometer-outline', color: '#FF9800' },
+    { label: 'Abastecimento', icon: 'speedometer-outline', color: '#FF9800', route: '/fuels' },
     { label: 'Receita', icon: 'wallet-outline', color: '#4CAF50', route: '/incomes' },
     { label: 'Despesas', icon: 'receipt-outline', color: '#FF5252', route: '/expenses' },
     { label: 'Categorias', icon: 'list-outline', color: '#6C63FF', route: '/categories' },
@@ -71,7 +71,7 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({ onPressI
           },
         ]}
       >
-        <Text style={styles.itemLabel}>
+        <Text style={styles.itemLabel} numberOfLines={1}>
           {item.label}
         </Text>
         <TouchableOpacity
@@ -85,7 +85,7 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({ onPressI
             }
           }}
         >
-          <Ionicons name={item.icon as any} size={24} color="#FFF" />
+          <Ionicons name={item.icon as any} size={22} color="#FFF" />
         </TouchableOpacity>
       </Animated.View>
     );
@@ -97,14 +97,14 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({ onPressI
   });
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} pointerEvents="box-none">
       {expanded && (
         <TouchableWithoutFeedback onPress={toggleMenu}>
           <View style={styles.overlay} />
         </TouchableWithoutFeedback>
       )}
 
-      <View style={styles.menuWrapper}>
+      <View style={styles.menuWrapper} pointerEvents="box-none">
         {menuItems.map((item, index) => renderItem(item, index))}
 
         <TouchableOpacity
@@ -115,12 +115,12 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({ onPressI
             {
               backgroundColor: '#FFF',
               borderColor: theme.tint,
-              borderWidth: 2
+              borderWidth: 2,
             }
           ]}
         >
           <Animated.View style={{ transform: [{ rotate: rotation }] }}>
-            <Ionicons name="add" size={32} color={theme.tint} />
+            <Ionicons name="add" size={28} color={theme.tint} />
           </Animated.View>
         </TouchableOpacity>
       </View>
@@ -133,25 +133,25 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
+    top: 0,
+    left: 0,
     zIndex: 1000,
   },
   overlay: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width,
-    height,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.15)',
   },
   menuWrapper: {
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'absolute',
+    bottom: 30,
+    right: 30,
+    alignItems: 'flex-end',
+    justifyContent: 'flex-end',
   },
   mainButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
@@ -159,20 +159,20 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.2)',
   },
   itemContainer: {
     position: 'absolute',
     flexDirection: 'row',
     alignItems: 'center',
-    right: 24,
-    bottom: 24,
+    justifyContent: 'flex-end',
+    width: width - 60,
+    right: 6, // Centered relative to mainButton (60 vs 48)
+    bottom: 6,
   },
   itemButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 6,
@@ -180,23 +180,17 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
   },
   itemLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
-    marginRight: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
+    marginRight: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
     overflow: 'hidden',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
     color: '#FFF',
     backgroundColor: '#333333',
+    maxWidth: width * 0.6,
   },
 });
