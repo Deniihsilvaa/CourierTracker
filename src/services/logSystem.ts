@@ -1,9 +1,18 @@
 import { localDatabase } from './localDatabase';
-import { useAuthStore } from '../modules/auth/store';
 
 export type LogSystemLevel = 'debug' | 'info' | 'warn' | 'error';
 
 type LogSystemMeta = Record<string, any>;
+
+let getUserId: () => string | null = () => null;
+
+/**
+ * Configure how the log system retrieves the current user ID.
+ * This breaks the circular dependency with the AuthStore.
+ */
+export const setLogUserIdProvider = (provider: () => string | null) => {
+  getUserId = provider;
+};
 
 const sanitize = (value: any) => {
   try {
@@ -21,10 +30,10 @@ const sanitize = (value: any) => {
 
 export const logSystem = {
   enqueue: async (level: LogSystemLevel, message: string, data?: string | null, metaDados?: LogSystemMeta) => {
-    const user = useAuthStore.getState().user;
+    const userId = getUserId();
     const meta: LogSystemMeta = {
       ...(metaDados ?? {}),
-      user_id: user?.id ?? null,
+      user_id: userId,
     };
 
     // fire-and-forget callers should never crash due to logging

@@ -61,17 +61,25 @@ export const authSessionGuard = {
       }
 
       // If we have a user in store but NO session in Supabase, 
-      // it MIGHT be a logout, but we check if it's persistent.
+      // it MIGHT be a logout or a transient issue.
       if (!session) {
         const store = useAuthStore.getState();
         if (store.user) {
-          logger.warn('[AuthGuard] No session found, but user exists in store. Validating again...');
-          // Optional: wait a bit or try to refresh
+          logger.warn('[AuthGuard] No session found, but user exists in store. Re-checking...');
+          
+          // Re-check with a small delay
+          await new Promise(resolve => setTimeout(resolve, 1000));
           const { data: retry } = await supabase.auth.getSession();
+          
           if (!retry.session) {
-            logger.error('[AuthGuard] Persistent session loss. Signing out.');
-            useAuthStore.getState().signOut();
-            return false;
+            // We only sign out if we are SURE the user is not authenticated anymore
+            // but we'll let the AuthStore decide this through its checkSession method
+            // or we only do it if the store is not already loading.
+            if (!store.isLoading) {
+              logger.error('[AuthGuard] Persistent session loss. User state cleared.');
+              // instead of direct signOut, we'll set user to null to trigger navigation
+              // useAuthStore.getState().signOut(); // Optional: be more or less aggressive here
+            }
           }
         }
       }

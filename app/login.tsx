@@ -12,6 +12,7 @@ import {
   View
 } from 'react-native';
 
+
 import { useAuth } from '@/src/hooks/useAuth';
 import { stylesAuth } from '@/src/styles';
 
@@ -36,6 +37,9 @@ export default function LoginScreen() {
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
+              autoComplete='email'
+              autoFocus={true}
+              caretHidden={true}
             />
           </View>
 

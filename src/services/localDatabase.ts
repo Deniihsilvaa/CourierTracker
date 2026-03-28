@@ -1,4 +1,4 @@
-import { logger } from '../utils/logger';
+// Low-level database operations should use console directly to avoid cycles with logSystem
 import { getDb } from './sqlite';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -32,7 +32,7 @@ export const localDatabase = {
     try {
       return await db.getAllAsync<T>(query, params);
     } catch (e) {
-      logger.error(`[DB] List failed in ${tableName}:`, e);
+      console.error(`[DB] List failed in ${tableName}:`, e);
       return [];
     }
   },
@@ -53,7 +53,7 @@ export const localDatabase = {
     try {
       return await db.getFirstAsync<T>(query, params);
     } catch (e) {
-      logger.error(`[DB] Find failed in ${tableName}:`, e);
+      console.error(`[DB] Find failed in ${tableName}:`, e);
       return null;
     }
   },
@@ -70,8 +70,17 @@ export const localDatabase = {
    */
   async insert<T extends { id?: string }>(tableName: TableName, data: T): Promise<string> {
     const db = getDb();
-    const id = data.id || uuidv4();
-    const entry = { ...data, id, synced: (data as any).synced ?? 0, created_at: (data as any).created_at || new Date().toISOString() };
+    
+    // For log_system, we let SQLite handle the INTEGER AUTOINCREMENT ID
+    const isLogSystem = tableName === 'log_system';
+    const id = isLogSystem ? undefined : (data.id || uuidv4());
+    
+    const entry = { 
+      ...data, 
+      ...(id ? { id } : {}), 
+      synced: (data as any).synced ?? 0, 
+      created_at: (data as any).created_at || new Date().toISOString() 
+    };
     
     const keys = Object.keys(entry);
     const placeholders = keys.map(() => '?').join(', ');
@@ -80,10 +89,10 @@ export const localDatabase = {
     const query = `INSERT INTO ${tableName} (${keys.join(', ')}) VALUES (${placeholders})`;
     
     try {
-      await db.runAsync(query, values);
-      return id;
+      const result = await db.runAsync(query, values);
+      return id || String(result.lastInsertRowId);
     } catch (e) {
-      logger.error(`[DB] Insert failed in ${tableName}:`, e);
+      console.error(`[DB] Insert failed in ${tableName}:`, e);
       throw e;
     }
   },
@@ -106,12 +115,13 @@ export const localDatabase = {
    * Specific Insert for Log System (legacy support)
    */
   async insertLogSystem(level: string, message: string, data: any, meta: any): Promise<string> {
-    return this.insert('log_system', {
+    const logEntry = {
       level,
       message,
       data: data ? JSON.stringify(data) : null,
       meta_dados: meta ? JSON.stringify(meta) : null
-    });
+    };
+    return this.insert('log_system', logEntry as any);
   },
 
   /**
@@ -128,7 +138,7 @@ export const localDatabase = {
     try {
       await db.runAsync(query, [...values, id]);
     } catch (e) {
-      logger.error(`[DB] Update failed in ${tableName}:`, e);
+      console.error(`[DB] Update failed in ${tableName}:`, e);
       throw e;
     }
   },
@@ -142,7 +152,7 @@ export const localDatabase = {
     try {
       await db.runAsync(query, [id]);
     } catch (e) {
-      logger.error(`[DB] Delete failed in ${tableName}:`, e);
+      console.error(`[DB] Delete failed in ${tableName}:`, e);
       throw e;
     }
   }

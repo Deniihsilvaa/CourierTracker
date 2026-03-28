@@ -5,6 +5,7 @@ import { getAuthToken } from "../../services/api";
 import { authService } from "../../services/auth.service";
 import { localDatabase } from "../../services/localDatabase";
 import { supabase } from "../../services/supabase";
+import { setLogUserIdProvider } from "../../services/logSystem";
 import { logger } from "../../utils/logger";
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -185,3 +186,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 }));
+
+/**
+ * Configure the log system to get the user ID from the store.
+ * This breaks the require cycle between store -> logger -> logSystem -> store.
+ */
+setLogUserIdProvider(() => useAuthStore.getState().user?.id ?? null);
