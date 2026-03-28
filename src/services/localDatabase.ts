@@ -1,12 +1,11 @@
 import { logger } from '../utils/logger';
 import { getDb } from './sqlite';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
- * Hardened database access layer to prevent SQL injection 
- * and enforce schema boundaries.
+ * Modern, Generic Offline-First Database Layer
  */
 
-// Whitelist of allowed tables to prevent arbitrary table access
 const ALLOWED_TABLES = [
   'profiles', 
   'work_sessions', 
@@ -19,57 +18,106 @@ const ALLOWED_TABLES = [
   'incomes',
   'fuel_logs',
   'maintenance_logs'
-];
+] as const;
+
+type TableName = typeof ALLOWED_TABLES[number];
 
 export const localDatabase = {
   /**
-   * Safe execution of select queries with table validation.
+   * Generic query for multiple rows
    */
-  query: async <T>(tableName: string, whereClause: string = '', params: any[] = []): Promise<T[]> => {
-    if (!ALLOWED_TABLES.includes(tableName)) {
-      logger.error(`[DB] Unauthorized table access attempt: ${tableName}`);
-      throw new Error('Database access violation');
-    }
-
+  async list<T>(tableName: TableName, where: string = '', params: any[] = []): Promise<T[]> {
     const db = getDb();
-    const query = `SELECT * FROM ${tableName} ${whereClause}`;
-
+    const query = `SELECT * FROM ${tableName} ${where}`;
     try {
-      return await db.getAllAsync(query, params);
+      return await db.getAllAsync<T>(query, params);
     } catch (e) {
-      logger.error(`[DB] Query failed in ${tableName}:`, e);
+      logger.error(`[DB] List failed in ${tableName}:`, e);
       return [];
     }
   },
 
   /**
-   * Safe single row retrieval.
+   * Alias for list for backward compatibility
    */
-  queryFirst: async <T>(tableName: string, whereClause: string = '', params: any[] = []): Promise<T | null> => {
-    if (!ALLOWED_TABLES.includes(tableName)) {
-      logger.error(`[DB] Unauthorized table access attempt: ${tableName}`);
-      throw new Error('Database access violation');
-    }
+  async query<T>(tableName: TableName, where: string = '', params: any[] = []): Promise<T[]> {
+    return this.list<T>(tableName, where, params);
+  },
 
+  /**
+   * Generic query for a single row
+   */
+  async find<T>(tableName: TableName, where: string = '', params: any[] = []): Promise<T | null> {
     const db = getDb();
-    const query = `SELECT * FROM ${tableName} ${whereClause} LIMIT 1`;
-
+    const query = `SELECT * FROM ${tableName} ${where} LIMIT 1`;
     try {
       return await db.getFirstAsync<T>(query, params);
     } catch (e) {
-      logger.error(`[DB] QueryFirst failed in ${tableName}:`, e);
+      logger.error(`[DB] Find failed in ${tableName}:`, e);
       return null;
     }
   },
 
   /**
-   * Encapsulated update logic to prevent dynamic SET building from untrusted sources.
+   * Alias for find for backward compatibility
    */
-  update: async (tableName: string, id: string, data: Record<string, any>) => {
-    if (!ALLOWED_TABLES.includes(tableName)) {
-      throw new Error('Database access violation');
-    }
+  async queryFirst<T>(tableName: TableName, where: string = '', params: any[] = []): Promise<T | null> {
+    return this.find<T>(tableName, where, params);
+  },
 
+  /**
+   * Generic Insert (Always Offline-First)
+   */
+  async insert<T extends { id?: string }>(tableName: TableName, data: T): Promise<string> {
+    const db = getDb();
+    const id = data.id || uuidv4();
+    const entry = { ...data, id, synced: (data as any).synced ?? 0, created_at: (data as any).created_at || new Date().toISOString() };
+    
+    const keys = Object.keys(entry);
+    const placeholders = keys.map(() => '?').join(', ');
+    const values = Object.values(entry);
+    
+    const query = `INSERT INTO ${tableName} (${keys.join(', ')}) VALUES (${placeholders})`;
+    
+    try {
+      await db.runAsync(query, values);
+      return id;
+    } catch (e) {
+      logger.error(`[DB] Insert failed in ${tableName}:`, e);
+      throw e;
+    }
+  },
+
+  /**
+   * Specific Insert for Work Session (legacy support)
+   */
+  async insertWorkSession(id: string, userId: string, startTime: string, synced: number, startOdometer?: number): Promise<string> {
+    return this.insert('work_sessions', {
+      id,
+      user_id: userId,
+      start_time: startTime,
+      synced: Number(synced),
+      start_odometer: startOdometer ? String(startOdometer) : "0",
+      status: 'active'
+    });
+  },
+
+  /**
+   * Specific Insert for Log System (legacy support)
+   */
+  async insertLogSystem(level: string, message: string, data: any, meta: any): Promise<string> {
+    return this.insert('log_system', {
+      level,
+      message,
+      data: data ? JSON.stringify(data) : null,
+      meta_dados: meta ? JSON.stringify(meta) : null
+    });
+  },
+
+  /**
+   * Generic Update
+   */
+  async update(tableName: TableName, id: string, data: Record<string, any>): Promise<void> {
     const db = getDb();
     const keys = Object.keys(data);
     const setClause = keys.map(k => `${k} = ?`).join(', ');
@@ -79,55 +127,23 @@ export const localDatabase = {
 
     try {
       await db.runAsync(query, [...values, id]);
-      return true;
     } catch (e) {
       logger.error(`[DB] Update failed in ${tableName}:`, e);
-      return false;
+      throw e;
     }
   },
 
   /**
-   * Fast insert for GPS logging.
+   * Generic Delete
    */
-  insertGps: async (userId: string | null, sessionId: string, lat: number, lon: number, acc: number | null, speed: number | null, recordedAt: string) => {
+  async delete(tableName: TableName, id: string): Promise<void> {
     const db = getDb();
-    const query = `INSERT OR IGNORE INTO gps_points (user_id, session_id, latitude, longitude, accuracy, speed, recorded_at, synced) 
-                   VALUES (?, ?, ?, ?, ?, ?, ?, 0)`;
+    const query = `DELETE FROM ${tableName} WHERE id = ?`;
     try {
-      await db.runAsync(query, [userId, sessionId, lat, lon, acc, speed, recordedAt]);
-      return true;
+      await db.runAsync(query, [id]);
     } catch (e) {
-      logger.error('[DB] GPS Insert failed:', e);
-      return false;
+      logger.error(`[DB] Delete failed in ${tableName}:`, e);
+      throw e;
     }
-  },
-
-  insertLogSystem: async (level: string, message: string, data?: string | null, metaDados?: any) => {
-    const db = getDb();
-    const createdAt = new Date().toISOString();
-    const metaText = metaDados == null ? null : JSON.stringify(metaDados);
-    const query = `INSERT INTO log_system (created_at, message, level, data, meta_dados, synced)
-                   VALUES (?, ?, ?, ?, ?, 0)`;
-    try {
-      await db.runAsync(query, [createdAt, message, level, data ?? null, metaText]);
-      return true;
-    } catch (e) {
-      // NÃO usar logger aqui para evitar recursão com logSystem/logger
-      console.error('[DB] log_system insert failed:', e);
-      return false;
-    }
-  },
-
-  insertWorkSession: async (id: string, userId: string, startTime: string, synced: number, startOdometer?: number) => {
-    const db = getDb();
-    const query = `INSERT INTO work_sessions (id, user_id, start_time, status, synced) 
-                   VALUES (?, ?, ?, 'active', ?)`;
-    try {
-      await db.runAsync(query, [id, userId, startTime, synced]);
-      return true;
-    } catch (e) {
-      logger.error('[DB] Work Session insert failed:', e);
-      return false;
-    }
-  },
+  }
 };

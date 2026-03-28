@@ -13,27 +13,21 @@ import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, ToastAndroid } from 'react-native';
 
-
 export default function useDashboardScreen() {
     const { user } = useAuthStore();
-    const { isTracking, currentLocation, lastSyncTime } = useTrackingStore();
-    const { activeSession } = useSessionStore();
+    const { isTracking, lastSyncTime } = useTrackingStore();
+    const { activeSession, sessionDuration } = useSessionStore();
+    
     const [isSyncing, setIsSyncing] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
-    const [showDisclosure, setShowDisclosure] = useState(false);
-
-    // Session Data States
-    const [sessionData, setSessionData] = useState<any>(null);
     const [loadingSession, setLoadingSession] = useState(false);
-    const [sessionTime, setSessionTime] = useState('00:00:00');
+    const [sessionData, setSessionData] = useState<any>(null);
     const [odometer, setOdometer] = useState('');
-    const [initialOdometer, setInitialOdometer] = useState('');
     const [isPaused, setIsPaused] = useState(false);
 
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
 
-    // Animation for the tracking pulse
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
@@ -61,55 +55,29 @@ export default function useDashboardScreen() {
         };
 
         checkPending();
-        recoverActiveSession(); // Tenta recuperar a sessão do banco local ou da API na mount
+        recoverActiveSession(); 
         
         const interval = setInterval(checkPending, 10000);
         return () => clearInterval(interval);
     }, [lastSyncTime, isTracking]);
 
-    // Fetch Backend Session Info
     useEffect(() => {
         if (activeSession?.id) {
             setLoadingSession(true);
             fetchSessionData(activeSession.id)
                 .then(data => {
-                    if (data) setSessionData(data);
+                    if (data) {
+                        setSessionData(data);
+                        if (data.start_odometer) setOdometer(String(data.start_odometer));
+                    }
                 })
-                .catch(error => {
-                    logger.error('[Dashboard] Error fetching session:', error);
-                })
-                .finally(() => {
-                    setLoadingSession(false);
-                });
+                .catch(error => logger.error('[Dashboard] Error fetching session:', error))
+                .finally(() => setLoadingSession(false));
         } else {
             setSessionData(null);
+            setOdometer('');
         }
     }, [activeSession?.id]);
-
-    // Duration Timer
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (sessionData?.start_time && !isPaused) {
-            const start = new Date(sessionData.start_time).getTime();
-            
-            const updateTime = () => {
-                const now = new Date().getTime();
-                const diffInSeconds = Math.floor((now - start) / 1000);
-                
-                const hours = Math.floor(diffInSeconds / 3600);
-                const minutes = Math.floor((diffInSeconds % 3600) / 60);
-                const seconds = diffInSeconds % 60;
-                
-                setSessionTime(
-                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-                );
-            };
-            
-            updateTime();
-            interval = setInterval(updateTime, 1000);
-        }
-        return () => clearInterval(interval);
-    }, [sessionData?.start_time, isPaused]);
 
     const handleManualSync = async () => {
         if (isSyncing) return;
@@ -128,20 +96,19 @@ export default function useDashboardScreen() {
 
     const handleToggleTracking = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        if (isTracking) {
-            await stopTracking();
-            await endSession();
-        } else {
-            // Modal foi removido, inicia sessão diretamente
-            await confirmTracking();
+        try {
+            if (isTracking) {
+                await stopTracking();
+                await endSession();
+            } else {
+                const odo = odometer ? Number(odometer) : undefined;
+                await startSession(odo);
+                await startTracking();
+            }
+        } catch (e) {
+            logger.error('[Dashboard] Failed to toggle tracking:', e);
+            Alert.alert('Erro', 'Não foi possível processar a ação.');
         }
-    };
-
-    const confirmTracking = async () => {
-        setShowDisclosure(false);
-        const odometerValue = initialOdometer ? Number(initialOdometer) : undefined;
-        await startSession(odometerValue);
-        await startTracking();
     };
 
     const handleRouteEvent = async (type: 'pickup' | 'dropoff' | 'waiting') => {
@@ -153,101 +120,44 @@ export default function useDashboardScreen() {
         try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             await createRouteEvent(activeSession.id, user.id, type);
-
-            // Reset automatic waiting detection on manual action
             resetWaitingDetection();
-
             ToastAndroid.show('Evento registrado.', ToastAndroid.SHORT);
         } catch (e) {
             logger.error('[Dashboard] Failed to create route event', e);
-            ToastAndroid.show('Não foi possível registrar o evento.', ToastAndroid.SHORT);
         }
-    };
-
-    const formatTime = (seconds: number) => {
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        return h > 0 ? `${h}h ${m}m` : `${m}m`;
     };
 
     const handleSaveOdometer = async () => {
-        if (!odometer.trim()) return;
+        if (!odometer.trim() || !activeSession) return;
         try {
+            await localDatabase.update('work_sessions', activeSession.id, {
+                start_odometer: odometer
+            });
             setSessionData((prev: any) => ({ ...prev, start_odometer: odometer }));
-            ToastAndroid.show('Odômetro salvo com sucesso!', ToastAndroid.SHORT);
+            ToastAndroid.show('Odômetro salvo!', ToastAndroid.SHORT);
         } catch (error) {
             logger.error('[Dashboard] Error saving odometer:', error);
-            ToastAndroid.show('Erro ao salvar odômetro', ToastAndroid.SHORT);
         }
-    };
-
-    const handleStopSession = () => {
-        Alert.alert(
-            "Parar Sessão",
-            "Deseja encerrar sua sessão atual?",
-            [
-                { text: "Cancelar", style: "cancel" },
-                { 
-                    text: "Parar", 
-                    onPress: () => {
-                        handleToggleTracking(); // already ends the session and stops tracking
-                    }
-                }
-            ]
-        );
-    };
-
-    const handleDeleteSession = () => {
-        Alert.alert(
-            "Excluir Sessão",
-            "Tem certeza que deseja excluir esta sessão permanentemente?",
-            [
-                { text: "Cancelar", style: "cancel" },
-                { 
-                    text: "Excluir", 
-                    style: "destructive",
-                    onPress: () => {
-                        ToastAndroid.show('Sessão excluída.', ToastAndroid.SHORT);
-                        handleToggleTracking(); 
-                    }
-                }
-            ]
-        );
     };
 
     return {
         user,
         isTracking,
-        currentLocation,
-        lastSyncTime,
         isSyncing,
         pendingCount,
-        showDisclosure,
         theme,
         pulseAnim,
         activeSession,
-
-        // Extracted variables
         sessionData,
         loadingSession,
-        sessionTime,
+        sessionTime: sessionDuration,
         odometer,
         setOdometer,
-        initialOdometer,
-        setInitialOdometer,
         isPaused,
         setIsPaused,
-
-        // Extracted handlers
         handleSaveOdometer,
-        handleStopSession,
-        handleDeleteSession,
-
         handleManualSync,
         handleToggleTracking,
-        confirmTracking,
         handleRouteEvent,
-        formatTime,
-        setShowDisclosure,
-    }
+    };
 }

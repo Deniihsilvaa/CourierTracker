@@ -11,7 +11,16 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.denilsonsilva97.couriertracker",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Permita que o Courier Tracker acesse sua localização para rastrear suas rotas de entrega, mesmo em segundo plano.",
+        "NSLocationWhenInUseUsageDescription": "O Courier Tracker precisa da sua localização para registrar seus percursos durante o trabalho.",
+        "NSLocationAlwaysUsageDescription": "O rastreamento em segundo plano é necessário para calcular a distância percorrida automaticamente.",
+        "NSMotionUsageDescription": "Usamos sensores de movimento para otimizar o consumo de bateria durante o rastreamento.",
+        "UIBackgroundModes": [
+          "location",
+          "fetch",
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -38,6 +47,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-task-manager",
       [
         "expo-notifications",
         {

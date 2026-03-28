@@ -3,5 +3,10 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.expo": true,
+    "**/.cursor": true
   }
 }

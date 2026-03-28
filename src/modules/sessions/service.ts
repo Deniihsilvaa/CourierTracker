@@ -27,7 +27,7 @@ export const startSession = async (startOdometer?: number) => {
     }
     console.debug('[Session Service] POST payload:', payload);
 
-    const response = await api.post('/sessions/v1/', payload);
+    const response = await api.post('/sessions/v1', payload);
     if (response.data?.success && response.data.data?.id) {
       sessionId = response.data.data.id;
       synced = 1;
@@ -68,14 +68,29 @@ export const endSession = async () => {
   const endTime = new Date().toISOString();
 
   try {
-    // 1. Update offline session record
+    // 1. Notify API (PUT) to close the session
+    try {
+      const payload = {
+        end_time: endTime,
+        status: 'completed',
+        total_distance_km: activeSession.total_distance_km,
+        total_active_seconds: activeSession.total_active_seconds,
+        total_idle_seconds: activeSession.total_idle_seconds,
+      };
+      
+      console.log(`[Session Service] Closing session ${activeSession.id} on API...`);
+      await api.put(`/sessions/v1/${activeSession.id}`, payload);
+    } catch (apiError) {
+      console.warn('[Session Service] API close failed, session will be synced later', apiError);
+    }
+
+    // 2. Update offline session record
     await db.runAsync(
       `UPDATE work_sessions SET end_time = ?, status = 'completed', synced = 0 WHERE id = ?`,
       [endTime, activeSession.id]
     );
 
-    // 2. Create a Trip record summarizing this session
-    // This ensures data shows up in the "Recent Trips" view
+    // 3. Create a Trip record summarizing this session
     const sessionData = await db.getFirstAsync<any>(
       'SELECT * FROM work_sessions WHERE id = ?',
       [activeSession.id]
@@ -89,32 +104,18 @@ export const endSession = async () => {
         `INSERT INTO trips (id, session_id, user_id, distance_km, duration_seconds, start_time, end_time, status, synced) VALUES (?, ?, ?, ?, ?, ?, ?, 'completed', 0)`,
         [tripId, sessionData.id, sessionData.user_id, sessionData.total_distance_km, duration, sessionData.start_time, endTime]
       );
-      console.log(`Trip ${tripId} created for session ${sessionData.id}`);
-
-      // Vincula todos os pontos GPS da sessão ao trip criado (evita trip_id null no Supabase)
+      
       await db.runAsync(
-        `UPDATE gps_points
-         SET trip_id = ?, synced = 0
-         WHERE session_id = ? AND (trip_id IS NULL OR trip_id = '')`,
+        `UPDATE gps_points SET trip_id = ?, synced = 0 WHERE session_id = ? AND (trip_id IS NULL OR trip_id = '')`,
         [tripId, sessionData.id]
       );
     }
 
-    // 3. Clear state
-    setActiveSession({
-      ...activeSession,
-      end_time: endTime,
-      status: 'completed'
-    });
-
-    // Slight delay before clearing completely or navigate away
-    setTimeout(() => {
-      setActiveSession(null);
-    }, 100);
-
-    console.log(`Session ${activeSession.id} ended.`);
+    // 4. Clear global state
+    setActiveSession(null);
+    console.log(`Session ${activeSession.id} ended successfully.`);
   } catch (error) {
-    console.error('Failed to end session', error);
+    console.error('[Session Service] Failed to end session', error);
     throw error;
   }
 };
@@ -128,7 +129,7 @@ export const fetchSessionData = async (sessionId: string) => {
     return null;
   } catch (error) {
     console.error('[Session Service] Error fetching session:', error);
-    throw error;
+    return null;
   }
 };
 
@@ -137,7 +138,7 @@ export const recoverActiveSession = async () => {
   if (!user) return;
 
   try {
-    // 1. Check SQLite first
+    // 1. Check SQLite first for local active session
     const db = getDb();
     const localSession = await db.getFirstAsync<any>(
       "SELECT * FROM work_sessions WHERE status = 'active' OR status = 'open' ORDER BY start_time DESC LIMIT 1"
@@ -158,17 +159,19 @@ export const recoverActiveSession = async () => {
       return;
     }
 
-    // 2. Fallback: Check API for an open session
-    console.log('[Session Service] No local active session, checking API...');
-    const response = await api.get('/sessions/v1/');
+    // 2. Fallback: Check API for an open session using the correct user endpoint
+    console.log('[Session Service] Checking API for active sessions...');
+    const response = await api.get(`/sessions/v1/user/${user.id}`);
+    
     if (response.data.success && Array.isArray(response.data.data)) {
-      // Find the first session with no end_time or 'open' status
-      const apiActive = response.data.data.find((s: any) => !s.end_time || s.status === 'open' || s.status === 'active');
+      // Find session where status is NOT completed/cancelled or has no end_time
+      const apiActive = response.data.data.find((s: any) => 
+        !s.end_time && (s.status === 'open' || s.status === 'active' || !s.status)
+      );
       
       if (apiActive) {
         console.log('[Session Service] Found active session on API:', apiActive.id);
         
-        // Save to local DB so we have it next time
         await localDatabase.insertWorkSession(
           apiActive.id, 
           user.id, 
@@ -182,9 +185,9 @@ export const recoverActiveSession = async () => {
           user_id: user.id,
           start_time: apiActive.start_time || apiActive.startTime,
           end_time: null,
-          total_distance_km: 0,
-          total_active_seconds: 0,
-          total_idle_seconds: 0,
+          total_distance_km: apiActive.total_distance_km || 0,
+          total_active_seconds: apiActive.total_active_seconds || 0,
+          total_idle_seconds: apiActive.total_idle_seconds || 0,
           status: 'active',
         });
       }

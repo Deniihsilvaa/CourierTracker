@@ -9,19 +9,16 @@ import {
   ActivityIndicator,
   Animated,
   FlatList,
-  Platform,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  UIManager,
   View,
 } from 'react-native';
-import { crudStyles as styles } from '@/src/styles';
+import { Screen } from '@/components/layouts/screen';
+import { Button } from '@/components/ui/button';
 import { FinancialListItem } from '@/src/components/Financial/FinancialListItem';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+import { FuelForm } from '@/components/blocks/financial/fuel-form';
 
 export default function FuelsScreen() {
   const router = useRouter();
@@ -38,28 +35,8 @@ export default function FuelsScreen() {
     setTypeFilter,
     dateFilter,
     setDateFilter,
-    
-    // Form state
-    amount, setAmount,
-    liters, setLiters,
-    pricePerLiter, setPricePerLiter,
-    odometer, setOdometer,
-    description, setDescription,
-    gasStation, setGasStation,
-    dateCompetition, setDateCompetition,
-    type, setType,
-
-    // Edit state
-    editingId, setEditingId,
-    editAmount, setEditAmount,
-    editLiters, setEditLiters,
-    editPricePerLiter, setEditPricePerLiter,
-    editOdometer, setEditOdometer,
-    editDescription, setEditDescription,
-    editGasStation, setEditGasStation,
-    editDateCompetition, setEditDateCompetition,
-    editType, setEditType,
-
+    editingId,
+    setEditingId,
     rotateAnim,
     toggleForm,
     handleCreate,
@@ -67,10 +44,9 @@ export default function FuelsScreen() {
     startEdit
   } = useFuelsScreen();
 
-  const cardBg = isDark ? '#1e1e1e' : '#ffffff';
-  const inputBg = isDark ? '#2a2a2a' : '#f5f5f5';
-  const borderColor = isDark ? '#333' : '#e0e0e0';
   const brandColor = '#FF9800'; 
+  const cardBg = isDark ? '#1e1e1e' : '#ffffff';
+  const borderColor = isDark ? '#333' : '#e0e0e0';
 
   const rotate = rotateAnim.interpolate({
     inputRange: [0, 1],
@@ -80,90 +56,12 @@ export default function FuelsScreen() {
   const renderItem = ({ item }: { item: FuelLog }) => {
     const isEditing = editingId === item.id;
     
-    const renderEditForm = (
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.editHint, { color: brandColor }]}>Editando Abastecimento</Text>
-        
-        <View style={styles.formRow}>
-            <TextInput
-              value={editPricePerLiter}
-              onChangeText={setEditPricePerLiter}
-              style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor }]}
-              placeholder="R$/L"
-              keyboardType="numeric"
-            />
-            <TextInput
-              value={editLiters}
-              onChangeText={setEditLiters}
-              style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor }]}
-              placeholder="Ltrs"
-              keyboardType="numeric"
-            />
-            <TextInput
-              value={editAmount}
-              onChangeText={setEditAmount}
-              style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, fontWeight: '700' }]}
-              placeholder="Total R$"
-              keyboardType="numeric"
-            />
-        </View>
-
-        <View style={styles.formRow}>
-            <TextInput
-              value={editOdometer}
-              onChangeText={setEditOdometer}
-              style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, marginTop: 8 }]}
-              placeholder="Odômetro"
-              keyboardType="numeric"
-            />
-            <TextInput
-              value={editGasStation}
-              onChangeText={setEditGasStation}
-              style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, marginTop: 8 }]}
-              placeholder="Posto"
-            />
-        </View>
-
-        <View style={styles.formRow}>
-            <TextInput
-              value={editDateCompetition}
-              onChangeText={setEditDateCompetition}
-              style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, marginTop: 8 }]}
-              placeholder="Data"
-            />
-            <View style={[styles.typeToggle, { flex: 1, marginTop: 8 }]}>
-              <TouchableOpacity 
-                  onPress={() => setEditType('gasoline')} 
-                  style={[styles.typeOption, { backgroundColor: editType === 'gasoline' ? brandColor : inputBg }]}
-              >
-                  <Text style={{ color: editType === 'gasoline' ? '#fff' : theme.text + '80', fontSize: 10 }}>GAS</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                  onPress={() => setEditType('Ethanol')} 
-                  style={[styles.typeOption, { backgroundColor: editType === 'Ethanol' ? brandColor : inputBg }]}
-              >
-                  <Text style={{ color: editType === 'Ethanol' ? '#fff' : theme.text + '80', fontSize: 10 }}>ETA</Text>
-              </TouchableOpacity>
-            </View>
-        </View>
-
-        <View style={styles.editActions}>
-          <TouchableOpacity style={[styles.editSaveBtn, { backgroundColor: brandColor }]} onPress={handleUpdate} disabled={saving}>
-            {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.editSaveBtnText}>Salvar</Text>}
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.cancelBtn, { borderColor }]} onPress={() => setEditingId(null)}>
-            <Text style={[styles.cancelBtnText, { color: theme.text }]}>Cancelar</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-
     return (
       <FinancialListItem
         title={item.gas_station || 'Abastecimento'}
         titleExtra={
-          <View style={[styles.typeBadge, { backgroundColor: item.type === 'gasoline' ? '#4CAF50' : '#8BC34A', borderColor: 'transparent', marginLeft: 6 }]}>
-            <Text style={[styles.typeBadgeText, { color: '#fff', fontSize: 10 }]}>{item.type === 'gasoline' ? 'Gas' : 'Eta'}</Text>
+          <View style={[styles.typeBadge, { backgroundColor: item.type === 'gasoline' ? '#4CAF50' : '#8BC34A' }]}>
+            <Text style={styles.typeBadgeText}>{item.type === 'gasoline' ? 'Gas' : 'Eta'}</Text>
           </View>
         }
         subtitle={`${item.liters}L • R$ ${item.price_per_liter.toFixed(2)}/L • ${item.odometer} km`}
@@ -173,7 +71,16 @@ export default function FuelsScreen() {
         amountColor={brandColor}
         isEditing={isEditing}
         onLongPress={() => startEdit(item)}
-        renderEditForm={renderEditForm}
+        renderEditForm={
+          <FuelForm
+            initialData={item}
+            onSubmit={(data) => handleUpdate(data)}
+            onCancel={() => setEditingId(null)}
+            loading={saving}
+            theme={theme}
+            brandColor={brandColor}
+          />
+        }
         theme={theme}
         isDark={isDark}
       />
@@ -181,135 +88,76 @@ export default function FuelsScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <Screen style={styles.container}>
+      {/* Header Card with Registration Form */}
       <View style={[styles.headerCard, { backgroundColor: cardBg, borderColor }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Ionicons name="arrow-back" size={22} color={theme.text} />
+              <Ionicons name="arrow-back" size={24} color={theme.text} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: theme.text }]}>Abastecimento</Text>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Abastecimentos</Text>
           </View>
           <TouchableOpacity
             onPress={toggleForm}
-            style={[styles.addBtn, { backgroundColor: formExpanded ? brandColor : (isDark ? '#333' : '#f0f0f0') }]}
+            style={[styles.addBtn, { backgroundColor: formExpanded ? brandColor : (isDark ? '#333' : '#f3f4f6') }]}
           >
             <Animated.View style={{ transform: [{ rotate }] }}>
-              <Ionicons name="add" size={22} color={formExpanded ? '#fff' : theme.text} />
+              <Ionicons name="add" size={24} color={formExpanded ? '#fff' : theme.text} />
             </Animated.View>
           </TouchableOpacity>
         </View>
 
         {formExpanded && (
-          <View style={styles.form}>
-                <View style={styles.formRow}>
-                  <TextInput
-                    value={pricePerLiter}
-                    onChangeText={setPricePerLiter}
-                    style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor }]}
-                    placeholder="R$/Litro"
-                    keyboardType="numeric"
-                    placeholderTextColor={theme.text + '60'}
-                  />
-                  <TextInput
-                    value={liters}
-                    onChangeText={setLiters}
-                    style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor }]}
-                    placeholder="Ltrs"
-                    keyboardType="numeric"
-                    placeholderTextColor={theme.text + '60'}
-                  />
-                  <TextInput
-                    value={amount}
-                    onChangeText={setAmount}
-                    style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, fontWeight: '700' }]}
-                    placeholder="Total R$"
-                    keyboardType="numeric"
-                    placeholderTextColor={theme.text + '60'}
-                  />
-                </View>
-
-                <View style={styles.formRow}>
-                  <TextInput
-                      value={odometer}
-                      onChangeText={setOdometer}
-                      style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, marginTop: 8 }]}
-                      placeholder="Odômetro"
-                      keyboardType="numeric"
-                      placeholderTextColor={theme.text + '60'}
-                  />
-                  <TextInput
-                      value={gasStation}
-                      onChangeText={setGasStation}
-                      style={[styles.formInput, { flex: 1.5, color: theme.text, backgroundColor: inputBg, borderColor, marginTop: 8 }]}
-                      placeholder="Posto (Ex: Ipiranga)"
-                      placeholderTextColor={theme.text + '60'}
-                  />
-                </View>
-
-                <View style={styles.formRow}>
-                  <TextInput
-                      value={dateCompetition}
-                      onChangeText={setDateCompetition}
-                      style={[styles.formInput, { flex: 1, color: theme.text, backgroundColor: inputBg, borderColor, marginTop: 8 }]}
-                      placeholder="Data"
-                      placeholderTextColor={theme.text + '60'}
-                  />
-                  <View style={[styles.typeToggle, { flex: 1, marginTop: 8 }]}>
-                    <TouchableOpacity 
-                        onPress={() => setType('gasoline')} 
-                        style={[styles.typeOption, { backgroundColor: type === 'gasoline' ? brandColor : inputBg }]}
-                    >
-                        <Text style={{ color: type === 'gasoline' ? '#fff' : theme.text + '80', fontWeight: 'bold' }}>Gasolina</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                        onPress={() => setType('Ethanol')} 
-                        style={[styles.typeOption, { backgroundColor: type === 'Ethanol' ? brandColor : inputBg }]}
-                    >
-                        <Text style={{ color: type === 'Ethanol' ? '#fff' : theme.text + '80', fontWeight: 'bold' }}>Etanol</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.createBtn, { backgroundColor: brandColor }]}
-                  onPress={handleCreate}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={styles.createBtnText}>Registrar Abastecimento</Text>
-                  )}
-                </TouchableOpacity>
+          <View style={styles.formContainer}>
+            <FuelForm
+              onSubmit={(data) => handleCreate(data)}
+              loading={saving}
+              theme={theme}
+              brandColor={brandColor}
+            />
           </View>
         )}
       </View>
 
+      {/* Filter Bar */}
       <View style={[styles.filterBar, { backgroundColor: cardBg, borderColor }]}>
-        <Ionicons name="funnel-outline" size={18} color={theme.text + '60'} style={{ marginRight: 8 }} />
-        <View style={styles.formRow}>
-            <TouchableOpacity onPress={() => setTypeFilter('')} style={[styles.typeBadge, !typeFilter && { backgroundColor: brandColor, borderColor: 'transparent' }]}>
-                <Text style={{ fontSize: 10, color: !typeFilter ? '#fff' : theme.text + '80' }}>Todos</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setTypeFilter('gasoline')} style={[styles.typeBadge, typeFilter === 'gasoline' && { backgroundColor: brandColor, borderColor: 'transparent' }]}>
-                <Text style={{ fontSize: 10, color: typeFilter === 'gasoline' ? '#fff' : theme.text + '80' }}>Gas</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setTypeFilter('Ethanol')} style={[styles.typeBadge, typeFilter === 'Ethanol' && { backgroundColor: brandColor, borderColor: 'transparent' }]}>
-                <Text style={{ fontSize: 10, color: typeFilter === 'Ethanol' ? '#fff' : theme.text + '80' }}>Eta</Text>
-            </TouchableOpacity>
+        <View style={styles.filterTypes}>
+          <TouchableOpacity 
+            onPress={() => setTypeFilter('')} 
+            style={[styles.filterChip, !typeFilter && { backgroundColor: brandColor }]}
+          >
+            <Text style={[styles.filterChipText, !typeFilter && { color: '#fff' }]}>Todos</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => setTypeFilter('gasoline')} 
+            style={[styles.filterChip, typeFilter === 'gasoline' && { backgroundColor: brandColor }]}
+          >
+            <Text style={[styles.filterChipText, typeFilter === 'gasoline' && { color: '#fff' }]}>Gasolina</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => setTypeFilter('Ethanol')} 
+            style={[styles.filterChip, typeFilter === 'Ethanol' && { backgroundColor: brandColor }]}
+          >
+            <Text style={[styles.filterChipText, typeFilter === 'Ethanol' && { color: '#fff' }]}>Etanol</Text>
+          </TouchableOpacity>
         </View>
-        <TextInput
+        
+        <View style={styles.dateFilterContainer}>
+          <Ionicons name="calendar-outline" size={16} color={theme.text + '60'} />
+          <TextInput
             value={dateFilter}
             onChangeText={setDateFilter}
-            style={[styles.filterInputDate, { color: theme.text, borderColor }]}
-            placeholder="AAAA-MM-DD"
-            placeholderTextColor={theme.text + '50'}
-        />
+            style={[styles.filterInputDate, { color: theme.text }]}
+            placeholder="Data"
+            placeholderTextColor={theme.text + '40'}
+          />
+        </View>
       </View>
 
+      {/* List Section */}
       {loading ? (
-        <View style={styles.loadingContainer}>
+        <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={brandColor} />
         </View>
       ) : (
@@ -319,14 +167,124 @@ export default function FuelsScreen() {
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="speedometer-outline" size={48} color={theme.text + '40'} />
-              <Text style={[styles.emptyText, { color: theme.text + '60' }]}>Nenhum abastecimento.</Text>
-              <Text style={[styles.emptySubText, { color: theme.text + '40' }]}>Toque no + para registrar seu primeiro abastecimento.</Text>
+            <View style={styles.centerContainer}>
+              <Ionicons name="speedometer-outline" size={64} color={theme.text + '20'} />
+              <Text style={[styles.emptyText, { color: theme.text + '60' }]}>Nenhum registro encontrado</Text>
+              <Text style={[styles.emptySubText, { color: theme.text + '40' }]}>Toque no + para registrar um abastecimento</Text>
             </View>
           }
         />
       )}
-    </View>
+    </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  headerCard: {
+    padding: 16,
+    borderBottomWidth: 1,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backBtn: {
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  addBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  formContainer: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+  filterBar: {
+    flexDirection: 'row',
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+  },
+  filterTypes: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#f3f4f6',
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  dateFilterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    gap: 4,
+  },
+  filterInputDate: {
+    fontSize: 12,
+    height: 32,
+    width: 80,
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  centerContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 100,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+  },
+  emptySubText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  typeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  typeBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  }
+});

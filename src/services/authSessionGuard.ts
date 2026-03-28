@@ -52,15 +52,34 @@ export const authSessionGuard = {
    * Ensures the auth store is synced with the current Supabase session.
    */
   syncAuthStore: async () => {
-    const isValid = await authSessionGuard.validateSession();
-    if (!isValid) {
-      // If session is invalid and store has a user, clear it
-      const store = useAuthStore.getState();
-      if (store.user) {
-        logger.warn('[AuthGuard] Clearing auth store due to invalid session.');
-        useAuthStore.getState().signOut();
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+
+      if (error) {
+        logger.error('[AuthGuard] Sync error:', error.message);
+        return false;
       }
+
+      // If we have a user in store but NO session in Supabase, 
+      // it MIGHT be a logout, but we check if it's persistent.
+      if (!session) {
+        const store = useAuthStore.getState();
+        if (store.user) {
+          logger.warn('[AuthGuard] No session found, but user exists in store. Validating again...');
+          // Optional: wait a bit or try to refresh
+          const { data: retry } = await supabase.auth.getSession();
+          if (!retry.session) {
+            logger.error('[AuthGuard] Persistent session loss. Signing out.');
+            useAuthStore.getState().signOut();
+            return false;
+          }
+        }
+      }
+
+      return true;
+    } catch (e) {
+      logger.error('[AuthGuard] Unexpected error during sync:', e);
+      return false;
     }
-    return isValid;
   }
 };
