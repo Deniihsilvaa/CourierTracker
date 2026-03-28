@@ -1,12 +1,12 @@
-import { AppState, Alert } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { logger } from '../utils/logger';
-import { initDb } from './sqlite';
-import { authSessionGuard } from './authSessionGuard';
-import { logSystem } from './logSystem';
-import { sessionManager } from '../modules/tracking/session-manager';
+import { Alert, AppState } from 'react-native';
 import { handleNotificationAction, setupNotificationCategories } from '../infrastructure/tracking-notification';
 import { useSessionStore } from '../modules/sessions/store';
+import { sessionManager } from '../modules/tracking/session-manager';
+import { logger } from '../utils/logger';
+import { authSessionGuard } from './authSessionGuard';
+import { logSystem } from './logSystem';
+import { initDb } from './sqlite';
 
 /**
  * Orchestrates the application startup sequence and global listeners.
@@ -25,10 +25,10 @@ export const AppInitializer = {
 
       logger.info('[AppInitializer] Setting up notification categories...');
       setupNotificationCategories();
-      
+
       // Start global timer if there's an active session
       this.startGlobalTimer();
-      
+
       return true;
     } catch (e) {
       logger.error('[AppInitializer] Critical initialization error:', e);
@@ -38,7 +38,7 @@ export const AppInitializer = {
 
   startGlobalTimer() {
     if (this.timerInterval) clearInterval(this.timerInterval);
-    
+
     this.timerInterval = setInterval(() => {
       const { activeSession, setSessionDuration } = useSessionStore.getState();
       if (activeSession?.start_time) {

@@ -1,13 +1,12 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import useDashboardScreen from '@/src/hooks/useDashboardScreen';
-import { FloatingActionMenu } from '@/src/components/FloatingActionMenu';
+import { ActiveSessionCard } from '@/components/blocks/dashboard/active-session-card';
+import { MetricCard } from '@/components/blocks/metric-card';
 import { Screen } from '@/components/layouts/screen';
 import { Button } from '@/components/ui/button';
-import { MetricCard } from '@/components/blocks/metric-card';
-import { ActiveSessionCard } from '@/components/blocks/dashboard/active-session-card';
-import { QuickActions } from '@/components/blocks/dashboard/quick-actions';
+import { FloatingActionMenu } from '@/src/components/FloatingActionMenu';
+import useDashboardScreen from '@/src/hooks/useDashboardScreen';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useMemo } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function DashboardScreen() {
   const {
@@ -43,8 +42,8 @@ export default function DashboardScreen() {
   }), [isSyncing, pendingCount]);
 
   return (
-    <Screen>
-      <ScrollView 
+    <Screen style={{ backgroundColor: theme.background }}>
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -54,7 +53,7 @@ export default function DashboardScreen() {
             <Text style={styles.greeting}>Bem-vindo,</Text>
             <Text style={[styles.userName, { color: theme.text }]}>{displayUserName}</Text>
           </View>
-          
+
           <Button
             variant="secondary"
             size="sm"
@@ -80,17 +79,17 @@ export default function DashboardScreen() {
             setOdometer={setOdometer}
             handleSaveOdometer={handleSaveOdometer}
             handleStopSession={handleToggleTracking}
-            handleDeleteSession={() => {}} 
+            handleDeleteSession={() => { }}
             theme={theme}
           />
         ) : (
-          <StartSessionPlaceholder onStart={handleToggleTracking} />
+          <StartSessionPlaceholder onStart={handleToggleTracking} themeLayout={theme} />
         )}
 
-        <QuickActions 
-          handleRouteEvent={handleRouteEvent} 
-          isTracking={isTracking} 
-        />
+        {/* <QuickActions
+          handleRouteEvent={handleRouteEvent}
+          isTracking={isTracking}
+        /> */}
 
         <MetricsSummary />
 
@@ -105,13 +104,13 @@ export default function DashboardScreen() {
 /**
  * Sub-component for clean JSX and isolation
  */
-const StartSessionPlaceholder = ({ onStart }: { onStart: () => void }) => (
-  <View style={styles.startContainer}>
+const StartSessionPlaceholder = ({ onStart, themeLayout }: { onStart: () => void, themeLayout: any }) => (
+  <View style={[styles.startContainer, { backgroundColor: themeLayout.background }]}>
     <View style={styles.startIconContainer}>
       <Ionicons name="map" size={48} color="#2563eb" />
     </View>
-    <Text style={styles.startTitle}>Pronto para rodar?</Text>
-    <Text style={styles.startSubtitle}>Inicie seu turno para começar o rastreamento.</Text>
+    <Text style={[styles.startTitle, { color: themeLayout.text }]}>Pronto para rodar?</Text>
+    <Text style={[styles.startSubtitle, { color: themeLayout.text }]}>Inicie seu turno para começar o rastreamento.</Text>
     <Button
       title="Iniciar Turno"
       size="lg"
@@ -193,7 +192,7 @@ const styles = StyleSheet.create({
   },
   startSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#fff',
     textAlign: 'center',
     marginBottom: 24,
   },

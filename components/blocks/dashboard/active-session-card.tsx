@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Card } from '../../ui/card';
+import React from 'react';
+import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../ui/button';
+import { Card } from '../../ui/card';
 
 interface ActiveSessionCardProps {
   sessionData: any;
@@ -106,8 +106,8 @@ export const ActiveSessionCard = ({
 
 const styles = StyleSheet.create({
   card: {
-    padding: 20,
-    marginBottom: 16,
+    padding: 15,
+    marginBottom: 10,
   },
   loadingCard: {
     padding: 40,
