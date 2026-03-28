@@ -1,7 +1,7 @@
-import { getDb, cleanupSyncedData } from './sqlite';
-import { supabase } from './supabase';
 import { useSessionStore } from '../modules/sessions/store';
 import { useTrackingStore } from '../modules/tracking/store';
+import { cleanupSyncedData, getDb } from './sqlite';
+import { supabase } from './supabase';
 
 // Helper to push unsynced items from a table
 const syncTable = async (db: any, localTableName: string) => {
@@ -15,7 +15,7 @@ const syncTable = async (db: any, localTableName: string) => {
 
         const payload = unsyncedRows.map((row: any) => {
             const { synced, ...rest } = row;
-            
+
             if (localTableName === 'profiles') {
                 delete (rest as any).email;
                 delete (rest as any).full_name;
@@ -168,7 +168,7 @@ const syncTable = async (db: any, localTableName: string) => {
         });
 
         const { error } = await supabase.from(remoteTableName).upsert(payload);
-        
+
         if (error) {
             if (error.message === 'FetchError' || error.message.includes('Network request failed')) {
                 throw new Error('OFFLINE');
@@ -181,7 +181,7 @@ const syncTable = async (db: any, localTableName: string) => {
         const placeholders = ids.map(() => '?').join(',');
         const query = `UPDATE ${localTableName} SET synced = 1 WHERE id IN (${placeholders})`;
         await db.runAsync(query, ids);
-        
+
         return { success: true, count: unsyncedRows.length };
     } catch (e) {
         console.error(`[Sync] Fatal error in ${localTableName}:`, e);
@@ -193,7 +193,7 @@ export const runFullSync = async () => {
     const db = getDb();
     const sessionStore = useSessionStore.getState();
     const activeSession = sessionStore.activeSession;
-    
+
     try {
         console.log('[Sync] Starting synchronization...');
 
@@ -201,8 +201,8 @@ export const runFullSync = async () => {
         if (!profilesOk.success) return false;
 
         // 1️⃣ Tracking Sessions MUST be synced before any data that references them
-        const trackingSessionsOk = await syncTable(db, 'tracking_sessions');
-        if (!trackingSessionsOk.success) return false;
+        // const trackingSessionsOk = await syncTable(db, 'tracking_sessions');
+        // if (!trackingSessionsOk.success) return false;
 
         const sessionsOk = await syncTable(db, 'work_sessions');
         if (!sessionsOk.success) return false;
@@ -211,7 +211,7 @@ export const runFullSync = async () => {
 
         // Route events should be synced before raw GPS points
         await syncTable(db, 'route_events');
-        
+
         // GPS points can be many, so we loop up to 5 times to clear backlogs of up to 2500 points
         let gpsSyncs = 0;
         while (gpsSyncs < 5) {
@@ -230,34 +230,45 @@ export const runFullSync = async () => {
         await syncTable(db, 'incomes');
         await syncTable(db, 'fuel_logs');
         await syncTable(db, 'maintenance_logs');
-        
+
         if (activeSession) {
             const updatedSession = await db.getFirstAsync<any>(
-                'SELECT * FROM work_sessions WHERE id = ?',
-                [activeSession.id]
+                'SELECT * FROM work_sessions WHERE id = ? AND status = ?',
+                [activeSession.id, 'open']
             );
-            
+
             if (updatedSession) {
+                const statusR = updatedSession.status ?? 'open';
                 sessionStore.setActiveSession({
                     ...activeSession,
                     total_distance_km: updatedSession.total_distance_km,
                     total_active_seconds: updatedSession.total_active_seconds,
                     total_idle_seconds: updatedSession.total_idle_seconds,
-                    status: updatedSession.status,
+                    status: statusR as any,
                 });
+            } else {
+                // If not found as 'open', check if it was closed locally
+                const checkClosed = await db.getFirstAsync<any>(
+                    'SELECT status FROM work_sessions WHERE id = ?',
+                    [activeSession.id]
+                );
+                if (checkClosed && checkClosed.status === 'closed') {
+                    sessionStore.setActiveSession(null);
+                }
             }
         }
-        
+
+
         // 5. Cleanup Policy: After successful sync, run local storage cleanup
         await cleanupSyncedData();
 
         useTrackingStore.getState().setLastSyncTime(Date.now());
         console.log('Sync completed.');
         return true;
-    } catch(e: any) {
+    } catch (e: any) {
         if (e.message === 'OFFLINE') {
             console.log('[Sync] Device is offline, skipping.');
-            throw e; 
+            throw e;
         }
         console.error('Full sync process failed:', e);
         return false;

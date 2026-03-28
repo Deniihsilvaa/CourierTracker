@@ -31,7 +31,7 @@ export const initDb = async (forceReset = false) => {
 
     await db.withTransactionAsync(async () => {
       // --- 1. CREATE CORE TABLES ---
-      
+
       // Profiles
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS profiles (
@@ -56,11 +56,12 @@ export const initDb = async (forceReset = false) => {
           total_distance_km REAL DEFAULT 0.0,
           total_active_seconds INTEGER DEFAULT 0,
           total_idle_seconds INTEGER DEFAULT 0,
-          status TEXT DEFAULT 'active',
+          status TEXT DEFAULT 'open',
           created_at TEXT DEFAULT CURRENT_TIMESTAMP,
           synced INTEGER DEFAULT 0
         );
       `);
+
 
       // Trips
       await db.execAsync(`
@@ -253,7 +254,7 @@ export const initDb = async (forceReset = false) => {
       for (const col of profileCols) {
         try {
           await db.execAsync(`ALTER TABLE profiles ADD COLUMN ${col.name} ${col.type};`);
-        } catch (e) {}
+        } catch (e) { }
       }
 
       // Work Sessions
@@ -267,7 +268,7 @@ export const initDb = async (forceReset = false) => {
       for (const col of sessionCols) {
         try {
           await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN ${col.name} ${col.type};`);
-        } catch (e) {}
+        } catch (e) { }
       }
 
       // Trips
@@ -281,7 +282,7 @@ export const initDb = async (forceReset = false) => {
       for (const col of tripCols) {
         try {
           await db.execAsync(`ALTER TABLE trips ADD COLUMN ${col.name} ${col.type};`);
-        } catch (e) {}
+        } catch (e) { }
       }
 
       // Route Events migrations
@@ -298,25 +299,25 @@ export const initDb = async (forceReset = false) => {
       for (const col of routeEventCols) {
         try {
           await db.execAsync(`ALTER TABLE route_events ADD COLUMN ${col.name} ${col.type};`);
-        } catch (e) {}
+        } catch (e) { }
       }
 
       // Indices
       try {
         await db.execAsync(`CREATE UNIQUE INDEX IF NOT EXISTS idx_gps_dedup ON gps_points (session_id, recorded_at);`);
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_gps_points_session ON gps_points(session_id);`);
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_route_events_session ON route_events(session_id);`);
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_route_events_time ON route_events(created_at);`);
-      } catch (e) {}
+      } catch (e) { }
 
       // GPS Points migrations
       const gpsCols = [
@@ -327,7 +328,7 @@ export const initDb = async (forceReset = false) => {
       for (const col of gpsCols) {
         try {
           await db.execAsync(`ALTER TABLE gps_points ADD COLUMN ${col.name} ${col.type};`);
-        } catch (e) {}
+        } catch (e) { }
       }
 
       // Log system migrations
@@ -342,12 +343,12 @@ export const initDb = async (forceReset = false) => {
       for (const col of logCols) {
         try {
           await db.execAsync(`ALTER TABLE log_system ADD COLUMN ${col.name} ${col.type};`);
-        } catch (e) {}
+        } catch (e) { }
       }
 
       try {
         await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_log_system_synced ON log_system (synced, created_at);`);
-      } catch (e) {}
+      } catch (e) { }
     });
 
     console.log('[Storage] Local database initialized successfully.');

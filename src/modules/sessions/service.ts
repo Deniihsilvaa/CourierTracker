@@ -50,8 +50,9 @@ export const startSession = async (startOdometer?: number) => {
       total_distance_km: 0,
       total_active_seconds: 0,
       total_idle_seconds: 0,
-      status: 'active',
+      status: 'open',
     });
+
 
     console.log(`[Session Service] Session ${sessionId} started (synced=${synced}).`);
   } catch (error) {
@@ -72,12 +73,12 @@ export const endSession = async () => {
     try {
       const payload = {
         end_time: endTime,
-        status: 'completed',
+        status: 'closed',
         total_distance_km: activeSession.total_distance_km,
         total_active_seconds: activeSession.total_active_seconds,
         total_idle_seconds: activeSession.total_idle_seconds,
       };
-      
+
       console.log(`[Session Service] Closing session ${activeSession.id} on API...`);
       await api.put(`/sessions/v1/${activeSession.id}`, payload);
     } catch (apiError) {
@@ -86,7 +87,7 @@ export const endSession = async () => {
 
     // 2. Update offline session record
     await db.runAsync(
-      `UPDATE work_sessions SET end_time = ?, status = 'completed', synced = 0 WHERE id = ?`,
+      `UPDATE work_sessions SET end_time = ?, status = 'closed', synced = 0 WHERE id = ?`,
       [endTime, activeSession.id]
     );
 
@@ -101,10 +102,10 @@ export const endSession = async () => {
       const duration = Math.round((new Date(endTime).getTime() - new Date(sessionData.start_time).getTime()) / 1000);
 
       await db.runAsync(
-        `INSERT INTO trips (id, session_id, user_id, distance_km, duration_seconds, start_time, end_time, status, synced) VALUES (?, ?, ?, ?, ?, ?, ?, 'completed', 0)`,
+        `INSERT INTO trips (id, session_id, user_id, distance_km, duration_seconds, start_time, end_time, status, synced) VALUES (?, ?, ?, ?, ?, ?, ?, 'closed', 0)`,
         [tripId, sessionData.id, sessionData.user_id, sessionData.total_distance_km, duration, sessionData.start_time, endTime]
       );
-      
+
       await db.runAsync(
         `UPDATE gps_points SET trip_id = ?, synced = 0 WHERE session_id = ? AND (trip_id IS NULL OR trip_id = '')`,
         [tripId, sessionData.id]
@@ -144,7 +145,7 @@ export const recoverActiveSession = async () => {
     // 1. Check SQLite first for local active session
     const db = getDb();
     const localSession = await db.getFirstAsync<any>(
-      "SELECT * FROM work_sessions WHERE status = 'active' OR status = 'open' ORDER BY start_time DESC LIMIT 1"
+      "SELECT * FROM work_sessions WHERE status = 'open' ORDER BY start_time DESC LIMIT 1"
     );
 
     if (localSession) {
@@ -157,7 +158,7 @@ export const recoverActiveSession = async () => {
         total_distance_km: localSession.total_distance_km || 0,
         total_active_seconds: localSession.total_active_seconds || 0,
         total_idle_seconds: localSession.total_idle_seconds || 0,
-        status: 'active',
+        status: 'open',
       });
       return;
     }
@@ -165,21 +166,21 @@ export const recoverActiveSession = async () => {
     // 2. Fallback: Check API for an open session using the correct user endpoint
     console.log('[Session Service] Checking API for active sessions...');
     const response = await api.get(`/sessions/v1/user/${user.id}`);
-    
+
     if (response.data.success && Array.isArray(response.data.data)) {
-      // Find session where status is NOT completed/cancelled or has no end_time
-      const apiActive = response.data.data.find((s: any) => 
-        !s.end_time && (s.status === 'open' || s.status === 'active' || !s.status)
+      // Find session where status is NOT closed/cancelled or has no end_time
+      const apiActive = response.data.data.find((s: any) =>
+        !s.end_time && (s.status === 'open' || !s.status)
       );
-      
+
       if (apiActive) {
         console.log('[Session Service] Found active session on API:', apiActive.id);
-        
+
         await localDatabase.insertWorkSession(
-          apiActive.id, 
-          user.id, 
-          apiActive.start_time || apiActive.startTime || new Date().toISOString(), 
-          1, 
+          apiActive.id,
+          user.id,
+          apiActive.start_time || apiActive.startTime || new Date().toISOString(),
+          1,
           apiActive.start_odometer || apiActive.startOdometer
         );
 
@@ -191,7 +192,7 @@ export const recoverActiveSession = async () => {
           total_distance_km: apiActive.total_distance_km || 0,
           total_active_seconds: apiActive.total_active_seconds || 0,
           total_idle_seconds: apiActive.total_idle_seconds || 0,
-          status: 'active',
+          status: 'open',
         });
       }
     }
@@ -199,4 +200,3 @@ export const recoverActiveSession = async () => {
     console.warn('[Session Service] Failed to recover session from API:', error);
   }
 };
-
