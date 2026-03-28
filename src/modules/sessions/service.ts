@@ -127,8 +127,11 @@ export const fetchSessionData = async (sessionId: string) => {
       return response.data.data;
     }
     return null;
-  } catch (error) {
-    console.error('[Session Service] Error fetching session:', error);
+  } catch (error: any) {
+    // 404 is expected for locally created sessions that haven't synced yet
+    if (error.response?.status !== 404) {
+      console.warn('[Session Service] Error fetching session details:', error.message);
+    }
     return null;
   }
 };

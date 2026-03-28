@@ -94,6 +94,7 @@ export const initDb = async (forceReset = false) => {
           accuracy REAL,
           speed REAL,
           recorded_at TEXT NOT NULL,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
           synced INTEGER DEFAULT 0
         );
       `);
@@ -316,6 +317,18 @@ export const initDb = async (forceReset = false) => {
       try {
         await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_route_events_time ON route_events(created_at);`);
       } catch (e) {}
+
+      // GPS Points migrations
+      const gpsCols = [
+        { name: 'recorded_at', type: 'TEXT' },
+        { name: 'created_at', type: 'TEXT DEFAULT CURRENT_TIMESTAMP' },
+        { name: 'synced', type: 'INTEGER DEFAULT 0' }
+      ];
+      for (const col of gpsCols) {
+        try {
+          await db.execAsync(`ALTER TABLE gps_points ADD COLUMN ${col.name} ${col.type};`);
+        } catch (e) {}
+      }
 
       // Log system migrations
       const logCols = [
