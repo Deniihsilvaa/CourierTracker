@@ -1,4 +1,4 @@
-# Courier Tracker 🚚
+# RotaPro 🚚
 
 Aplicativo mobile **offline-first** para rastreamento de rotas e controle de jornada de entregadores. Construído com React Native + Expo, Supabase e SQLite local.
 
@@ -14,16 +14,16 @@ Aplicativo mobile **offline-first** para rastreamento de rotas e controle de jor
 
 ## 🛠️ Stack
 
-| Camada | Tecnologia |
-|---|---|
-| Framework | Expo SDK 51 + Expo Router |
-| Linguagem | TypeScript |
-| Estado Global | Zustand |
-| Banco Local | expo-sqlite (SQLite) |
-| Backend / Auth | Supabase (PostgreSQL + Auth) |
-| Localização | expo-location + expo-task-manager |
-| Feedback Tátil | expo-haptics |
-| Build / Deploy | EAS Build |
+| Camada         | Tecnologia                        |
+| -------------- | --------------------------------- |
+| Framework      | Expo SDK 51 + Expo Router         |
+| Linguagem      | TypeScript                        |
+| Estado Global  | Zustand                           |
+| Banco Local    | expo-sqlite (SQLite)              |
+| Backend / Auth | Supabase (PostgreSQL + Auth)      |
+| Localização    | expo-location + expo-task-manager |
+| Feedback Tátil | expo-haptics                      |
+| Build / Deploy | EAS Build                         |
 
 ## 📁 Estrutura do Projeto
 
@@ -115,12 +115,12 @@ eas build -p android --profile production
 
 ### Tabelas Locais (SQLite)
 
-| Tabela | Descrição |
-|---|---|
-| `profiles` | Dados do perfil do entregador |
-| `work_sessions` | Turnos de trabalho com métricas agregadas |
-| `trips` | Resumo de cada viagem finalizada |
-| `gps_points` | Pontos GPS brutos coletados durante o turno |
+| Tabela          | Descrição                                   |
+| --------------- | ------------------------------------------- |
+| `profiles`      | Dados do perfil do entregador               |
+| `work_sessions` | Turnos de trabalho com métricas agregadas   |
+| `trips`         | Resumo de cada viagem finalizada            |
+| `gps_points`    | Pontos GPS brutos coletados durante o turno |
 
 ### Proteção Contra Duplicação
 
@@ -132,6 +132,7 @@ eas build -p android --profile production
 ### Sincronização
 
 O fluxo de sync (`src/services/sync.ts`) é acionado:
+
 1. Manualmente pelo botão de sync no dashboard
 2. Automaticamente ao finalizar um turno
 

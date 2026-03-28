@@ -19,18 +19,18 @@ export async function requestNotificationPermissions() {
   if (finalStatus !== 'granted') {
     Alert.alert(
       '🔔 Notificações Necessárias',
-      'O Courier Tracker utiliza notificações para permitir que você registre coletas e entregas sem precisar abrir o app. Deseja habilitar agora?',
+      'O RotaPro utiliza notificações para permitir que você registre coletas e entregas sem precisar abrir o app. Deseja habilitar agora?',
       [
         { text: 'Não', style: 'cancel' },
-        { 
-          text: 'Abrir Configurações', 
+        {
+          text: 'Abrir Configurações',
           onPress: () => {
             if (Platform.OS === 'ios') {
               Linking.openURL('app-settings:');
             } else {
               Linking.openSettings();
             }
-          } 
+          }
         },
       ]
     );

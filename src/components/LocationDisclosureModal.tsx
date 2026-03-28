@@ -1,8 +1,8 @@
-import React from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface Props {
   visible: boolean;
@@ -22,11 +22,11 @@ export const LocationDisclosureModal = ({ visible, onConfirm, onCancel }: Props)
             <View style={styles.iconContainer}>
               <Ionicons name="location-outline" size={48} color={theme.tint} />
             </View>
-            
+
             <Text style={[styles.title, { color: theme.text }]}>Uso da sua Localização</Text>
-            
+
             <Text style={[styles.description, { color: theme.text }]}>
-              O Courier Tracker coleta dados de localização para habilitar o rastreamento das suas entregas, 
+              O RotaPro coleta dados de localização para habilitar o rastreamento das suas entregas,
               mesmo quando o aplicativo está fechado ou não está em uso.
             </Text>
 
@@ -57,13 +57,13 @@ export const LocationDisclosureModal = ({ visible, onConfirm, onCancel }: Props)
           </ScrollView>
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity 
-              style={[styles.button, styles.confirmButton, { backgroundColor: theme.tint }]} 
+            <TouchableOpacity
+              style={[styles.button, styles.confirmButton, { backgroundColor: theme.tint }]}
               onPress={onConfirm}
             >
               <Text style={styles.confirmButtonText}>Entendi e Aceito</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
               <Text style={[styles.cancelButtonText, { color: theme.icon }]}>Agora não</Text>
             </TouchableOpacity>

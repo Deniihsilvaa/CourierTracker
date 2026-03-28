@@ -1,4 +1,4 @@
--- Schema for Courier Tracker MVP
+-- Schema for RotaPro MVP
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

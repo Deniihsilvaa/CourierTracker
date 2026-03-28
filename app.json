@@ -12,15 +12,11 @@
       "bundleIdentifier": "com.denilsonsilva97.couriertracker",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Permita que o Courier Tracker acesse sua localização para rastrear suas rotas de entrega, mesmo em segundo plano.",
-        "NSLocationWhenInUseUsageDescription": "O Courier Tracker precisa da sua localização para registrar seus percursos durante o trabalho.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Permita que o RotaPro acesse sua localização para rastrear suas rotas de entrega, mesmo em segundo plano.",
+        "NSLocationWhenInUseUsageDescription": "O RotaPro precisa da sua localização para registrar seus percursos durante o trabalho.",
         "NSLocationAlwaysUsageDescription": "O rastreamento em segundo plano é necessário para calcular a distância percorrida automaticamente.",
         "NSMotionUsageDescription": "Usamos sensores de movimento para otimizar o consumo de bateria durante o rastreamento.",
-        "UIBackgroundModes": [
-          "location",
-          "fetch",
-          "remote-notification"
-        ]
+        "UIBackgroundModes": ["location", "fetch", "remote-notification"]
       }
     },
     "android": {
@@ -70,13 +66,13 @@
       [
         "expo-location",
         {
-          "locationAlwaysPermission": "Allow Courier Tracker to use your location even when the app is in the background.",
-          "locationWhenInUsePermission": "Allow Courier Tracker to use your location.",
+          "locationAlwaysPermission": "Allow RotaPro to use your location even when the app is in the background.",
+          "locationWhenInUsePermission": "Allow RotaPro to use your location.",
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true,
           "foregroundService": {
             "notificationTitle": "Rastreamento Ativo",
-            "notificationBody": "O Courier Tracker está registrando seu percurso.",
+            "notificationBody": "O RotaPro está registrando seu percurso.",
             "notificationIcon": "./assets/images/icon.png"
           }
         }

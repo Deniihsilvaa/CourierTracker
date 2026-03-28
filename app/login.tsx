@@ -25,7 +25,7 @@ export default function LoginScreen() {
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView contentContainerStyle={stylesAuth.scrollContent}>
-          <Text style={stylesAuth.title}>Courier Tracker</Text>
+          <Text style={stylesAuth.title}>RotaPro</Text>
 
           <View style={stylesAuth.inputContainer}>
             <Text style={stylesAuth.label}>Email Address</Text>
@@ -56,29 +56,29 @@ export default function LoginScreen() {
             <ActivityIndicator size="large" color="#0000ff" />
           ) : (
             <View style={stylesAuth.buttonGroup}>
-              <Button title="Login" onPress={handleSignIn} />
+              <Button title="Acessar" onPress={handleSignIn} />
 
               <View style={stylesAuth.spacer} />
 
               <Button
-                title="Login with Google"
+                title="Acessar com Google"
                 onPress={handleGoogleSignIn}
                 color="#DB4437"
-                />
+              />
 
               <View style={stylesAuth.spacer} />
 
               <Text
                 style={stylesAuth.registerLink}
                 onPress={handleRegister}
-                >
+              >
                 Não tem uma conta? Cadastre-se
               </Text>
 
               <Text
                 style={stylesAuth.forgotPassword}
                 onPress={handleForgotPassword}
-                >
+              >
                 Esqueceu a senha?
               </Text>
               <Text style={stylesAuth.subTitle}> desenvolvido por Denilson Silva</Text>

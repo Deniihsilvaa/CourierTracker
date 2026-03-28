@@ -1,9 +1,9 @@
-import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
-import { AppState, Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import { AppState } from 'react-native';
 import { createRouteEvent } from '../modules/tracking/routeEventService';
-import { logger } from '../utils/logger';
 import { getDb } from '../services/sqlite';
+import { logger } from '../utils/logger';
 
 // Categorias e Ações
 const TRACKING_CATEGORY_ID_ACTIVE = 'tracking-active';
@@ -63,7 +63,7 @@ async function getSessionMetrics(sessionId: string) {
       'SELECT total_distance_km, total_active_seconds FROM work_sessions WHERE id = ?',
       [sessionId]
     );
-    
+
     const eventCount = await db.getFirstAsync<any>(
       'SELECT COUNT(*) as count FROM route_events WHERE session_id = ?',
       [sessionId]
@@ -96,7 +96,7 @@ export async function updateTrackingNotificationMetrics(sessionId: string, userI
   await Notifications.scheduleNotificationAsync({
     identifier: TRACKING_NOTIFICATION_ID,
     content: {
-      title: isPaused ? '⏸️ Sessão Pausada' : '🚚 Courier Tracker Ativo',
+      title: isPaused ? '⏸️ Sessão Pausada' : '🚚 RotaPro Ativo',
       body: isPaused ? 'Toque em Retomar para continuar o rastreamento.' : body,
       categoryIdentifier: isPaused ? TRACKING_CATEGORY_ID_PAUSED : TRACKING_CATEGORY_ID_ACTIVE,
       sticky: true,
@@ -111,7 +111,7 @@ export async function updateTrackingNotificationMetrics(sessionId: string, userI
 export async function startTrackingNotification(sessionId: string, userId: string) {
   try {
     await setupNotificationCategories();
-    
+
     // Primeira exibição
     await updateTrackingNotificationMetrics(sessionId, userId);
 
@@ -138,7 +138,7 @@ export async function stopTrackingNotification() {
 /** Processa a ação da notificação */
 export async function handleNotificationAction(response: Notifications.NotificationResponse) {
   if (isHandlingAction) return;
-  
+
   const actionId = response.actionIdentifier;
   if (actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) return;
 
@@ -147,7 +147,7 @@ export async function handleNotificationAction(response: Notifications.Notificat
 
   try {
     isHandlingAction = true;
-    
+
     if (AppState.currentState === 'active') {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }

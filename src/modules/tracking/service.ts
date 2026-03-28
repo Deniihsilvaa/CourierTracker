@@ -1,21 +1,21 @@
 import * as Location from 'expo-location';
 import 'react-native-get-random-values';
-import { localDatabase } from '../../services/localDatabase';
-import { logger } from '../../utils/logger';
-import { calculateDistance, isValidLocation } from '../../utils/location';
-import { useSessionStore } from '../sessions/store';
-import { useTrackingStore } from './store';
-import { 
-  startTrackingNotification, 
-  stopTrackingNotification, 
-  updateTrackingNotificationMetrics 
+import {
+  startTrackingNotification,
+  stopTrackingNotification,
+  updateTrackingNotificationMetrics
 } from '../../infrastructure/tracking-notification';
-import { createRouteEvent } from './routeEventService';
-import { trackingRecorder } from './tracking-recorder';
-import { eventDetector } from './event-detector';
-import { sessionManager } from './session-manager';
+import { localDatabase } from '../../services/localDatabase';
+import { calculateDistance, isValidLocation } from '../../utils/location';
+import { logger } from '../../utils/logger';
+import { useSessionStore } from '../sessions/store';
 import { analyticsService } from './analytics-service';
+import { eventDetector } from './event-detector';
+import { createRouteEvent } from './routeEventService';
 import { segmentationService } from './segmentation-service';
+import { sessionManager } from './session-manager';
+import { useTrackingStore } from './store';
+import { trackingRecorder } from './tracking-recorder';
 
 const LOCATION_TASK_NAME = 'background-location-task';
 const MIN_MOVEMENT_THRESHOLD = 5; // metros
@@ -37,7 +37,7 @@ export const startTracking = async () => {
     // 1. GUARANTEE SESSION CREATION
     // This MUST succeed before we enable any GPS listeners
     const trackingSessionId = await sessionManager.startTrackingSession(session.user_id!);
-    
+
     if (!trackingSessionId) {
       throw new Error('Failed to generate tracking session ID');
     }
@@ -64,7 +64,7 @@ export const startTracking = async () => {
         showsBackgroundLocationIndicator: true,
         activityType: Location.ActivityType.AutomotiveNavigation,
         foregroundService: {
-          notificationTitle: "🚛 Courier Tracker Ativo",
+          notificationTitle: "🚛 RotaPro Ativo",
           notificationBody: "Rastreando sua rota... Aguardando primeiro ponto GPS.",
           notificationColor: "#007AFF",
         }
@@ -73,7 +73,7 @@ export const startTracking = async () => {
     } catch (error: any) {
       if (error.message.includes('foreground service') || error.message.includes('permissions')) {
         logger.warn('[Tracking] Background GPS failed (Missing permissions in manifest). Falling back to watchPosition.');
-        
+
         // Inform user that background tracking might be limited
         if (__DEV__) {
           console.warn('CRITICAL: Foreground Service permissions not found. Ensure you have rebuilt the APK/Development Build after modifying app.json.');
@@ -172,7 +172,7 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
   let activeSession = sessionState.activeSession;
   if (!activeSession) {
     activeSession = await localDatabase.queryFirst<any>(
-      'work_sessions', 
+      'work_sessions',
       'WHERE status = "active" ORDER BY created_at DESC'
     );
     if (activeSession) sessionState.setActiveSession(activeSession);
@@ -205,13 +205,13 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
         lastLocation.latitude, lastLocation.longitude,
         latitude, longitude
       );
-      
+
       const timeDeltaSeconds = (timestamp - lastLocation.timestamp) / 1000;
       const distanceDeltaKm = distanceMeters / 1000;
 
       // Update UI state (Zustand) for real-time visualization
       trackingState.setCurrentLocation({ latitude, longitude, accuracy, speed, timestamp });
-      
+
       if (distanceMeters > 5) {
         sessionState.updateSessionMetrics(distanceDeltaKm, Math.round(timeDeltaSeconds), 0);
       } else {
