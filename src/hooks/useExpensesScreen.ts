@@ -1,5 +1,6 @@
 import { expensesService, Expense } from '@/src/services/expenses.service';
 import { useSessionStore } from '@/src/modules/sessions/store';
+import { useAnalyticsStore } from '@/src/modules/analytics/store';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { useCategories } from './useCategories';
@@ -78,6 +79,9 @@ export default function useExpensesScreen() {
       setAmount('');
       setDescription('');
       toggleForm();
+      
+      // Refresh dashboard analytics
+      useAnalyticsStore.getState().fetchFinancialSummary("month");
     } catch (e) {
       Alert.alert('Erro', 'Não foi possível criar a despesa.');
     } finally {
@@ -109,6 +113,9 @@ export default function useExpensesScreen() {
       });
       setExpenses(prev => prev.map(e => (e.id === editingId ? updated : e)));
       setEditingId(null);
+      
+      // Refresh dashboard analytics
+      useAnalyticsStore.getState().fetchFinancialSummary("month");
     } catch (e) {
       Alert.alert('Erro', 'Não foi possível atualizar a despesa.');
     } finally {

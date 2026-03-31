@@ -1,5 +1,6 @@
 import { fuelLogsService, FuelLog, FuelType } from '@/src/services/fuelLogs.service';
 import { useSessionStore } from '@/src/modules/sessions/store';
+import { useAnalyticsStore } from '@/src/modules/analytics/store';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { useBaseCrud } from './useBaseCrud';
@@ -111,6 +112,9 @@ export default function useFuelsScreen() {
       setDescription('');
       setGasStation('');
       toggleForm();
+      
+      // Refresh dashboard analytics
+      useAnalyticsStore.getState().fetchFinancialSummary("month");
     } catch (e) {
       Alert.alert('Erro', 'Não foi possível registrar o abastecimento.');
     } finally {
@@ -148,6 +152,9 @@ export default function useFuelsScreen() {
       });
       setFuelLogs(prev => prev.map(log => log.id === editingId ? updated : log));
       setEditingId(null);
+      
+      // Refresh dashboard analytics
+      useAnalyticsStore.getState().fetchFinancialSummary("month");
     } catch (e) {
       Alert.alert('Erro', 'Não foi possível atualizar o registro.');
     } finally {

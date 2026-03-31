@@ -1,5 +1,6 @@
 import { incomesService, Income } from '@/src/services/incomes.service';
 import { useSessionStore } from '@/src/modules/sessions/store';
+import { useAnalyticsStore } from '@/src/modules/analytics/store';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { useCategories } from './useCategories';
@@ -96,6 +97,9 @@ export default function useIncomesScreen() {
       setSource('');
       setDescription('');
       toggleForm();
+      
+      // Refresh dashboard analytics
+      useAnalyticsStore.getState().fetchFinancialSummary("month");
     } catch (e) {
       Alert.alert('Erro', 'Não foi possível criar a receita.');
     } finally {
@@ -131,6 +135,9 @@ export default function useIncomesScreen() {
       });
       setIncomes(prev => prev.map(inc => inc.id === editingId ? updated : inc));
       setEditingId(null);
+      
+      // Refresh dashboard analytics
+      useAnalyticsStore.getState().fetchFinancialSummary("month");
     } catch (e) {
       Alert.alert('Erro', 'Não foi possível atualizar a receita.');
     } finally {

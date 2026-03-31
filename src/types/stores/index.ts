@@ -25,3 +25,23 @@ export interface SessionState {
     setIsLoading: (v: boolean) => void;
     updateSessionMetrics: (distanceDeltaKm: number, activeDeltaSec: number, idleDeltaSec: number) => void;
 }
+
+export interface FinancialAnalytics {
+  day_date: string;
+  total_income: number;
+  total_expenses: number;
+  total_fuel: number;
+  total_costs: number;
+  net_profit: number;
+  profit_margin: number;
+}
+
+export interface AnalyticsState {
+  financials: FinancialAnalytics | null;
+  isLoading: boolean;
+  error: string | null;
+  setFinancials: (data: FinancialAnalytics | null) => void;
+  setIsLoading: (v: boolean) => void;
+  setError: (v: string | null) => void;
+  fetchFinancialSummary: (groupBy?: "day" | "week" | "month") => Promise<void>;
+}

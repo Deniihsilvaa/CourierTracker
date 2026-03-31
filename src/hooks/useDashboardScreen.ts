@@ -9,6 +9,7 @@ import { useTrackingStore } from '@/src/modules/tracking/store';
 import { localDatabase } from '@/src/services/localDatabase';
 import { runFullSync } from '@/src/services/sync';
 import { logger } from '@/src/utils/logger';
+import { useAnalyticsStore } from '@/src/modules/analytics/store';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, ToastAndroid } from 'react-native';
@@ -29,6 +30,12 @@ export default function useDashboardScreen() {
     const [isSyncing, setIsSyncing] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
 
+    const { 
+        financials, 
+        isLoading: loadingAnalytics, 
+        fetchFinancialSummary 
+    } = useAnalyticsStore();
+
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
 
@@ -48,7 +55,12 @@ export default function useDashboardScreen() {
             }
         };
 
+        const loadAnalytics = async () => {
+            fetchFinancialSummary("month");
+        };
+
         checkPending();
+        loadAnalytics();
         recoverActiveSession();
 
         const interval = setInterval(checkPending, 10000);
@@ -189,5 +201,8 @@ export default function useDashboardScreen() {
         handleStopSession,
         confirmStopSession,
         handleRouteEvent,
+        fetchFinancialSummary,
+        financials,
+        loadingAnalytics,
     };
 }

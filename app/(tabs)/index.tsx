@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { FloatingActionMenu } from '@/src/components/FloatingActionMenu';
 import useDashboardScreen from '@/src/hooks/useDashboardScreen';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo } from 'react';
+import { useFocusEffect } from 'expo-router';
+import React, { useMemo, useCallback } from 'react';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, View, TouchableOpacity } from 'react-native';
 
 export default function DashboardScreen() {
@@ -28,8 +29,17 @@ export default function DashboardScreen() {
     setEndOdometer,
     confirmStopSession,
     isSyncing,
-    pendingCount
+    pendingCount,
+    financials,
+    loadingAnalytics,
+    fetchFinancialSummary
   } = useDashboardScreen();
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchFinancialSummary("month");
+    }, [fetchFinancialSummary])
+  );
 
   // Logic moved from JSX to Memoized values for testability
   const displayUserName = useMemo(() => {
@@ -93,7 +103,7 @@ export default function DashboardScreen() {
           />
         )}
 
-        <MetricsSummary />
+        <MetricsSummary data={financials} isLoading={loadingAnalytics} />
 
         <View style={styles.spacer} />
       </ScrollView>
@@ -201,19 +211,58 @@ const StartSessionPlaceholder = ({
 /**
  * Extracted Metrics for readability
  */
-const MetricsSummary = () => (
-  <>
-    <Text style={styles.sectionTitle}>Resumo do Dia</Text>
-    <View style={styles.metricsGrid}>
-      <MetricCard title="Ganhos" value="R$ 0,00" icon="wallet" color="#10b981" />
-      <MetricCard title="Entregas" value="0" icon="cube" color="#2563eb" />
-    </View>
-    <View style={[styles.metricsGrid, { marginTop: 12 }]}>
-      <MetricCard title="Combustível" value="R$ 0,00" icon="water" color="#f59e0b" />
-      <MetricCard title="Distância" value="0.0 km" icon="navigate" color="#6b7280" />
-    </View>
-  </>
-);
+const MetricsSummary = ({ data, isLoading }: { data: any, isLoading: boolean }) => {
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+  };
+
+  if (isLoading && !data) {
+    return (
+      <View style={styles.metricsLoading}>
+        <ActivityIndicator size="small" color="#2563eb" />
+        <Text style={styles.metricsLoadingText}>Carregando métricas...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Resumo do Mês</Text>
+        {isLoading && <ActivityIndicator size="small" color="#2563eb" style={{ marginLeft: 8 }} />}
+      </View>
+      
+      <View style={styles.metricsGrid}>
+        <MetricCard 
+          title="Ganhos" 
+          value={formatCurrency(data?.total_income)} 
+          icon="wallet" 
+          color="#10b981" 
+        />
+        <MetricCard 
+          title="Líquido" 
+          value={formatCurrency(data?.net_profit)} 
+          icon="trending-up" 
+          color="#2563eb" 
+        />
+      </View>
+      <View style={[styles.metricsGrid, { marginTop: 12 }]}>
+        <MetricCard 
+          title="Combustível" 
+          value={formatCurrency(data?.total_fuel)} 
+          icon="water" 
+          color="#f59e0b" 
+        />
+        <MetricCard 
+          title="Custos" 
+          value={formatCurrency(data?.total_costs)} 
+          icon="trending-down" 
+          color="#ef4444" 
+        />
+      </View>
+    </>
+  );
+};
 
 const styles = StyleSheet.create({
   scrollContent: {
@@ -321,6 +370,24 @@ const styles = StyleSheet.create({
   metricsGrid: {
     flexDirection: 'row',
     gap: 12,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  metricsLoading: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f9fafb',
+    borderRadius: 16,
+    marginBottom: 20,
+  },
+  metricsLoadingText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#6b7280',
   },
   spacer: {
     height: 100,
