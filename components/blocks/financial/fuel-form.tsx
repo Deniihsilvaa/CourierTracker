@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Button } from '../../ui/button';
 
 interface FuelFormProps {
@@ -41,14 +41,14 @@ export const FuelForm = ({
       {isEditing && (
         <Text style={[styles.editHint, { color: brandColor }]}>Editando Abastecimento</Text>
       )}
-      
+
       <View style={styles.row}>
         <View style={styles.field}>
           <Text style={styles.label}>R$/Litro</Text>
           <TextInput
             value={formData.price_per_liter}
             onChangeText={(v) => updateField('price_per_liter', v)}
-            style={[styles.input, { color: theme.text }]}
+            style={[styles.input]}
             placeholder="0.00"
             keyboardType="numeric"
           />
@@ -58,7 +58,7 @@ export const FuelForm = ({
           <TextInput
             value={formData.liters}
             onChangeText={(v) => updateField('liters', v)}
-            style={[styles.input, { color: theme.text }]}
+            style={styles.input}
             placeholder="0.00"
             keyboardType="numeric"
           />
@@ -68,7 +68,7 @@ export const FuelForm = ({
           <TextInput
             value={formData.amount}
             onChangeText={(v) => updateField('amount', v)}
-            style={[styles.input, { color: theme.text, fontWeight: '700' }]}
+            style={[styles.input, { fontWeight: '700' }]}
             placeholder="0.00"
             keyboardType="numeric"
           />
@@ -81,7 +81,7 @@ export const FuelForm = ({
           <TextInput
             value={formData.odometer}
             onChangeText={(v) => updateField('odometer', v)}
-            style={[styles.input, { color: theme.text }]}
+            style={[styles.input]}
             placeholder="Km atual"
             keyboardType="numeric"
           />
@@ -91,7 +91,7 @@ export const FuelForm = ({
           <TextInput
             value={formData.gas_station}
             onChangeText={(v) => updateField('gas_station', v)}
-            style={[styles.input, { color: theme.text }]}
+            style={[styles.input]}
             placeholder="Ex: Ipiranga"
           />
         </View>
@@ -103,21 +103,21 @@ export const FuelForm = ({
           <TextInput
             value={formData.date_competition}
             onChangeText={(v) => updateField('date_competition', v)}
-            style={[styles.input, { color: theme.text }]}
+            style={[styles.input]}
             placeholder="AAAA-MM-DD"
           />
         </View>
         <View style={styles.field}>
           <Text style={styles.label}>Combustível</Text>
           <View style={styles.typeToggle}>
-            <TouchableOpacity 
-              onPress={() => updateField('type', 'gasoline')} 
+            <TouchableOpacity
+              onPress={() => updateField('type', 'gasoline')}
               style={[styles.typeOption, formData.type === 'gasoline' && { backgroundColor: brandColor }]}
             >
               <Text style={[styles.typeText, formData.type === 'gasoline' && { color: '#fff' }]}>GAS</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => updateField('type', 'Ethanol')} 
+            <TouchableOpacity
+              onPress={() => updateField('type', 'Ethanol')}
               style={[styles.typeOption, formData.type === 'Ethanol' && { backgroundColor: brandColor }]}
             >
               <Text style={[styles.typeText, formData.type === 'Ethanol' && { color: '#fff' }]}>ETA</Text>
@@ -150,6 +150,9 @@ const styles = StyleSheet.create({
   container: {
     gap: 12,
   },
+  textInput: {
+    color: 'black',
+  },
   editHint: {
     fontSize: 12,
     fontWeight: '700',
@@ -171,6 +174,7 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: '#f3f4f6',
+    color: 'black',
     borderRadius: 8,
     paddingHorizontal: 10,
     height: 40,

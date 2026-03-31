@@ -1,7 +1,9 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { FinancialListItem } from '@/src/components/Financial/FinancialListItem';
 import { FuelLog } from '@/src/services/fuelLogs.service';
 import useFuelsScreen from '@/src/hooks/useFuelsScreen';
+import { crudStyles as styles } from '@/src/styles';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
@@ -9,16 +11,18 @@ import {
   ActivityIndicator,
   Animated,
   FlatList,
-  StyleSheet,
+  Platform,
   Text,
   TextInput,
   TouchableOpacity,
+  UIManager,
   View,
 } from 'react-native';
-import { Screen } from '@/components/layouts/screen';
-import { Button } from '@/components/ui/button';
-import { FinancialListItem } from '@/src/components/Financial/FinancialListItem';
 import { FuelForm } from '@/components/blocks/financial/fuel-form';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function FuelsScreen() {
   const router = useRouter();
@@ -46,6 +50,7 @@ export default function FuelsScreen() {
 
   const brandColor = '#FF9800'; 
   const cardBg = isDark ? '#1e1e1e' : '#ffffff';
+  const inputBg = isDark ? '#2a2a2a' : '#f5f5f5';
   const borderColor = isDark ? '#333' : '#e0e0e0';
 
   const rotate = rotateAnim.interpolate({
@@ -60,8 +65,13 @@ export default function FuelsScreen() {
       <FinancialListItem
         title={item.gas_station || 'Abastecimento'}
         titleExtra={
-          <View style={[styles.typeBadge, { backgroundColor: item.type === 'gasoline' ? '#4CAF50' : '#8BC34A' }]}>
-            <Text style={styles.typeBadgeText}>{item.type === 'gasoline' ? 'Gas' : 'Eta'}</Text>
+          <View style={[styles.typeBadge, { 
+            backgroundColor: isDark ? '#333' : '#f0f0f0', 
+            borderColor: item.type === 'gasoline' ? '#4CAF50' : '#8BC34A' 
+          }]}>
+            <Text style={[styles.typeBadgeText, { color: item.type === 'gasoline' ? '#4CAF50' : '#8BC34A' }]}>
+              {item.type === 'gasoline' ? 'GAS' : 'ETA'}
+            </Text>
           </View>
         }
         subtitle={`${item.liters}L • R$ ${item.price_per_liter.toFixed(2)}/L • ${item.odometer} km`}
@@ -88,28 +98,28 @@ export default function FuelsScreen() {
   };
 
   return (
-    <Screen style={styles.container}>
-      {/* Header Card with Registration Form */}
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Header section */}
       <View style={[styles.headerCard, { backgroundColor: cardBg, borderColor }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Ionicons name="arrow-back" size={24} color={theme.text} />
+              <Ionicons name="arrow-back" size={22} color={theme.text} />
             </TouchableOpacity>
             <Text style={[styles.headerTitle, { color: theme.text }]}>Abastecimentos</Text>
           </View>
           <TouchableOpacity
             onPress={toggleForm}
-            style={[styles.addBtn, { backgroundColor: formExpanded ? brandColor : (isDark ? '#333' : '#f3f4f6') }]}
+            style={[styles.addBtn, { backgroundColor: formExpanded ? brandColor : (isDark ? '#333' : '#f0f0f0') }]}
           >
             <Animated.View style={{ transform: [{ rotate }] }}>
-              <Ionicons name="add" size={24} color={formExpanded ? '#fff' : theme.text} />
+              <Ionicons name="add" size={22} color={formExpanded ? '#fff' : theme.text} />
             </Animated.View>
           </TouchableOpacity>
         </View>
 
         {formExpanded && (
-          <View style={styles.formContainer}>
+          <View style={styles.form}>
             <FuelForm
               onSubmit={(data) => handleCreate(data)}
               loading={saving}
@@ -120,44 +130,62 @@ export default function FuelsScreen() {
         )}
       </View>
 
-      {/* Filter Bar */}
-      <View style={[styles.filterBar, { backgroundColor: cardBg, borderColor }]}>
-        <View style={styles.filterTypes}>
+      {/* Filters Bar */}
+      <View style={[styles.filterBar, { backgroundColor: cardBg, borderColor, paddingVertical: 8 }]}>
+        <View style={{ flexDirection: 'row', flex: 1, gap: 8 }}>
           <TouchableOpacity 
             onPress={() => setTypeFilter('')} 
-            style={[styles.filterChip, !typeFilter && { backgroundColor: brandColor }]}
+            style={[
+              styles.catPill, 
+              { 
+                backgroundColor: !typeFilter ? brandColor : inputBg, 
+                borderColor: !typeFilter ? brandColor : borderColor,
+                paddingVertical: 4
+              }
+            ]}
           >
-            <Text style={[styles.filterChipText, !typeFilter && { color: '#fff' }]}>Todos</Text>
+            <Text style={{ color: !typeFilter ? '#fff' : theme.text + '80', fontSize: 11, fontWeight: '700' }}>Todos</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             onPress={() => setTypeFilter('gasoline')} 
-            style={[styles.filterChip, typeFilter === 'gasoline' && { backgroundColor: brandColor }]}
+            style={[
+              styles.catPill, 
+              { 
+                backgroundColor: typeFilter === 'gasoline' ? brandColor : inputBg, 
+                borderColor: typeFilter === 'gasoline' ? brandColor : borderColor,
+                paddingVertical: 4
+              }
+            ]}
           >
-            <Text style={[styles.filterChipText, typeFilter === 'gasoline' && { color: '#fff' }]}>Gasolina</Text>
+            <Text style={{ color: typeFilter === 'gasoline' ? '#fff' : theme.text + '80', fontSize: 11, fontWeight: '700' }}>Gasolina</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             onPress={() => setTypeFilter('Ethanol')} 
-            style={[styles.filterChip, typeFilter === 'Ethanol' && { backgroundColor: brandColor }]}
+            style={[
+              styles.catPill, 
+              { 
+                backgroundColor: typeFilter === 'Ethanol' ? brandColor : inputBg, 
+                borderColor: typeFilter === 'Ethanol' ? brandColor : borderColor,
+                paddingVertical: 4
+              }
+            ]}
           >
-            <Text style={[styles.filterChipText, typeFilter === 'Ethanol' && { color: '#fff' }]}>Etanol</Text>
+            <Text style={{ color: typeFilter === 'Ethanol' ? '#fff' : theme.text + '80', fontSize: 11, fontWeight: '700' }}>Etanol</Text>
           </TouchableOpacity>
         </View>
-        
-        <View style={styles.dateFilterContainer}>
-          <Ionicons name="calendar-outline" size={16} color={theme.text + '60'} />
-          <TextInput
-            value={dateFilter}
-            onChangeText={setDateFilter}
-            style={[styles.filterInputDate, { color: theme.text }]}
-            placeholder="Data"
-            placeholderTextColor={theme.text + '40'}
-          />
-        </View>
+
+        <TextInput
+          value={dateFilter}
+          onChangeText={setDateFilter}
+          style={[styles.filterInputDate, { color: theme.text, borderColor, borderLeftWidth: 1, paddingLeft: 8 }]}
+          placeholder="AAAA-MM-DD"
+          placeholderTextColor={theme.text + '50'}
+        />
       </View>
 
-      {/* List Section */}
+      {/* List */}
       {loading ? (
-        <View style={styles.centerContainer}>
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={brandColor} />
         </View>
       ) : (
@@ -167,124 +195,14 @@ export default function FuelsScreen() {
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
-            <View style={styles.centerContainer}>
-              <Ionicons name="speedometer-outline" size={64} color={theme.text + '20'} />
-              <Text style={[styles.emptyText, { color: theme.text + '60' }]}>Nenhum registro encontrado</Text>
-              <Text style={[styles.emptySubText, { color: theme.text + '40' }]}>Toque no + para registrar um abastecimento</Text>
+            <View style={styles.emptyContainer}>
+              <Ionicons name="speedometer-outline" size={48} color={theme.text + '40'} />
+              <Text style={[styles.emptyText, { color: theme.text + '60' }]}>Nenhum registro encontrado.</Text>
+              <Text style={[styles.emptySubText, { color: theme.text + '40' }]}>Toque no + para registrar um abastecimento.</Text>
             </View>
           }
         />
       )}
-    </Screen>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  headerCard: {
-    padding: 16,
-    borderBottomWidth: 1,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  backBtn: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  addBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  formContainer: {
-    marginTop: 20,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-  },
-  filterBar: {
-    flexDirection: 'row',
-    padding: 12,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-  },
-  filterTypes: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#f3f4f6',
-  },
-  filterChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  dateFilterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    gap: 4,
-  },
-  filterInputDate: {
-    fontSize: 12,
-    height: 32,
-    width: 80,
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  centerContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 100,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
-  },
-  emptySubText: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  typeBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  typeBadgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '700',
-  }
-});
