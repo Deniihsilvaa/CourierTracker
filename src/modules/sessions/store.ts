@@ -1,41 +1,26 @@
+import { SessionState } from '@/src/types/stores';
 import { create } from 'zustand';
 
-export type SessionStatus = 'active' | 'completed';
-export type TripStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
-
-export interface WorkSession {
-  id: string;
-  user_id?: string;
-  start_time: string;
-  end_time: string | null;
-  total_distance_km: number;
-  total_active_seconds: number;
-  total_idle_seconds: number;
-  status: SessionStatus;
-}
-
-interface SessionState {
-  activeSession: WorkSession | null;
-  sessionDuration: string; // "00:00:00" format
-  setActiveSession: (session: WorkSession | null) => void;
-  setSessionDuration: (duration: string) => void;
-  updateSessionMetrics: (distanceDeltaKm: number, activeDeltaSec: number, idleDeltaSec: number) => void;
-}
 
 export const useSessionStore = create<SessionState>((set) => ({
   activeSession: null,
   sessionDuration: '00:00:00',
-  
-  setActiveSession: (session) => set({ 
+  odometer: '',
+  isLoading: false,
+
+  setActiveSession: (session) => set({
     activeSession: session,
-    sessionDuration: session ? stateToDuration(session.start_time) : '00:00:00'
+    sessionDuration: session ? stateToDuration(session.start_time) : '00:00:00',
+    odometer: session?.start_odometer ? String(session.start_odometer) : '',
   }),
 
   setSessionDuration: (duration) => set({ sessionDuration: duration }),
-  
+  setOdometer: (v) => set({ odometer: v }),
+  setIsLoading: (v) => set({ isLoading: v }),
+
   updateSessionMetrics: (distanceDeltaKm, activeDeltaSec, idleDeltaSec) => set((state) => {
     if (!state.activeSession) return state;
-    
+
     return {
       activeSession: {
         ...state.activeSession,

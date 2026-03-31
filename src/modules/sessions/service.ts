@@ -1,45 +1,50 @@
 import { localDatabase } from '@/src/services/localDatabase';
-import { v4 as uuidv4 } from 'uuid';
 import { api } from '../../services/api';
-import { getDb } from '../../services/sqlite';
+import { cleanupSyncedData, getDb } from '../../services/sqlite';
 import { useAuthStore } from '../auth/store';
+import { sessionManager } from '../tracking/session-manager';
+import { closeSessionOnApi, updateOfflineSession } from './componentes';
 import { useSessionStore } from './store';
 
+/**
+ * Starts a new working session.
+ * MANDATORY: Must be created on the API first to ensure backend consistency.
+ * If API fails, the session is NOT started.
+ */
 export const startSession = async (startOdometer?: number) => {
   const user = useAuthStore.getState().user;
   if (!user) {
     throw new Error('Must be logged in to start a session');
   }
 
-  let sessionId = uuidv4();
   const startTime = new Date().toISOString();
-  let synced = 0;
 
-  // 1. Try to create session on the API first
+  // 1. Create session on the API (Mandatory)
   try {
     const payload: Record<string, any> = {
-      userId: user.id,
-      startTime,
+      userId: user.id, // Legacy compatibility
+      startTime: startTime, // Legacy compatibility
       status: 'open',
     };
+
     if (startOdometer !== undefined && startOdometer !== null && !isNaN(startOdometer)) {
-      payload.startOdometer = startOdometer;
+      payload.startOdometer = Number(startOdometer); // Legacy compatibility
     }
-    console.debug('[Session Service] POST payload:', payload);
 
+    console.log('[Session Service] Attempting to start session on API...');
+    console.log('[Session Service] Payload:', JSON.stringify(payload, null, 2));
     const response = await api.post('/sessions/v1', payload);
-    if (response.data?.success && response.data.data?.id) {
-      sessionId = response.data.data.id;
-      synced = 1;
-      console.log(`[Session Service] API session created: ${sessionId}`);
-    }
-  } catch (apiError) {
-    console.warn('[Session Service] API call failed, will save locally only', apiError);
-  }
 
-  // 2. Save to local SQLite
-  try {
-    await localDatabase.insertWorkSession(sessionId, user.id, startTime, synced, startOdometer);
+    if (!response.data?.success || !response.data.data?.id) {
+      throw new Error('Server failed to initialize session');
+    }
+
+    const sessionId = response.data.data.id;
+    sessionManager.setSessionId(sessionId);
+    console.log(`[Session Service] API session created successfully: ${sessionId}`);
+
+    // 2. Save to local SQLite (for offline tracking once started)
+    await localDatabase.insertWorkSession(sessionId, user.id, startTime, 1, startOdometer);
 
     // 3. Set active in Zustand state
     useSessionStore.getState().setActiveSession({
@@ -53,10 +58,14 @@ export const startSession = async (startOdometer?: number) => {
       status: 'open',
     });
 
+    return sessionId;
+  } catch (error: any) {
+    console.error('[Session Service] Critical failure starting session:', error.message);
 
-    console.log(`[Session Service] Session ${sessionId} started (synced=${synced}).`);
-  } catch (error) {
-    console.error('[Session Service] Failed to start session locally', error);
+    // Customize error message for UI
+    if (error.code === 'ERR_NETWORK') {
+      throw new Error('Sem conexão com a internet. É necessário estar online para iniciar seu turno.');
+    }
     throw error;
   }
 };
@@ -64,57 +73,30 @@ export const startSession = async (startOdometer?: number) => {
 export const endSession = async () => {
   const { activeSession, setActiveSession } = useSessionStore.getState();
   if (!activeSession) return;
-
-  const db = getDb();
+  const sessionID = activeSession.id;
   const endTime = new Date().toISOString();
-
+  const user = useAuthStore.getState().user;
+  if (!user) {
+    throw new Error('Must be logged in to start a session');
+  }
+  const currentOdometer = useSessionStore.getState().odometer;
+  const payload = {
+    end_time: endTime,
+    status: 'closed' as const,
+    end_odometer: currentOdometer ? Number(currentOdometer) : activeSession.start_odometer,
+    total_distance_km: activeSession.total_distance_km,
+    total_active_seconds: activeSession.total_active_seconds,
+    total_idle_seconds: activeSession.total_idle_seconds,
+  };
   try {
-    // 1. Notify API (PUT) to close the session
-    try {
-      const payload = {
-        end_time: endTime,
-        status: 'closed',
-        total_distance_km: activeSession.total_distance_km,
-        total_active_seconds: activeSession.total_active_seconds,
-        total_idle_seconds: activeSession.total_idle_seconds,
-      };
-
-      console.log(`[Session Service] Closing session ${activeSession.id} on API...`);
-      await api.put(`/sessions/v1/${activeSession.id}`, payload);
-    } catch (apiError) {
-      console.warn('[Session Service] API close failed, session will be synced later', apiError);
-    }
-
-    // 2. Update offline session record
-    await db.runAsync(
-      `UPDATE work_sessions SET end_time = ?, status = 'closed', synced = 0 WHERE id = ?`,
-      [endTime, activeSession.id]
-    );
-
-    // 3. Create a Trip record summarizing this session
-    const sessionData = await db.getFirstAsync<any>(
-      'SELECT * FROM work_sessions WHERE id = ?',
-      [activeSession.id]
-    );
-
-    if (sessionData) {
-      const tripId = uuidv4();
-      const duration = Math.round((new Date(endTime).getTime() - new Date(sessionData.start_time).getTime()) / 1000);
-
-      await db.runAsync(
-        `INSERT INTO trips (id, session_id, user_id, distance_km, duration_seconds, start_time, end_time, status, synced) VALUES (?, ?, ?, ?, ?, ?, ?, 'closed', 0)`,
-        [tripId, sessionData.id, sessionData.user_id, sessionData.total_distance_km, duration, sessionData.start_time, endTime]
-      );
-
-      await db.runAsync(
-        `UPDATE gps_points SET trip_id = ?, synced = 0 WHERE session_id = ? AND (trip_id IS NULL OR trip_id = '')`,
-        [tripId, sessionData.id]
-      );
-    }
-
-    // 4. Clear global state
     setActiveSession(null);
-    console.log(`Session ${activeSession.id} ended successfully.`);
+    sessionManager.setSessionId(null);
+
+    await closeSessionOnApi(sessionID, payload);
+    await updateOfflineSession(sessionID, payload);
+    await cleanupSyncedData();
+
+    console.log(`[Session Service] Session ${sessionID} completed.`);
   } catch (error) {
     console.error('[Session Service] Failed to end session', error);
     throw error;
@@ -150,6 +132,7 @@ export const recoverActiveSession = async () => {
 
     if (localSession) {
       console.log('[Session Service] Recovered active session from local DB:', localSession.id);
+      sessionManager.setSessionId(localSession.id);
       useSessionStore.getState().setActiveSession({
         id: localSession.id,
         user_id: user.id,
@@ -176,14 +159,23 @@ export const recoverActiveSession = async () => {
       if (apiActive) {
         console.log('[Session Service] Found active session on API:', apiActive.id);
 
-        await localDatabase.insertWorkSession(
-          apiActive.id,
-          user.id,
-          apiActive.start_time || apiActive.startTime || new Date().toISOString(),
-          1,
-          apiActive.start_odometer || apiActive.startOdometer
-        );
+        // Check if session already exists locally to avoid UNIQUE constraint failure
+        const existing = await localDatabase.find('work_sessions' as any, 'WHERE id = ?', [apiActive.id]);
 
+        if (!existing) {
+          await localDatabase.insertWorkSession(
+            apiActive.id,
+            user.id,
+            apiActive.start_time || apiActive.startTime || new Date().toISOString(),
+            1,
+            apiActive.start_odometer || apiActive.startOdometer
+          );
+        } else {
+          // If it exists locally but status was not 'open', align with API
+          await localDatabase.update('work_sessions' as any, apiActive.id, { status: 'open' });
+        }
+
+        sessionManager.setSessionId(apiActive.id);
         useSessionStore.getState().setActiveSession({
           id: apiActive.id,
           user_id: user.id,

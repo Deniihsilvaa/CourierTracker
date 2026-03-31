@@ -21,10 +21,10 @@ export const useTrackingStore = create<TrackingState>((set) => ({
   isTracking: false,
   currentLocation: null,
   lastSyncTime: null,
-  
+
   setIsTracking: (isTracking) => set({ isTracking }),
-  
+
   setCurrentLocation: (location) => set({ currentLocation: location }),
-  
+
   setLastSyncTime: (time) => set({ lastSyncTime: time }),
 }));

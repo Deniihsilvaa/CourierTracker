@@ -1,17 +1,17 @@
 // Low-level database operations should use console directly to avoid cycles with logSystem
-import { getDb } from './sqlite';
 import { v4 as uuidv4 } from 'uuid';
+import { getDb } from './sqlite';
 
 /**
  * Modern, Generic Offline-First Database Layer
  */
 
 const ALLOWED_TABLES = [
-  'profiles', 
-  'work_sessions', 
-  'trips', 
-  'gps_points', 
-  'route_events', 
+  'profiles',
+  'work_sessions',
+  'trips',
+  'gps_points',
+  'route_events',
   'log_system',
   'category_types',
   'expenses',
@@ -70,24 +70,24 @@ export const localDatabase = {
    */
   async insert<T extends { id?: string }>(tableName: TableName, data: T): Promise<string> {
     const db = getDb();
-    
+
     // For log_system, we let SQLite handle the INTEGER AUTOINCREMENT ID
     const isLogSystem = tableName === 'log_system';
     const id = isLogSystem ? undefined : (data.id || uuidv4());
-    
-    const entry = { 
-      ...data, 
-      ...(id ? { id } : {}), 
-      synced: (data as any).synced ?? 0, 
-      created_at: (data as any).created_at || new Date().toISOString() 
+
+    const entry = {
+      ...data,
+      ...(id ? { id } : {}),
+      synced: (data as any).synced ?? 0,
+      created_at: (data as any).created_at || new Date().toISOString()
     };
-    
+
     const keys = Object.keys(entry);
     const placeholders = keys.map(() => '?').join(', ');
     const values = Object.values(entry);
-    
+
     const query = `INSERT INTO ${tableName} (${keys.join(', ')}) VALUES (${placeholders})`;
-    
+
     try {
       const result = await db.runAsync(query, values);
       return id || String(result.lastInsertRowId);
@@ -107,7 +107,7 @@ export const localDatabase = {
       start_time: startTime,
       synced: Number(synced),
       start_odometer: startOdometer ? String(startOdometer) : "0",
-      status: 'active'
+      status: 'open'
     });
   },
 

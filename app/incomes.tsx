@@ -1,7 +1,9 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Income } from '@/src/services/incomes.service';
+import { FinancialListItem } from '@/src/components/Financial/FinancialListItem';
 import useIncomesScreen from '@/src/hooks/useIncomesScreen';
+import { Income } from '@/src/services/incomes.service';
+import { crudStyles as styles } from '@/src/styles';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
@@ -16,8 +18,6 @@ import {
   UIManager,
   View,
 } from 'react-native';
-import { crudStyles as styles } from '@/src/styles';
-import { FinancialListItem } from '@/src/components/Financial/FinancialListItem';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -37,7 +37,7 @@ export default function IncomesScreen() {
     formExpanded,
     nameFilter, setNameFilter,
     dateFilter, setDateFilter,
-    
+
     // Creation State
     amount, setAmount,
     source, setSource,
@@ -188,6 +188,7 @@ export default function IncomesScreen() {
                     placeholder="Valor"
                     keyboardType="numeric"
                     placeholderTextColor={theme.text + '60'}
+                    autoFocus
                   />
                   <TextInput
                     value={source}

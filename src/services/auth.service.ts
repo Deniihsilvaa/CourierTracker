@@ -7,13 +7,12 @@ export const authService = {
     email: string,
     password?: string,
   ): Promise<LoginReturn["user"] | boolean> {
-    const { data, status } = await api.post("/auth/v1/login", {
+    const { data } = await api.post("/auth/v1/login", {
       email,
       password,
     });
     const returnApi: LoginReturn = data.data;
 
-    logger.debug("Tratar status caso tenha erro:", returnApi.user);
     await setAuthToken(returnApi.session.access_token);
     return returnApi.user;
   },

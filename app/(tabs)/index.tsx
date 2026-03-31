@@ -6,27 +6,29 @@ import { FloatingActionMenu } from '@/src/components/FloatingActionMenu';
 import useDashboardScreen from '@/src/hooks/useDashboardScreen';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, View, TouchableOpacity } from 'react-native';
 
 export default function DashboardScreen() {
   const {
     user,
-    isTracking,
-    isSyncing,
-    pendingCount,
     theme,
     activeSession,
-    sessionData,
     loadingSession,
     sessionTime,
     odometer,
     setOdometer,
-    isPaused,
-    setIsPaused,
     handleSaveOdometer,
     handleManualSync,
-    handleToggleTracking,
+    handleStartSession,
+    handleStopSession,
     handleRouteEvent,
+    isStopModalVisible,
+    setIsStopModalVisible,
+    endOdometer,
+    setEndOdometer,
+    confirmStopSession,
+    isSyncing,
+    pendingCount
   } = useDashboardScreen();
 
   // Logic moved from JSX to Memoized values for testability
@@ -68,33 +70,84 @@ export default function DashboardScreen() {
         </View>
 
         {/* Content State Machine */}
-        {activeSession ? (
+        {loadingSession && !activeSession ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2563eb" />
+            <Text style={[styles.loadingText, { color: theme.text }]}>Carregando turno...</Text>
+          </View>
+        ) : activeSession ? (
           <ActiveSessionCard
-            sessionData={sessionData}
-            loadingSession={loadingSession}
-            sessionTime={sessionTime}
-            isPaused={isPaused}
-            setIsPaused={setIsPaused}
-            odometer={odometer}
-            setOdometer={setOdometer}
-            handleSaveOdometer={handleSaveOdometer}
-            handleStopSession={handleToggleTracking}
+            handleStopSession={handleStopSession}
             handleDeleteSession={() => { }}
-            theme={theme}
+            handleSaveOdometer={handleSaveOdometer}
+            sessionDuration={sessionTime}
+            isLoading={loadingSession}
+            odometer={odometer}
           />
         ) : (
-          <StartSessionPlaceholder onStart={handleToggleTracking} themeLayout={theme} />
+          <StartSessionPlaceholder 
+            onStart={handleStartSession} 
+            themeLayout={theme} 
+            odometer={odometer}
+            setOdometer={setOdometer}
+          />
         )}
-
-        {/* <QuickActions
-          handleRouteEvent={handleRouteEvent}
-          isTracking={isTracking}
-        /> */}
 
         <MetricsSummary />
 
         <View style={styles.spacer} />
       </ScrollView>
+
+      {/* Modal de Finalização de Sessão */}
+      <Modal
+        visible={isStopModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsStopModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Encerrar Turno</Text>
+              <TouchableOpacity onPress={() => setIsStopModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#6b7280" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalDescription}>
+              Deseja informar o odômetro final? 
+              {activeSession?.start_odometer ? ` (Mínimo: ${activeSession.start_odometer})` : ''}
+            </Text>
+
+            <View style={styles.modalInputContainer}>
+              <Text style={styles.modalLabel}>Odômetro Final (Opcional)</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Ex: 12600"
+                keyboardType="numeric"
+                value={endOdometer}
+                onChangeText={setEndOdometer}
+                autoFocus
+              />
+            </View>
+
+            <View style={styles.modalActions}>
+              <Button
+                title="Cancelar"
+                variant="secondary"
+                style={styles.modalActionBtn}
+                onPress={() => setIsStopModalVisible(false)}
+              />
+              <Button
+                title="Encerrar"
+                variant="danger"
+                style={styles.modalActionBtn}
+                onPress={confirmStopSession}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <FloatingActionMenu />
     </Screen>
@@ -104,13 +157,37 @@ export default function DashboardScreen() {
 /**
  * Sub-component for clean JSX and isolation
  */
-const StartSessionPlaceholder = ({ onStart, themeLayout }: { onStart: () => void, themeLayout: any }) => (
+const StartSessionPlaceholder = ({ 
+  onStart, 
+  themeLayout, 
+  odometer, 
+  setOdometer 
+}: { 
+  onStart: () => void, 
+  themeLayout: any,
+  odometer: string,
+  setOdometer: (v: string) => void
+}) => (
   <View style={[styles.startContainer, { backgroundColor: themeLayout.background }]}>
     <View style={styles.startIconContainer}>
       <Ionicons name="map" size={48} color="#2563eb" />
     </View>
     <Text style={[styles.startTitle, { color: themeLayout.text }]}>Pronto para rodar?</Text>
-    <Text style={[styles.startSubtitle, { color: themeLayout.text }]}>Inicie seu turno para começar o rastreamento.</Text>
+    <Text style={[styles.startSubtitle, { color: themeLayout.text, marginBottom: 16 }]}>
+      Informe seu odômetro inicial para começar o turno.
+    </Text>
+    
+    <View style={styles.odometerInputWrapper}>
+      <Text style={styles.inputLabel}>Odômetro Inicial</Text>
+      <TextInput
+        style={styles.odometerInput}
+        placeholder="Ex: 12500"
+        keyboardType="numeric"
+        value={odometer}
+        onChangeText={setOdometer}
+      />
+    </View>
+
     <Button
       title="Iniciar Turno"
       size="lg"
@@ -166,6 +243,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginLeft: 4,
   },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '500',
+  },
   startContainer: {
     padding: 32,
     alignItems: 'center',
@@ -199,6 +291,26 @@ const styles = StyleSheet.create({
   startButton: {
     width: '100%',
   },
+  odometerInputWrapper: {
+    width: '100%',
+    marginBottom: 24,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  odometerInput: {
+    width: '100%',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 48,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -212,5 +324,58 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: 100,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  modalInputContainer: {
+    marginBottom: 24,
+  },
+  modalLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  modalInput: {
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 48,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalActionBtn: {
+    flex: 1,
   },
 });

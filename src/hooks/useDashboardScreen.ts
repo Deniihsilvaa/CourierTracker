@@ -1,7 +1,7 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/src/modules/auth/store';
-import { endSession, fetchSessionData, startSession, recoverActiveSession } from '@/src/modules/sessions/service';
+import { endSession, fetchSessionData, recoverActiveSession, startSession } from '@/src/modules/sessions/service';
 import { useSessionStore } from '@/src/modules/sessions/store';
 import { createRouteEvent } from '@/src/modules/tracking/routeEventService';
 import { resetWaitingDetection, startTracking, stopTracking } from '@/src/modules/tracking/service';
@@ -16,32 +16,26 @@ import { Alert, Animated, ToastAndroid } from 'react-native';
 export default function useDashboardScreen() {
     const { user } = useAuthStore();
     const { isTracking, lastSyncTime } = useTrackingStore();
-    const { activeSession, sessionDuration } = useSessionStore();
-    
+    const {
+        activeSession,
+        sessionDuration,
+        odometer,
+        setOdometer,
+        isLoading: loadingSession,
+        setIsLoading: setLoadingSession,
+        setActiveSession
+    } = useSessionStore();
+
     const [isSyncing, setIsSyncing] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
-    const [loadingSession, setLoadingSession] = useState(false);
-    const [sessionData, setSessionData] = useState<any>(null);
-    const [odometer, setOdometer] = useState('');
-    const [isPaused, setIsPaused] = useState(false);
 
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
 
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
-    useEffect(() => {
-        if (isTracking) {
-            Animated.loop(
-                Animated.sequence([
-                    Animated.timing(pulseAnim, { toValue: 1.2, duration: 1000, useNativeDriver: true }),
-                    Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-                ])
-            ).start();
-        } else {
-            pulseAnim.setValue(1);
-        }
-    }, [isTracking]);
+    // Pulse animation removed as tracking is disabled
+
 
     useEffect(() => {
         const checkPending = async () => {
@@ -55,8 +49,8 @@ export default function useDashboardScreen() {
         };
 
         checkPending();
-        recoverActiveSession(); 
-        
+        recoverActiveSession();
+
         const interval = setInterval(checkPending, 10000);
         return () => clearInterval(interval);
     }, [lastSyncTime, isTracking]);
@@ -67,17 +61,22 @@ export default function useDashboardScreen() {
             fetchSessionData(activeSession.id)
                 .then(data => {
                     if (data) {
-                        setSessionData(data);
-                        if (data.start_odometer) setOdometer(String(data.start_odometer));
+                        // Update activeSession with data from API (odometer, etc)
+                        setActiveSession({
+                            ...activeSession,
+                            ...data,
+                            // Ensure snake_case from API maps to interface if needed
+                            start_odometer: data.start_odometer || data.startOdometer
+                        });
                     }
                 })
                 .catch(error => logger.error('[Dashboard] Error fetching session:', error))
                 .finally(() => setLoadingSession(false));
-        } else {
-            setSessionData(null);
-            setOdometer('');
         }
     }, [activeSession?.id]);
+
+    const [isStopModalVisible, setIsStopModalVisible] = useState(false);
+    const [endOdometer, setEndOdometer] = useState('');
 
     const handleManualSync = async () => {
         if (isSyncing) return;
@@ -94,20 +93,43 @@ export default function useDashboardScreen() {
         }
     };
 
-    const handleToggleTracking = async () => {
+    const handleStartSession = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         try {
-            if (isTracking) {
-                await stopTracking();
-                await endSession();
-            } else {
-                const odo = odometer ? Number(odometer) : undefined;
-                await startSession(odo);
-                await startTracking();
-            }
+            const odo = odometer ? Number(odometer) : undefined;
+            await startSession(odo);
         } catch (e) {
-            logger.error('[Dashboard] Failed to toggle tracking:', e);
-            Alert.alert('Erro', 'Não foi possível processar a ação.');
+            logger.error('[Dashboard] Failed to start session:', e);
+            Alert.alert('Erro', 'Não foi possível iniciar o turno.');
+        }
+    };
+
+    const handleStopSession = async () => {
+        setEndOdometer('');
+        setIsStopModalVisible(true);
+    };
+
+    const confirmStopSession = async () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        
+        const finalOdo = endOdometer.trim() ? Number(endOdometer) : undefined;
+        
+        if (finalOdo !== undefined && activeSession?.start_odometer) {
+            if (finalOdo < activeSession.start_odometer) {
+                Alert.alert('Atenção', 'O odômetro final não pode ser menor que o inicial.');
+                return;
+            }
+        }
+
+        try {
+            if (endOdometer.trim()) {
+                setOdometer(endOdometer);
+            }
+            await endSession();
+            setIsStopModalVisible(false);
+        } catch (e) {
+            logger.error('[Dashboard] Failed to stop session:', e);
+            Alert.alert('Erro', 'Não foi possível encerrar o turno.');
         }
     };
 
@@ -133,7 +155,12 @@ export default function useDashboardScreen() {
             await localDatabase.update('work_sessions', activeSession.id, {
                 start_odometer: odometer
             });
-            setSessionData((prev: any) => ({ ...prev, start_odometer: odometer }));
+
+            setActiveSession({
+                ...activeSession,
+                start_odometer: Number(odometer)
+            });
+
             ToastAndroid.show('Odômetro salvo!', ToastAndroid.SHORT);
         } catch (error) {
             logger.error('[Dashboard] Error saving odometer:', error);
@@ -148,16 +175,19 @@ export default function useDashboardScreen() {
         theme,
         pulseAnim,
         activeSession,
-        sessionData,
         loadingSession,
         sessionTime: sessionDuration,
         odometer,
+        isStopModalVisible,
+        setIsStopModalVisible,
+        endOdometer,
         setOdometer,
-        isPaused,
-        setIsPaused,
+        setEndOdometer,
         handleSaveOdometer,
         handleManualSync,
-        handleToggleTracking,
+        handleStartSession,
+        handleStopSession,
+        confirmStopSession,
         handleRouteEvent,
     };
 }
