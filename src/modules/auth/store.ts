@@ -15,11 +15,23 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setUser: (user) => set({ user }),
 
-  signUp: async (email: string, password: string, name: string) => {
+  signUp: async (
+    email: string,
+    password: string,
+    name: string,
+    vehicle_type: string,
+    city: string,
+  ) => {
     try {
       set({ isLoading: true, error: null });
 
-      const response = await authService.signUp(email, password, name);
+      const response = await authService.signUp(
+        email,
+        password,
+        name,
+        vehicle_type,
+        city,
+      );
       // Carregar perfil completo do backend
       const profile = await authService.me();
 
@@ -28,8 +40,8 @@ export const useAuthStore = create<AuthState>((set) => ({
           id: profile.id,
           name: profile.name ?? name,
           email: email,
-          vehicle_type: profile.vehicle_type ?? null,
-          city: profile.city ?? null,
+          vehicle_type: profile.vehicle_type ?? vehicle_type,
+          city: profile.city ?? city,
         };
 
         await localDatabase.update("profiles", finalProfile.id, {
@@ -41,9 +53,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
         set({ user: finalProfile, isLoading: false });
       } else {
-        logger.warn(
-          "[AuthStore] No profile after signUp attempt.",
-        );
+        logger.warn("[AuthStore] No profile after signUp attempt.");
         set({ isLoading: false });
       }
     } catch (error: any) {

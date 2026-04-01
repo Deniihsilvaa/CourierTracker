@@ -21,11 +21,15 @@ export const authService = {
     email: string,
     password: string,
     name: string,
+    vehicle_type: string,
+    city: string
   ): Promise<LoginReturn["user"]> {
-    const { data } = await api.post("/auth/v1/register", {
+    const { data } = await api.post("/auth/v1/signup", {
       email,
       password,
       name,
+      vehicle_type,
+      city,
     });
     const returnApi: LoginReturn = data.data;
 
