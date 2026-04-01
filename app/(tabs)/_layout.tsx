@@ -32,10 +32,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="trips"
+        name="session"
         options={{
-          title: 'Trips',
-          tabBarIcon: ({ color }) => <Ionicons size={24} name="car" color={color} />,
+          title: 'Sessões',
+          tabBarIcon: ({ color }) => <Ionicons size={24} name="calendar-clear-outline" color={color} />,
         }}
       />
       <Tabs.Screen
