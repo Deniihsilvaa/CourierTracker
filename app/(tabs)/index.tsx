@@ -6,8 +6,8 @@ import { FloatingActionMenu } from '@/src/components/FloatingActionMenu';
 import useDashboardScreen from '@/src/hooks/useDashboardScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
-import React, { useMemo, useCallback } from 'react';
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, View, TouchableOpacity } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function DashboardScreen() {
   const {
@@ -41,7 +41,6 @@ export default function DashboardScreen() {
     }, [fetchFinancialSummary])
   );
 
-  // Logic moved from JSX to Memoized values for testability
   const displayUserName = useMemo(() => {
     return user?.name || user?.email?.split('@')[0] || 'Motorista';
   }, [user]);
@@ -54,7 +53,7 @@ export default function DashboardScreen() {
   }), [isSyncing, pendingCount]);
 
   return (
-    <Screen style={{ backgroundColor: theme.background }}>
+    <Screen style={{ backgroundColor: theme.background }} scrollable={false}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -95,9 +94,9 @@ export default function DashboardScreen() {
             odometer={odometer}
           />
         ) : (
-          <StartSessionPlaceholder 
-            onStart={handleStartSession} 
-            themeLayout={theme} 
+          <StartSessionPlaceholder
+            onStart={handleStartSession}
+            themeLayout={theme}
             odometer={odometer}
             setOdometer={setOdometer}
           />
@@ -125,7 +124,7 @@ export default function DashboardScreen() {
             </View>
 
             <Text style={styles.modalDescription}>
-              Deseja informar o odômetro final? 
+              Deseja informar o odômetro final?
               {activeSession?.start_odometer ? ` (Mínimo: ${activeSession.start_odometer})` : ''}
             </Text>
 
@@ -167,13 +166,13 @@ export default function DashboardScreen() {
 /**
  * Sub-component for clean JSX and isolation
  */
-const StartSessionPlaceholder = ({ 
-  onStart, 
-  themeLayout, 
-  odometer, 
-  setOdometer 
-}: { 
-  onStart: () => void, 
+const StartSessionPlaceholder = ({
+  onStart,
+  themeLayout,
+  odometer,
+  setOdometer
+}: {
+  onStart: () => void,
   themeLayout: any,
   odometer: string,
   setOdometer: (v: string) => void
@@ -186,7 +185,7 @@ const StartSessionPlaceholder = ({
     <Text style={[styles.startSubtitle, { color: themeLayout.text, marginBottom: 16 }]}>
       Informe seu odômetro inicial para começar o turno.
     </Text>
-    
+
     <View style={styles.odometerInputWrapper}>
       <Text style={styles.inputLabel}>Odômetro Inicial</Text>
       <TextInput
@@ -231,33 +230,33 @@ const MetricsSummary = ({ data, isLoading }: { data: any, isLoading: boolean }) 
         <Text style={styles.sectionTitle}>Resumo do Mês</Text>
         {isLoading && <ActivityIndicator size="small" color="#2563eb" style={{ marginLeft: 8 }} />}
       </View>
-      
+
       <View style={styles.metricsGrid}>
-        <MetricCard 
-          title="Ganhos" 
-          value={formatCurrency(data?.total_income)} 
-          icon="wallet" 
-          color="#10b981" 
+        <MetricCard
+          title="Ganhos"
+          value={formatCurrency(data?.total_income)}
+          icon="wallet"
+          color="#10b981"
         />
-        <MetricCard 
-          title="Líquido" 
-          value={formatCurrency(data?.net_profit)} 
-          icon="trending-up" 
-          color="#2563eb" 
+        <MetricCard
+          title="Líquido"
+          value={formatCurrency(data?.net_profit)}
+          icon="trending-up"
+          color="#2563eb"
         />
       </View>
       <View style={[styles.metricsGrid, { marginTop: 12 }]}>
-        <MetricCard 
-          title="Combustível" 
-          value={formatCurrency(data?.total_fuel)} 
-          icon="water" 
-          color="#f59e0b" 
+        <MetricCard
+          title="Combustível"
+          value={formatCurrency(data?.total_fuel)}
+          icon="water"
+          color="#f59e0b"
         />
-        <MetricCard 
-          title="Custos" 
-          value={formatCurrency(data?.total_costs)} 
-          icon="trending-down" 
-          color="#ef4444" 
+        <MetricCard
+          title="Custos"
+          value={formatCurrency(data?.total_costs)}
+          icon="trending-down"
+          color="#ef4444"
         />
       </View>
     </>

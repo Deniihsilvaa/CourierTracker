@@ -97,7 +97,13 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({ onPressI
   });
 
   return (
-    <View style={styles.container} pointerEvents="box-none">
+    <View
+      style={[
+        styles.container,
+        expanded ? styles.fullScreen : styles.compact
+      ]}
+      pointerEvents="box-none"
+    >
       {expanded && (
         <TouchableWithoutFeedback onPress={toggleMenu}>
           <View style={styles.overlay} />
@@ -113,14 +119,13 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({ onPressI
           style={[
             styles.mainButton,
             {
-              backgroundColor: '#FFF',
-              borderColor: theme.tint,
-              borderWidth: 2,
+              backgroundColor: theme.tint,
+              shadowColor: theme.tint,
             }
           ]}
         >
           <Animated.View style={{ transform: [{ rotate: rotation }] }}>
-            <Ionicons name="add" size={28} color={theme.tint} />
+            <Ionicons name="add" size={32} color="#FFF" />
           </Animated.View>
         </TouchableOpacity>
       </View>
@@ -133,32 +138,37 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
+    zIndex: 9999,
+  },
+  fullScreen: {
     top: 0,
     left: 0,
-    zIndex: 1000,
+  },
+  compact: {
+    width: 100,
+    height: 100, 
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.15)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   menuWrapper: {
     position: 'absolute',
-    bottom: 30,
-    right: 30,
+    bottom: 24, // Desce o botão de volta, agora no nível da tela inteira (Dashboard)
+    right: 20,
     alignItems: 'flex-end',
     justifyContent: 'flex-end',
   },
   mainButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
   },
   itemContainer: {
     position: 'absolute',
@@ -166,8 +176,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     width: width - 60,
-    right: 6, // Centered relative to mainButton (60 vs 48)
-    bottom: 6,
+    right: 4,
+    bottom: 4,
   },
   itemButton: {
     width: 48,
@@ -186,11 +196,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginRight: 12,
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
     overflow: 'hidden',
     color: '#FFF',
-    backgroundColor: '#333333',
+    backgroundColor: 'rgba(31, 41, 55, 0.95)', // Slate-800 com opacidade
     maxWidth: width * 0.6,
   },
 });
