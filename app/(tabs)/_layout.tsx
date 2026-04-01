@@ -51,13 +51,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Ionicons size={24} name="person" color={color} />,
         }}
       />
-      <Tabs.Screen 
-      name='rastreamento'
-      options={{
-        title: 'Rastreamento'
-      }}
+      <Tabs.Screen
+        name='rastreamento'
+        options={{
+          title: 'Rastreamento'
+        }}
       />
-      
+
     </Tabs>
   );
 }

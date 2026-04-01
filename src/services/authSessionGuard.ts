@@ -77,8 +77,8 @@ export const authSessionGuard = {
             // or we only do it if the store is not already loading.
             if (!store.isLoading) {
               logger.error('[AuthGuard] Persistent session loss. User state cleared.');
-              // instead of direct signOut, we'll set user to null to trigger navigation
-              // useAuthStore.getState().signOut(); // Optional: be more or less aggressive here
+              // We reset the user to null to force redirection back to login
+              store.setUser(null);
             }
           }
         }
