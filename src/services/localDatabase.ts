@@ -28,7 +28,20 @@ export const localDatabase = {
    */
   async list<T>(tableName: TableName, where: string = '', params: any[] = []): Promise<T[]> {
     const db = getDb();
-    const query = `SELECT * FROM ${tableName} ${where}`;
+    
+    // Auto filter soft-deleted except for log_system (doesn't have the column)
+    let effectiveWhere = where;
+    const hasDeletedAt = tableName !== 'log_system' && tableName !== 'gps_points';
+    
+    if (hasDeletedAt) {
+      if (!where.trim()) {
+        effectiveWhere = 'WHERE deleted_at IS NULL';
+      } else if (!where.toUpperCase().includes('DELETED_AT')) {
+        effectiveWhere = `${where} AND deleted_at IS NULL`;
+      }
+    }
+
+    const query = `SELECT * FROM ${tableName} ${effectiveWhere}`;
     try {
       return await db.getAllAsync<T>(query, params);
     } catch (e) {
@@ -68,7 +81,7 @@ export const localDatabase = {
   /**
    * Generic Insert (Always Offline-First)
    */
-  async insert<T extends { id?: string }>(tableName: TableName, data: T): Promise<string> {
+  async insert<T extends Record<string, any>>(tableName: TableName, data: T): Promise<string> {
     const db = getDb();
 
     // For log_system, we let SQLite handle the INTEGER AUTOINCREMENT ID
@@ -130,10 +143,20 @@ export const localDatabase = {
   async update(tableName: TableName, id: string, data: Record<string, any>): Promise<void> {
     const db = getDb();
     const keys = Object.keys(data);
-    const setClause = keys.map(k => `${k} = ?`).join(', ');
-    const values = Object.values(data);
+    const now = new Date().toISOString().split('.')[0] + 'Z';
+    
+    // Add updated_at if not present
+    const updatedData = { 
+      ...data, 
+      updated_at: now,
+      synced: 0 
+    };
+    
+    const updatedKeys = Object.keys(updatedData);
+    const setClause = updatedKeys.map(k => `${k} = ?`).join(', ');
+    const values = Object.values(updatedData);
 
-    const query = `UPDATE ${tableName} SET ${setClause}, synced = 0 WHERE id = ?`;
+    const query = `UPDATE ${tableName} SET ${setClause} WHERE id = ?`;
 
     try {
       await db.runAsync(query, [...values, id]);
@@ -148,11 +171,26 @@ export const localDatabase = {
    */
   async delete(tableName: TableName, id: string): Promise<void> {
     const db = getDb();
-    const query = `DELETE FROM ${tableName} WHERE id = ?`;
+    const now = new Date().toISOString().split('.')[0] + 'Z';
+    
+    // Log system uses INTEGER IDs and usually doesn't need soft delete
+    if (tableName === 'log_system') {
+      const query = `DELETE FROM ${tableName} WHERE id = ?`;
+      try {
+        await db.runAsync(query, [id]);
+        return;
+      } catch (e) {
+        console.error(`[DB] Log delete failed:`, e);
+        throw e;
+      }
+    }
+
+    // SOFT DELETE: Marking as deleted and unsynced so the deletion can sync
+    const query = `UPDATE ${tableName} SET deleted_at = ?, synced = 0 WHERE id = ?`;
     try {
-      await db.runAsync(query, [id]);
+      await db.runAsync(query, [now, id]);
     } catch (e) {
-      console.error(`[DB] Delete failed in ${tableName}:`, e);
+      console.error(`[DB] Soft delete failed in ${tableName}:`, e);
       throw e;
     }
   }

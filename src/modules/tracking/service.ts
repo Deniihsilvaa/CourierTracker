@@ -19,7 +19,29 @@ import { trackingRecorder } from './tracking-recorder';
 
 const LOCATION_TASK_NAME = 'background-location-task';
 const MIN_MOVEMENT_THRESHOLD = 5; // metros
-const MIN_TIME_BETWEEN_UPDATES = 5000; // 5 segundos
+
+/**
+ * Adaptive sampling intervals based on movement speed.
+ * - High speed (> 20 km/h):   5s  — full fidelity for route reconstruction
+ * - Low speed (5–20 km/h):   10s  — slow traffic / urban delivery
+ * - Crawling (1–5 km/h):     15s  — on foot / searching for address
+ * - Stationary (< 1 km/h):   30s  — waiting, parking, delivering on foot
+ */
+const SAMPLE_INTERVAL_MS = {
+  HIGH:       5_000,
+  LOW:       10_000,
+  CRAWLING:  15_000,
+  IDLE:      30_000,
+} as const;
+
+const getAdaptiveSampleInterval = (speedMs: number | null): number => {
+  if (speedMs === null || speedMs < 0) return SAMPLE_INTERVAL_MS.LOW;
+  const kmh = speedMs * 3.6;
+  if (kmh >= 20) return SAMPLE_INTERVAL_MS.HIGH;
+  if (kmh >= 5)  return SAMPLE_INTERVAL_MS.LOW;
+  if (kmh >= 1)  return SAMPLE_INTERVAL_MS.CRAWLING;
+  return SAMPLE_INTERVAL_MS.IDLE;
+};
 
 // Re-export for external modules (e.g. Dashboard)
 export const resetWaitingDetection = eventDetector.resetWaitingDetection;
@@ -193,8 +215,9 @@ export const processLocationUpdate = async (locations: Location.LocationObject[]
     // 2. Noise Filtering
     if (!isValidLocation(accuracy, speed)) continue;
 
-    // Throttle checks
-    if (lastLocation && (timestamp - lastLocation.timestamp) < MIN_TIME_BETWEEN_UPDATES) continue;
+    // Adaptive throttle: sample less when slow/idle
+    const minInterval = getAdaptiveSampleInterval(speed ?? null);
+    if (lastLocation && (timestamp - lastLocation.timestamp) < minInterval) continue;
 
     // 3. Persistence (Delegated)
     const stored = await trackingRecorder.recordGpsPoint(userId, session.id, loc);

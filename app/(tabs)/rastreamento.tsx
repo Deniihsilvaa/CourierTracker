@@ -1,11 +1,29 @@
-import { LocationDisclosureModal } from '@/src/components/LocationDisclosureModal';
 import useDashboardScreen from '@/src/hooks/useDashboardScreen';
 import { stylesDashboard } from '@/src/styles';
 import { Ionicons } from '@expo/vector-icons';
 import { Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
+const formatTime = (seconds: number): string => {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  return [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
+};
+
 export default function RastreamentoScreen() {
-  const { user, isTracking, currentLocation, isSyncing, pendingCount, showDisclosure, theme, pulseAnim, handleManualSync, handleToggleTracking, confirmTracking, handleRouteEvent, formatTime, setShowDisclosure, activeSession, } = useDashboardScreen();
+  const {
+    user,
+    isTracking,
+    isSyncing,
+    pendingCount,
+    theme,
+    pulseAnim,
+    handleManualSync,
+    handleStartSession,
+    handleStopSession,
+    handleRouteEvent,
+    activeSession,
+  } = useDashboardScreen();
 
   return (
     <View style={[stylesDashboard.container, { backgroundColor: theme.background }]}>
@@ -44,15 +62,7 @@ export default function RastreamentoScreen() {
               {isTracking ? 'RODANDO EM SEGUNDO PLANO' : 'SISTEMA EM ESPERA'}
             </Text>
           </View>
-          {/* <Text style={stylesDashboard.statusDescription}>
-            {isTracking
-              ? 'Seu deslocamento está sendo registrado com precisão.'
-              : 'Inicie um turno para começar o rastreamento GPS.'}
-          </Text> */}
         </View>
-
-        {/* TODO: Debug Panel for Session Validation remover em produção */}
-        {/* <TrackingDebugPanel /> */}
 
         {/* Metrics Grid */}
         <View style={stylesDashboard.metricsGrid}>
@@ -85,9 +95,7 @@ export default function RastreamentoScreen() {
           <View style={[stylesDashboard.metricBox, { backgroundColor: theme.background, borderColor: '#eee' }]}>
             <Ionicons name="map" size={24} color="#9C27B0" />
             <Text style={[stylesDashboard.metricValue, { color: theme.text }]}>
-              {currentLocation && (currentLocation as any).speed != null
-                ? `${((currentLocation as any).speed * 3.6).toFixed(0)}`
-                : '--'}
+              --
             </Text>
             <Text style={stylesDashboard.metricLabel}>Km/h Atual</Text>
           </View>
@@ -95,13 +103,9 @@ export default function RastreamentoScreen() {
 
         {/* GPS Health */}
         <View style={stylesDashboard.gpsHealth}>
-          <Ionicons
-            name="radio-outline"
-            size={16}
-            color={(currentLocation?.accuracy || 100) < 20 ? "#28a745" : "#ffc107"}
-          />
+          <Ionicons name="radio-outline" size={16} color="#ffc107" />
           <Text style={stylesDashboard.gpsText}>
-            Precisão GPS: {currentLocation?.accuracy ? `${currentLocation.accuracy.toFixed(1)}m` : 'Buscando sinal...'}
+            Precisão GPS: Buscando sinal...
           </Text>
         </View>
       </ScrollView>
@@ -140,7 +144,7 @@ export default function RastreamentoScreen() {
 
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={handleToggleTracking}
+          onPress={isTracking ? handleStopSession : handleStartSession}
           style={[stylesDashboard.mainButton, { backgroundColor: isTracking ? '#FF3B30' : '#007AFF' }]}
         >
           <Ionicons name={isTracking ? "stop" : "play"} size={28} color="#fff" />
@@ -149,13 +153,6 @@ export default function RastreamentoScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-
-      <LocationDisclosureModal
-        visible={showDisclosure}
-        onConfirm={confirmTracking}
-        onCancel={() => setShowDisclosure(false)}
-      />
     </View>
   );
 }
-

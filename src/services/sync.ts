@@ -32,12 +32,16 @@ const syncTable = async (db: any, localTableName: string) => {
                     total_idle_seconds: rest.total_idle_seconds,
                     start_odometer: rest.start_odometer,
                     end_odometer: rest.end_odometer,
-                    created_at: rest.created_at
+                    status: rest.status,
+                    created_at: rest.created_at,
+                    updated_at: rest.updated_at,
+                    deleted_at: rest.deleted_at
                 };
             }
 
             if (localTableName === 'gps_points') {
                 return {
+                    point_uuid: rest.point_uuid || null,
                     user_id: rest.user_id,
                     session_id: rest.session_id,
                     trip_id: rest.trip_id || null,
@@ -59,9 +63,10 @@ const syncTable = async (db: any, localTableName: string) => {
                     distance_km: rest.distance_km,
                     duration_seconds: rest.duration_seconds,
                     status: rest.status,
-                    created_at: rest.created_at
+                    created_at: rest.created_at,
+                    updated_at: rest.updated_at,
+                    deleted_at: rest.deleted_at
                 };
-
             }
             if (localTableName === 'route_events') {
                 let metadata: any = null;
@@ -78,6 +83,8 @@ const syncTable = async (db: any, localTableName: string) => {
                     latitude: rest.latitude,
                     longitude: rest.longitude,
                     created_at: rest.created_at,
+                    updated_at: rest.updated_at,
+                    deleted_at: rest.deleted_at,
                     metadata,
                 };
             }
@@ -104,7 +111,10 @@ const syncTable = async (db: any, localTableName: string) => {
                     user_id: rest.user_id,
                     name: rest.name,
                     description: rest.description,
-                    type: rest.type
+                    type: rest.type,
+                    created_at: rest.created_at,
+                    updated_at: rest.updated_at,
+                    deleted_at: rest.deleted_at
                 };
             }
 
@@ -116,7 +126,9 @@ const syncTable = async (db: any, localTableName: string) => {
                     amount: rest.amount,
                     category: rest.category_id, // Map to Prisma column name
                     description: rest.description,
-                    created_at: rest.created_at
+                    created_at: rest.created_at,
+                    updated_at: rest.updated_at,
+                    deleted_at: rest.deleted_at
                 };
             }
 
@@ -130,7 +142,9 @@ const syncTable = async (db: any, localTableName: string) => {
                     description: rest.description,
                     category_id: rest.category_id,
                     date_competition: rest.date_competition,
-                    created_at: rest.created_at
+                    created_at: rest.created_at,
+                    updated_at: rest.updated_at,
+                    deleted_at: rest.deleted_at
                 };
             }
 
@@ -147,7 +161,9 @@ const syncTable = async (db: any, localTableName: string) => {
                     "gas station": rest.gas_station, // DB column has a space
                     date_competition: rest.date_competition,
                     type: rest.type,
-                    created_at: rest.created_at
+                    created_at: rest.created_at,
+                    updated_at: rest.updated_at,
+                    deleted_at: rest.deleted_at
                 };
             }
 
@@ -160,7 +176,9 @@ const syncTable = async (db: any, localTableName: string) => {
                     odometer: rest.odometer,
                     description: rest.description,
                     date_m: rest.date_m,
-                    created_at: rest.created_at
+                    created_at: rest.created_at,
+                    updated_at: rest.updated_at,
+                    deleted_at: rest.deleted_at
                 };
             }
 

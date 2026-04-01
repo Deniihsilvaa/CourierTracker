@@ -25,9 +25,11 @@ export const initDb = async (forceReset = false) => {
   }
 
   try {
-    // Enable WAL mode and Foreign Keys
+    // Enable WAL mode and optimized settings
     await db.execAsync(`PRAGMA journal_mode = WAL;`);
     await db.execAsync(`PRAGMA foreign_keys = ON;`);
+    await db.execAsync(`PRAGMA synchronous = NORMAL;`);
+    await db.execAsync(`PRAGMA wal_autocheckpoint = 1000;`);
 
     await db.withTransactionAsync(async () => {
       // --- 1. CREATE CORE TABLES ---
@@ -346,9 +348,48 @@ export const initDb = async (forceReset = false) => {
         } catch (e) { }
       }
 
+      // --- 3. SYNC METADATA ---
+      const tablesForMetadata = [
+        'profiles', 'work_sessions', 'trips', 'route_events', 
+        'expenses', 'incomes', 'fuel_logs', 'maintenance_logs', 'category_types',
+        'gps_points'
+      ];
+      for (const table of tablesForMetadata) {
+        try { 
+          await db.execAsync(`ALTER TABLE ${table} ADD COLUMN updated_at TEXT;`);
+        } catch(e) {}
+        try {
+          await db.execAsync(`ALTER TABLE ${table} ADD COLUMN deleted_at TEXT;`);
+        } catch(e) {}
+      }
+
+      // GPS point deduplication key
+      try {
+        await db.execAsync(`ALTER TABLE gps_points ADD COLUMN point_uuid TEXT;`);
+      } catch(e) {}
+
+      // Tables missing created_at
+      const missingCreatedAt = ['category_types', 'route_segments', 'analytics_sessions', 'tracking_sessions'];
+      for (const table of missingCreatedAt) {
+        try {
+          await db.execAsync(`ALTER TABLE ${table} ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP;`);
+        } catch(e) {}
+      }
+
       try {
         await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_log_system_synced ON log_system (synced, created_at);`);
       } catch (e) { }
+
+      // Performance: Synced indexes
+      const syncIndexTables = [
+        'work_sessions', 'trips', 'gps_points', 'route_events', 
+        'expenses', 'incomes', 'fuel_logs', 'maintenance_logs'
+      ];
+      for (const table of syncIndexTables) {
+        try {
+          await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_${table}_synced ON ${table}(synced);`);
+        } catch (e) { }
+      }
     });
 
     console.log('[Storage] Local database initialized successfully.');
@@ -384,7 +425,28 @@ export const cleanupSyncedData = async () => {
       [logsIso]
     );
 
-    console.log(`[Storage] Cleanup completed. Removed old synced points.`);
+    // Delete synced and soft-deleted records (no longer needed locally)
+    const tablesWithSoftDelete = [
+      'work_sessions', 'trips', 'route_events', 'expenses', 
+      'incomes', 'fuel_logs', 'maintenance_logs', 'category_types'
+    ];
+    for (const table of tablesWithSoftDelete) {
+      await db.runAsync(
+        `DELETE FROM ${table} WHERE synced = 1 AND deleted_at IS NOT NULL`
+      );
+    }
+
+    // Delete synced route events and segments older than 14 days
+    await db.runAsync(
+      'DELETE FROM route_events WHERE synced = 1 AND created_at < ?',
+      [logsIso]
+    );
+    await db.runAsync(
+      'DELETE FROM route_segments WHERE synced = 1 AND created_at < ?',
+      [logsIso]
+    );
+
+    console.log(`[Storage] Cleanup completed. Removed old synced and deleted data.`);
     return true;
   } catch (e) {
     console.error('[Storage] Cleanup failed:', e);

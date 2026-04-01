@@ -1,4 +1,5 @@
 import { LocationObject } from 'expo-location';
+import { v4 as uuidv4 } from 'uuid';
 import { localDatabase } from '../../services/localDatabase';
 import { logger } from '../../utils/logger';
 
@@ -30,7 +31,8 @@ export const trackingRecorder = {
         longitude,
         accuracy,
         speed,
-        recorded_at: recordedAt
+        recorded_at: recordedAt,
+        point_uuid: uuidv4(),
       });
       return true;
     } catch (error) {
