@@ -84,9 +84,6 @@ export const endSession = async () => {
     end_time: endTime,
     status: 'closed' as const,
     end_odometer: currentOdometer ? Number(currentOdometer) : activeSession.start_odometer,
-    total_distance_km: activeSession.total_distance_km,
-    total_active_seconds: activeSession.total_active_seconds,
-    total_idle_seconds: activeSession.total_idle_seconds,
   };
   try {
     setActiveSession(null);

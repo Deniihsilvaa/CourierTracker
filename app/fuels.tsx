@@ -67,15 +67,17 @@ export default function FuelsScreen() {
         titleExtra={
           <View style={[styles.typeBadge, { 
             backgroundColor: isDark ? '#333' : '#f0f0f0', 
-            borderColor: item.type === 'gasoline' ? '#4CAF50' : '#8BC34A' 
+            borderColor: item.type === 'gasoline' ? '#4CAF50' : '#8BC34A',
+            paddingVertical: 2,
+            paddingHorizontal: 8,
           }]}>
-            <Text style={[styles.typeBadgeText, { color: item.type === 'gasoline' ? '#4CAF50' : '#8BC34A' }]}>
-              {item.type === 'gasoline' ? 'GAS' : 'ETA'}
+            <Text style={[styles.typeBadgeText, { color: item.type === 'gasoline' ? '#4CAF50' : '#8BC34A', fontSize: 10 }]}>
+              {item.type === 'gasoline' ? 'GASOLINA' : 'ETANOL'}
             </Text>
           </View>
         }
-        subtitle={`${item.liters}L • R$ ${item.price_per_liter.toFixed(2)}/L • ${item.odometer} km`}
-        description={item.description}
+        subtitle={`${item.liters}L • R$ ${item.price_per_liter.toFixed(2)}/L`}
+        description={item.odometer ? `Km: ${item.odometer}${item.description ? ' • ' + item.description : ''}` : item.description}
         amount={item.amount}
         date={item.date_competition}
         amountColor={brandColor}
@@ -100,7 +102,7 @@ export default function FuelsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header section */}
-      <View style={[styles.headerCard, { backgroundColor: cardBg, borderColor }]}>
+      <View style={[styles.headerCard, { backgroundColor: cardBg, borderColor, marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottomWidth: 0 }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -130,9 +132,9 @@ export default function FuelsScreen() {
         )}
       </View>
 
-      {/* Filters Bar */}
-      <View style={[styles.filterBar, { backgroundColor: cardBg, borderColor, paddingVertical: 8 }]}>
-        <View style={{ flexDirection: 'row', flex: 1, gap: 8 }}>
+      {/* Filters Bar - Now integrated as a sub-header */}
+      <View style={[styles.filterBar, { backgroundColor: cardBg, borderColor, borderTopLeftRadius: 0, borderTopRightRadius: 0, elevation: 2, height: 54 }]}>
+        <View style={{ flexDirection: 'row', flex: 1, gap: 6 }}>
           <TouchableOpacity 
             onPress={() => setTypeFilter('')} 
             style={[
@@ -140,11 +142,12 @@ export default function FuelsScreen() {
               { 
                 backgroundColor: !typeFilter ? brandColor : inputBg, 
                 borderColor: !typeFilter ? brandColor : borderColor,
-                paddingVertical: 4
+                paddingVertical: 6,
+                paddingHorizontal: 10
               }
             ]}
           >
-            <Text style={{ color: !typeFilter ? '#fff' : theme.text + '80', fontSize: 11, fontWeight: '700' }}>Todos</Text>
+            <Text style={{ color: !typeFilter ? '#fff' : theme.text + '80', fontSize: 10, fontWeight: '700' }}>Todos</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             onPress={() => setTypeFilter('gasoline')} 
@@ -153,11 +156,12 @@ export default function FuelsScreen() {
               { 
                 backgroundColor: typeFilter === 'gasoline' ? brandColor : inputBg, 
                 borderColor: typeFilter === 'gasoline' ? brandColor : borderColor,
-                paddingVertical: 4
+                paddingVertical: 6,
+                paddingHorizontal: 10
               }
             ]}
           >
-            <Text style={{ color: typeFilter === 'gasoline' ? '#fff' : theme.text + '80', fontSize: 11, fontWeight: '700' }}>Gasolina</Text>
+            <Text style={{ color: typeFilter === 'gasoline' ? '#fff' : theme.text + '80', fontSize: 10, fontWeight: '700' }}>Gas</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             onPress={() => setTypeFilter('Ethanol')} 
@@ -166,21 +170,25 @@ export default function FuelsScreen() {
               { 
                 backgroundColor: typeFilter === 'Ethanol' ? brandColor : inputBg, 
                 borderColor: typeFilter === 'Ethanol' ? brandColor : borderColor,
-                paddingVertical: 4
+                paddingVertical: 6,
+                paddingHorizontal: 10
               }
             ]}
           >
-            <Text style={{ color: typeFilter === 'Ethanol' ? '#fff' : theme.text + '80', fontSize: 11, fontWeight: '700' }}>Etanol</Text>
+            <Text style={{ color: typeFilter === 'Ethanol' ? '#fff' : theme.text + '80', fontSize: 10, fontWeight: '700' }}>Eta</Text>
           </TouchableOpacity>
         </View>
 
-        <TextInput
-          value={dateFilter}
-          onChangeText={setDateFilter}
-          style={[styles.filterInputDate, { color: theme.text, borderColor, borderLeftWidth: 1, paddingLeft: 8 }]}
-          placeholder="AAAA-MM-DD"
-          placeholderTextColor={theme.text + '50'}
-        />
+        <View style={{ flexDirection: 'row', alignItems: 'center', borderLeftWidth: 1, borderColor, paddingLeft: 10 }}>
+          <Ionicons name="calendar-outline" size={14} color={theme.text + '60'} style={{ marginRight: 4 }} />
+          <TextInput
+            value={dateFilter}
+            onChangeText={setDateFilter}
+            style={{ color: theme.text, fontSize: 11, width: 85 }}
+            placeholder="AAAA-MM-DD"
+            placeholderTextColor={theme.text + '40'}
+          />
+        </View>
       </View>
 
       {/* List */}
