@@ -79,7 +79,7 @@ export const localDatabase = {
       ...data,
       ...(id ? { id } : {}),
       synced: (data as any).synced ?? 0,
-      created_at: (data as any).created_at || new Date().toISOString()
+      created_at: (data as any).created_at || new Date().toISOString().split('.')[0] + 'Z'
     };
 
     const keys = Object.keys(entry);
@@ -104,9 +104,9 @@ export const localDatabase = {
     return this.insert('work_sessions', {
       id,
       user_id: userId,
-      start_time: startTime,
+      start_time: startTime.includes('.') ? startTime.split('.')[0] + 'Z' : startTime,
       synced: Number(synced),
-      start_odometer: startOdometer ? String(startOdometer) : "0",
+      start_odometer: (startOdometer !== undefined && startOdometer !== null) ? String(startOdometer) : null,
       status: 'open'
     });
   },

@@ -262,8 +262,8 @@ export const initDb = async (forceReset = false) => {
         { name: 'total_distance_km', type: 'REAL DEFAULT 0.0' },
         { name: 'total_active_seconds', type: 'INTEGER DEFAULT 0' },
         { name: 'total_idle_seconds', type: 'INTEGER DEFAULT 0' },
-        { name: 'start_odometer', type: 'TEXT DEFAULT "0"' },
-        { name: 'end_odometer', type: 'TEXT DEFAULT "0"' }
+        { name: 'start_odometer', type: 'TEXT' },
+        { name: 'end_odometer', type: 'TEXT' }
       ];
       for (const col of sessionCols) {
         try {

@@ -1,14 +1,14 @@
-import 'react-native-gesture-handler';
-import 'react-native-get-random-values';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuthStore } from '@/src/modules/auth/store';
+import { AppInitializer } from '@/src/services/app-initializer';
+import { logger } from '@/src/utils/logger';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { logger } from '@/src/utils/logger';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useAuthStore } from '@/src/modules/auth/store';
-import { AppInitializer } from '@/src/services/app-initializer';
+import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import 'react-native-get-random-values';
 
 // Global error handler
 AppInitializer.setupErrorHandling();
@@ -22,7 +22,7 @@ export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
   const router = useRouter();
   const segments = useSegments();
-  
+
   const { user, checkSession, isLoading } = useAuthStore();
 
   useEffect(() => {
@@ -72,10 +72,11 @@ export default function RootLayout() {
           <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
           <Stack.Screen name="register" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-          <Stack.Screen name="incomes" options={{ headerShown: false }} />
-          <Stack.Screen name="expenses" options={{ headerShown: false }} />
-          <Stack.Screen name="categories" options={{ headerShown: false }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="incomes" options={{ headerShown: false, animation: 'slide_from_right' }} />
+          <Stack.Screen name="fuels" options={{ headerShown: false, animation: 'slide_from_right' }} />
+          <Stack.Screen name="expenses" options={{ headerShown: false, animation: 'slide_from_right' }} />
+          <Stack.Screen name="categories" options={{ headerShown: false, animation: 'slide_from_right' }} />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>
