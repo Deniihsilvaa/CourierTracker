@@ -20,8 +20,14 @@ export interface AuthState {
 }
 export type LoginReturn = {
   user: {
+    id: string;
     email: string;
     name: string;
+    user_metadata?: {
+      name?: string;
+      vehicle_type?: string;
+      city?: string;
+    };
   };
   session: {
     access_token: string;

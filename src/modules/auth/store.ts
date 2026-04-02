@@ -32,28 +32,21 @@ export const useAuthStore = create<AuthState>((set) => ({
         vehicle_type,
         city,
       );
-      // Carregar perfil completo do backend
-      const profile = await authService.me();
 
-      if (profile && response) {
+      if (response) {
         const finalProfile: Profile = {
-          id: profile.id,
-          name: profile.name ?? name,
+          id: response.id,
+          name: name,
           email: email,
-          vehicle_type: profile.vehicle_type ?? vehicle_type,
-          city: profile.city ?? city,
+          vehicle_type: vehicle_type,
+          city: city,
         };
 
-        await localDatabase.update("profiles", finalProfile.id, {
-          name: finalProfile.name,
-          email: finalProfile.email,
-          city: finalProfile.city,
-          vehicle_type: finalProfile.vehicle_type,
-        });
+        await localDatabase.insert("profiles", finalProfile);
 
         set({ user: finalProfile, isLoading: false });
       } else {
-        logger.warn("[AuthStore] No profile after signUp attempt.");
+        logger.warn("[AuthStore] No response after signUp attempt.");
         set({ isLoading: false });
       }
     } catch (error: any) {
@@ -71,23 +64,24 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
 
       const response = await authService.login(email, password);
-      // carregar perfil
-      const profile = await authService.me();
 
-      if (profile && response) {
+      if (response && typeof response !== 'boolean') {
         const finalProfile: Profile = {
-          id: profile.id,
-          name: profile.name ?? null,
-          email: profile.email ?? null,
-          vehicle_type: profile.vehicle_type ?? null,
-          city: profile.city ?? null,
+          id: response.id,
+          name: response.user_metadata?.name ?? response.name ?? null,
+          email: response.email ?? email,
+          vehicle_type: response.user_metadata?.vehicle_type ?? null,
+          city: response.user_metadata?.city ?? null,
         };
 
-        await localDatabase.update("profiles", finalProfile.id, {
-          name: finalProfile.name,
-          email: finalProfile.email,
-          city: finalProfile.city,
-          vehicle_type: finalProfile.vehicle_type,
+        // Usa update para caso ele já exista no banco local
+        await localDatabase.insert("profiles", finalProfile).catch(() => {
+          localDatabase.update("profiles", finalProfile.id, {
+            name: finalProfile.name,
+            email: finalProfile.email,
+            city: finalProfile.city,
+            vehicle_type: finalProfile.vehicle_type,
+          });
         });
 
         set({ user: finalProfile, isLoading: false });
@@ -175,22 +169,45 @@ export const useAuthStore = create<AuthState>((set) => ({
           city: profile.city ?? null,
         };
 
-        await localDatabase.update("profiles", finalProfile.id, {
-          name: finalProfile.name,
-          email: finalProfile.email,
-          city: finalProfile.city,
-          vehicle_type: finalProfile.vehicle_type,
-        });
+        try {
+          await localDatabase.insert("profiles", finalProfile);
+        } catch {
+          await localDatabase.update("profiles", finalProfile.id, {
+            name: finalProfile.name,
+            email: finalProfile.email,
+            city: finalProfile.city,
+            vehicle_type: finalProfile.vehicle_type,
+          });
+        }
 
         set({ user: finalProfile });
       } else {
-        logger.warn("[AuthStore] checkSession: Profile missing.");
-        set({ user: null });
+        logger.warn("[AuthStore] checkSession: Profile missing from server.");
+        // Try getting from local database before kicking user out
+        const profiles = await localDatabase.list<Profile>("profiles");
+        if (profiles.length > 0) {
+          logger.info("[AuthStore] checkSession: Using local profile as fallback.");
+          set({ user: profiles[0] });
+        } else {
+          set({ user: null });
+        }
       }
     } catch (error: any) {
       logger.error("Session check error:", error.message);
-      // Se houver erro na sessão (ex: token expirado), remove o usuário
-      set({ error: error.message, user: null });
+      // Only remove the user if we specifically get an unauthenticated error (like 401)
+      // Otherwise keep local session on network errors to prevent logging out when offline
+      if (error?.response?.status === 401 || error?.status === 401) {
+        set({ error: "Sessão expirada", user: null });
+        await authService.logout();
+      } else {
+        logger.info("[AuthStore] checkSession: offline/network error, keeping local user if exists.");
+        const profiles = await localDatabase.list<Profile>("profiles");
+        if (profiles.length > 0) {
+          set({ user: profiles[0] });
+        } else {
+          set({ error: error.message, user: null });
+        }
+      }
     } finally {
       set({ isLoading: false });
     }

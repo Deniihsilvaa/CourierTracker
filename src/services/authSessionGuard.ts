@@ -1,6 +1,6 @@
-import { supabase } from './supabase';
-import { logger } from '../utils/logger';
 import { useAuthStore } from '../modules/auth/store';
+import { logger } from '../utils/logger';
+import { supabase } from './supabase';
 
 export const authSessionGuard = {
   /**
@@ -30,12 +30,12 @@ export const authSessionGuard = {
       if (expiresAt - now < BUFFER) {
         logger.info('[AuthGuard] Token near expiry, refreshing...');
         const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-        
+
         if (refreshError) {
           logger.error('[AuthGuard] Token refresh failed:', refreshError.message);
           return false;
         }
-        
+
         logger.info('[AuthGuard] Token refreshed successfully.');
         return !!refreshData.session;
       }
@@ -53,35 +53,14 @@ export const authSessionGuard = {
    */
   syncAuthStore: async () => {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-
-      if (error) {
-        logger.error('[AuthGuard] Sync error:', error.message);
-        return false;
-      }
-
-      // If we have a user in store but NO session in Supabase, 
-      // it MIGHT be a logout or a transient issue.
-      if (!session) {
-        const store = useAuthStore.getState();
-        if (store.user) {
-          logger.warn('[AuthGuard] No session found, but user exists in store. Re-checking...');
-          
-          // Re-check with a small delay
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          const { data: retry } = await supabase.auth.getSession();
-          
-          if (!retry.session) {
-            // We only sign out if we are SURE the user is not authenticated anymore
-            // but we'll let the AuthStore decide this through its checkSession method
-            // or we only do it if the store is not already loading.
-            if (!store.isLoading) {
-              logger.error('[AuthGuard] Persistent session loss. User state cleared.');
-              // We reset the user to null to force redirection back to login
-              store.setUser(null);
-            }
-          }
-        }
+      logger.debug('[AuthGuard] Syncing auth store state...');
+      
+      const store = useAuthStore.getState();
+      
+      // Delegation: We let the Centralized Store manage its own truth and logic
+      // respecting the flow: Event -> Store Action -> Service/API
+      if (!store.isLoading) {
+        await store.checkSession();
       }
 
       return true;
