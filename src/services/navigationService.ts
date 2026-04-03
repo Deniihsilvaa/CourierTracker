@@ -3,6 +3,26 @@ import { logger } from '../utils/logger';
 
 export const navigationService = {
   /**
+   * Primary navigation function using Google Maps deep link.
+   */
+  navigateToAddress: (address: string) => {
+    if (!address) {
+      logger.warn('[NavigationService] Missing address for navigation');
+      Alert.alert('Erro', 'Endereço inválido para navegação.');
+      return;
+    }
+
+    logger.info(`[NavigationService] Navigating to address: ${address}`);
+    const encodedAddress = encodeURIComponent(address);
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}&travelmode=driving`;
+
+    Linking.openURL(url).catch((err) => {
+      logger.error('[NavigationService] Failed to open Google Maps via Linking', err);
+      Alert.alert('Erro', 'Não foi possível encontrar o Google Maps no aparelho.');
+    });
+  },
+
+  /**
    * Opens an Alert dialog asking the user to choose their preferred navigation app (Waze or Google Maps).
    */
   chooseNavigationApp: (address: string, lat: number | null, lng: number | null) => {

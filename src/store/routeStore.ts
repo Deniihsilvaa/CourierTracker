@@ -11,6 +11,13 @@ interface RouteState {
   addRoute: (data: CreateRouteData) => Promise<void>;
   removeRoute: (id: string) => Promise<void>;
   updateRouteStatus: (id: string, status: Route['route_status']) => Promise<void>;
+  
+  // New actions
+  startPickup: (id: string) => Promise<void>;
+  arriveAtPickup: (id: string) => Promise<void>;
+  startDelivery: (id: string) => Promise<void>;
+  arriveAtDelivery: (id: string) => Promise<void>;
+  updateDeliveryAddress: (id: string, address: string) => Promise<void>;
   markPaymentReceived: (id: string) => Promise<void>;
 }
 
@@ -32,10 +39,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
   },
 
   addRoute: async (data: CreateRouteData) => {
-    // Calling service which handles Geolocation + SQLite Insert
     const newRoute = await routeService.createManualRoute(data);
-    
-    // Update local state
     set((state) => ({ routes: [newRoute, ...state.routes] }));
   },
 
@@ -46,20 +50,38 @@ export const useRouteStore = create<RouteState>((set, get) => ({
 
   updateRouteStatus: async (id: string, status: Route['route_status']) => {
     await routeService.updateRouteStatus(id, status);
-    set((state) => ({
-      routes: state.routes.map(r => r.id === id ? { ...r, route_status: status } : r)
-    }));
+    const updatedRoutes = await routeService.getAllRoutes();
+    updatedRoutes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    set({ routes: updatedRoutes });
+  },
+
+  startPickup: async (id: string) => {
+    await routeService.startPickup(id);
+    await get().loadRoutes();
+  },
+
+  arriveAtPickup: async (id: string) => {
+    await routeService.arriveAtPickup(id);
+    await get().loadRoutes();
+  },
+
+  startDelivery: async (id: string) => {
+    await routeService.startDelivery(id);
+    await get().loadRoutes();
+  },
+
+  arriveAtDelivery: async (id: string) => {
+    await routeService.arriveAtDelivery(id);
+    await get().loadRoutes();
+  },
+
+  updateDeliveryAddress: async (id: string, address: string) => {
+    await routeService.updateDeliveryAddress(id, address);
+    await get().loadRoutes();
   },
 
   markPaymentReceived: async (id: string) => {
     await routeService.markPaymentReceived(id);
-    const now = new Date().toISOString().split('.')[0] + 'Z';
-    set((state) => ({
-      routes: state.routes.map(r => 
-        r.id === id 
-          ? { ...r, payment_status: 'paid', payment_received_at: now } 
-          : r
-      )
-    }));
+    await get().loadRoutes();
   }
 }));

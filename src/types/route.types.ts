@@ -20,14 +20,29 @@ export interface Route {
   pickup_lat: number | null;
   pickup_lng: number | null;
   
-  delivery_location: string;
+  delivery_location: string | null;
   delivery_lat: number | null;
   delivery_lng: number | null;
   
-  value: number;
-  distance_km: number | null;
+  value: number | null;
   
-  route_status: "pending" | "pickup" | "delivering" | "completed" | "cancelled";
+  // GPS Event tracking
+  driver_start_lat: number | null;
+  driver_start_lng: number | null;
+  driver_start_at: string | null;
+
+  pickup_arrived_lat: number | null;
+  pickup_arrived_lng: number | null;
+  pickup_arrived_at: string | null;
+
+  delivery_arrived_lat: number | null;
+  delivery_arrived_lng: number | null;
+  delivery_arrived_at: string | null;
+
+  driver_to_pickup_km: number | null;
+  pickup_to_delivery_km: number | null;
+  
+  route_status: "pending" | "going_to_pickup" | "pickup_arrived" | "delivering" | "completed" | "cancelled";
   
   payment_required: boolean;
   payment_status: "pending" | "paid" | "failed";

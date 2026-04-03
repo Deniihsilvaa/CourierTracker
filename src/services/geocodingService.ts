@@ -13,10 +13,7 @@ export const geocodingService = {
   async geocodeAddress(address: string): Promise<GeocodingResult | null> {
     try {
       logger.info(`[Geocoding] Geocoding address: ${address}`);
-      // Append local context for better precision if not explicitly provided
-      const searchQuery = address.toLowerCase().includes('brasil') 
-        ? address 
-        : `${address}, Passos, Minas Gerais, Brasil`;
+      const searchQuery = `${address}, Passos, Minas Gerais, Brasil`;
 
       const response = await axios.get('https://nominatim.openstreetmap.org/search', {
         params: {
@@ -27,7 +24,7 @@ export const geocodingService = {
           countrycodes: 'br'
         },
         headers: {
-          'User-Agent': 'rotapro-app',
+          'User-Agent': 'courier-tracker',
         },
       });
 

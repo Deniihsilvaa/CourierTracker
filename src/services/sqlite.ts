@@ -291,12 +291,26 @@ export const initDb = async (forceReset = false) => {
           pickup_lat REAL,
           pickup_lng REAL,
 
-          delivery_location TEXT NOT NULL,
+          delivery_location TEXT,
           delivery_lat REAL,
           delivery_lng REAL,
 
-          value REAL NOT NULL,
-          distance_km REAL,
+          value REAL,
+
+          driver_start_lat REAL,
+          driver_start_lng REAL,
+          driver_start_at TEXT,
+
+          pickup_arrived_lat REAL,
+          pickup_arrived_lng REAL,
+          pickup_arrived_at TEXT,
+
+          delivery_arrived_lat REAL,
+          delivery_arrived_lng REAL,
+          delivery_arrived_at TEXT,
+
+          driver_to_pickup_km REAL,
+          pickup_to_delivery_km REAL,
 
           route_status TEXT DEFAULT 'pending',
 
@@ -332,6 +346,19 @@ export const initDb = async (forceReset = false) => {
         try { await db.execAsync(`ALTER TABLE ${table} ADD COLUMN deleted_at TEXT;`); } catch (e) { }
       }
     }
+
+    // Manual Routes migrations
+    try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_start_lat REAL;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_start_lng REAL;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_start_at TEXT;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_arrived_lat REAL;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_arrived_lng REAL;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_arrived_at TEXT;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_lat REAL;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_lng REAL;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_at TEXT;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_to_pickup_km REAL;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_to_delivery_km REAL;`); } catch (e) { }
 
     // Specific columns for work_sessions
     try { await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN start_odometer TEXT;`); } catch (e) { }

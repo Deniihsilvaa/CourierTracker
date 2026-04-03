@@ -17,16 +17,16 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleConfirm = async () => {
-    if (!pickup.trim() || !delivery.trim() || !value.trim()) return;
+    if (!pickup.trim()) return;
 
     setIsSubmitting(true);
-    const numericValue = parseFloat(value.replace(',', '.'));
+    const numericValue = value.trim() ? parseFloat(value.replace(',', '.')) : null;
 
     try {
       await addRoute({
         pickup_location: pickup,
-        delivery_location: delivery,
-        value: isNaN(numericValue) ? 0 : numericValue,
+        delivery_location: delivery.trim() || null,
+        value: numericValue,
         payment_required: paymentRequired
       });
 
