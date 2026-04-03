@@ -204,6 +204,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (error?.response?.status === 401 || error?.status === 401) {
         set({ error: "Sessão expirada", user: null });
         await authService.logout();
+        await initDb(true); // Wipe the offline DB to prevent data leaks!
+        logger.info("[AuthStore] Database wiped after 401 session expiry.");
       } else {
         logger.info("[AuthStore] checkSession: offline/network error, keeping local user if exists.");
         const profiles = await localDatabase.list<Profile>("profiles");

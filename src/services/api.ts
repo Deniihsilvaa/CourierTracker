@@ -1,5 +1,6 @@
 import axios from "axios";
 import * as SecureStore from 'expo-secure-store';
+import { initDb } from './sqlite';
 
 const API_TOKEN_KEY = 'auth_token';
 
@@ -23,6 +24,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       console.warn('[API] Unauthorized! Clearing token...');
       await setAuthToken(null);
+      await initDb(true); // Critical: wipe offline DB globally if token expires to prevent user data ghosting
       
       // We don't import useAuthStore here to avoid circular dependency
       // The app will likely redirect to login on next state check or user action
