@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Route } from '../types/route.types';
 import { useRouteStore } from '../store/routeStore';
 import { navigationService } from '../services/navigationService';
 import { UpdateDeliveryModal } from './UpdateDeliveryModal';
+import { FormatTime } from '../utils/format';
 
 interface RouteActionsModalProps {
   visible: boolean;
@@ -23,16 +24,36 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
   } = useRouteStore();
 
   const [deliveryModalVisible, setDeliveryModalVisible] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   if (!route) return null;
 
-  const handleDelete = () => {
-    removeRoute(route.id);
-    onClose();
+  const handleDelete = async () => {
+    setIsProcessing(true);
+    try {
+      await removeRoute(route.id);
+      onClose();
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleAction = async (action: (id: string) => Promise<void>) => {
+    setIsProcessing(true);
+    try {
+      await action(route.id);
+      onClose();
+    } catch (error) {
+      console.error('[RouteActions] Action failed:', error);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const canNavigateToPickup = !!route.pickup_location;
-  const canNavigateToDelivery = !!route.delivery_location;
+  // Agora usamos a variável declarada para controle de estado se necessário, 
+  // mas mantemos a lógica de renderização condicional.
+  const hasDeliveryAddress = !!route.delivery_location;
 
   return (
     <>
@@ -41,28 +62,58 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
           <View style={styles.container}>
             <View style={styles.header}>
               <Text style={styles.title}>Ações da Rota</Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <TouchableOpacity onPress={onClose} style={styles.closeBtn} disabled={isProcessing}>
                 <Ionicons name="close" size={24} color="#a1a1aa" />
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Histórico de Horários */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Histórico da Rota</Text>
+                <View className="flex-row items-center justify-between bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800/50 mb-2">
+                  <View className="items-center flex-1">
+                    <Text className="text-zinc-500 text-[10px] font-bold uppercase mb-1">Criação</Text>
+                    <Text className="text-zinc-100 font-black text-sm">{FormatTime(route.created_at)}</Text>
+                  </View>
+                  
+                  <Ionicons name="chevron-forward" size={12} color="#27272a" />
+                  
+                  <View className="items-center flex-1">
+                    <Text className="text-zinc-500 text-[10px] font-bold uppercase mb-1">Aceite</Text>
+                    <Text className={route.driver_start_at ? "text-blue-400 font-black text-sm" : "text-zinc-700 font-bold text-sm"}>
+                      {FormatTime(route.driver_start_at)}
+                    </Text>
+                  </View>
+
+                  <Ionicons name="chevron-forward" size={12} color="#27272a" />
+
+                  <View className="items-center flex-1">
+                    <Text className="text-zinc-500 text-[10px] font-bold uppercase mb-1">Fim</Text>
+                    <Text className={route.delivery_arrived_at ? "text-green-400 font-black text-sm" : "text-zinc-700 font-bold text-sm"}>
+                      {FormatTime(route.delivery_arrived_at)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
               {/* Navegação */}
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Navegação</Text>
                 <TouchableOpacity 
-                  onPress={() => navigationService.navigateToAddress(route.pickup_location)} 
+                  onPress={() => navigationService.chooseNavigationApp(route.pickup_location, route.pickup_lat, route.pickup_lng)} 
                   style={styles.navButton}
-                  disabled={!canNavigateToPickup}
+                  disabled={!canNavigateToPickup || isProcessing}
                 >
                   <Ionicons name="navigate" size={20} color={canNavigateToPickup ? "#3b82f6" : "#52525b"} />
                   <Text style={[styles.navText, !canNavigateToPickup && styles.disabledText]}>Navegar até a Coleta</Text>
                 </TouchableOpacity>
                 
-                {route.delivery_location ? (
+                {hasDeliveryAddress ? (
                   <TouchableOpacity 
-                    onPress={() => navigationService.navigateToAddress(route.delivery_location!)} 
+                    onPress={() => navigationService.chooseNavigationApp(route.delivery_location!, route.delivery_lat, route.delivery_lng)} 
                     style={styles.navButton}
+                    disabled={isProcessing}
                   >
                     <Ionicons name="navigate" size={20} color="#f97316" />
                     <Text style={styles.navText}>Navegar até a Entrega</Text>
@@ -71,6 +122,7 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
                   <TouchableOpacity 
                     onPress={() => setDeliveryModalVisible(true)} 
                     style={[styles.navButton, { borderStyle: 'dashed', borderWidth: 1, borderColor: '#3f3f46', backgroundColor: 'transparent' }]}
+                    disabled={isProcessing}
                   >
                     <Ionicons name="add-circle-outline" size={20} color="#a1a1aa" />
                     <Text style={[styles.navText, { color: '#a1a1aa' }]}>Adicionar Endereço de Entrega</Text>
@@ -84,41 +136,61 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
                 
                 {route.route_status === 'pending' && (
                   <TouchableOpacity 
-                    onPress={() => { startPickup(route.id); onClose(); }} 
+                    onPress={() => handleAction(startPickup)} 
                     style={[styles.eventBtn, { backgroundColor: '#3b82f6' }]}
+                    disabled={isProcessing}
                   >
-                    <Ionicons name="play" size={22} color="white" />
-                    <Text style={styles.eventBtnText}>Iniciar Coleta (Sair agora)</Text>
+                    {isProcessing ? <ActivityIndicator color="white" /> : (
+                      <>
+                        <Ionicons name="play" size={22} color="white" />
+                        <Text style={styles.eventBtnText}>Iniciar Coleta (Sair agora)</Text>
+                      </>
+                    )}
                   </TouchableOpacity>
                 )}
 
                 {route.route_status === 'going_to_pickup' && (
                   <TouchableOpacity 
-                    onPress={() => { arriveAtPickup(route.id); onClose(); }} 
+                    onPress={() => handleAction(arriveAtPickup)} 
                     style={[styles.eventBtn, { backgroundColor: '#3b82f6' }]}
+                    disabled={isProcessing}
                   >
-                    <Ionicons name="location" size={22} color="white" />
-                    <Text style={styles.eventBtnText}>Cheguei na Coleta</Text>
+                    {isProcessing ? <ActivityIndicator color="white" /> : (
+                      <>
+                        <Ionicons name="location" size={22} color="white" />
+                        <Text style={styles.eventBtnText}>Cheguei na Coleta</Text>
+                      </>
+                    )}
                   </TouchableOpacity>
                 )}
 
                 {route.route_status === 'pickup_arrived' && (
                   <TouchableOpacity 
-                    onPress={() => { startDelivery(route.id); onClose(); }} 
+                    onPress={() => handleAction(startDelivery)} 
                     style={[styles.eventBtn, { backgroundColor: '#f97316' }]}
+                    disabled={isProcessing}
                   >
-                    <Ionicons name="bicycle" size={22} color="white" />
-                    <Text style={styles.eventBtnText}>Iniciar Entrega (Sair da Coleta)</Text>
+                    {isProcessing ? <ActivityIndicator color="white" /> : (
+                      <>
+                        <Ionicons name="bicycle" size={22} color="white" />
+                        <Text style={styles.eventBtnText}>Iniciar Entrega (Sair da Coleta)</Text>
+                      </>
+                    )}
                   </TouchableOpacity>
                 )}
 
                 {route.route_status === 'delivering' && (
                   <TouchableOpacity 
-                    onPress={() => { arriveAtDelivery(route.id); onClose(); }} 
+                    onPress={() => handleAction(arriveAtDelivery)} 
                     style={[styles.eventBtn, { backgroundColor: '#22c55e' }]}
+                    disabled={isProcessing}
                   >
-                    <Ionicons name="checkmark-circle" size={22} color="white" />
-                    <Text style={styles.eventBtnText}>Finalizar Entrega (Entregue)</Text>
+                    {isProcessing ? <ActivityIndicator color="white" /> : (
+                      <>
+                        <Ionicons name="checkmark-circle" size={22} color="white" />
+                        <Text style={styles.eventBtnText}>Finalizar Entrega (Entregue)</Text>
+                      </>
+                    )}
                   </TouchableOpacity>
                 )}
 
@@ -135,11 +207,16 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Financeiro</Text>
                   <TouchableOpacity 
-                    onPress={() => { markPaymentReceived(route.id); onClose(); }} 
+                    onPress={() => handleAction(markPaymentReceived)} 
                     style={[styles.actionBtn, { backgroundColor: '#10b981' }]}
+                    disabled={isProcessing}
                   >
-                    <Ionicons name="cash-outline" size={22} color="white" />
-                    <Text style={styles.actionBtnText}>Marcar como Pago</Text>
+                    {isProcessing ? <ActivityIndicator color="white" /> : (
+                      <>
+                        <Ionicons name="cash-outline" size={22} color="white" />
+                        <Text style={styles.actionBtnText}>Marcar como Pago</Text>
+                      </>
+                    )}
                   </TouchableOpacity>
                 </View>
               )}
@@ -150,6 +227,7 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
                   <TouchableOpacity 
                     onPress={() => setDeliveryModalVisible(true)} 
                     style={[styles.actionBtn, { backgroundColor: '#27272a' }]}
+                    disabled={isProcessing}
                   >
                     <Ionicons name="create-outline" size={20} color="white" />
                     <Text style={styles.actionBtnText}>Editar Endereço de Entrega</Text>
@@ -159,7 +237,7 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
 
               {/* Opções de perigo */}
               <View style={[styles.section, { borderBottomWidth: 0 }]}>
-                <TouchableOpacity onPress={handleDelete} style={[styles.actionBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#ef4444' }]}>
+                <TouchableOpacity onPress={handleDelete} style={[styles.actionBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#ef4444' }]} disabled={isProcessing}>
                   <Ionicons name="trash-outline" size={20} color="#ef4444" />
                   <Text style={[styles.actionBtnText, { color: '#ef4444' }]}>Deletar Rota</Text>
                 </TouchableOpacity>
@@ -249,6 +327,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
+    minHeight: 64,
   },
   eventBtnText: {
     color: 'white',

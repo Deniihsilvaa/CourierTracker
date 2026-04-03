@@ -27,12 +27,27 @@ export const FormatDuration = ({ seconds, format }: FormartDurationProps): strin
     return `${seconds} segundos`;
   };
 
-  /**
-   * Formata a data para o formato de data e hora
-   * @param dateStr - A data em string
-   * @returns A data formatada
-   */
-  export const FormatDateLabel = (dateStr: string): string => {
+/**
+ * Formata a data para exibir apenas a hora HH:mm
+ * @param dateStr - A data em string (ISO)
+ * @returns Horário formatado
+ */
+export const FormatTime = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return '--:--';
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
+};
+
+/**
+ * Formata a data para o formato de data e hora
+ * @param dateStr - A data em string
+ * @returns A data formatada
+ */
+export const FormatDateLabel = (dateStr: string): string => {
     const date = new Date(dateStr);
     const today = new Date();
     const yesterday = new Date();

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Route } from '../types/route.types';
 import { RouteActionsModal } from './RouteActionsModal';
 import { Ionicons } from '@expo/vector-icons';
+import { FormatTime } from '../utils/format';
 
 interface RouteCardProps {
   route: Route;
@@ -23,6 +24,24 @@ export const RouteCard: React.FC<RouteCardProps> = ({ route }) => {
 
   const totalKm = (route.driver_to_pickup_km || 0) + (route.pickup_to_delivery_km || 0);
 
+  // Determinar qual horário exibir ao lado do status
+  const getStatusTime = () => {
+    switch (route.route_status) {
+      case 'completed':
+        return { label: 'Fim', time: route.delivery_arrived_at };
+      case 'pending':
+        return { label: 'Criado', time: route.created_at };
+      case 'going_to_pickup':
+      case 'pickup_arrived':
+      case 'delivering':
+        return { label: 'Início', time: route.driver_start_at };
+      default:
+        return { label: 'Criado', time: route.created_at };
+    }
+  };
+
+  const statusTime = getStatusTime();
+
   return (
     <>
       <TouchableOpacity 
@@ -33,8 +52,14 @@ export const RouteCard: React.FC<RouteCardProps> = ({ route }) => {
         <View className="flex-col">
           {/* Header Row */}
           <View className="flex-row items-center mb-4 justify-between">
-            <View className={`px-3 py-1 rounded-full ${theme.bg}`}>
-              <Text className={`text-[10px] font-black uppercase tracking-widest ${theme.text}`}>{theme.label}</Text>
+            <View className="flex-row items-center">
+              <View className={`px-3 py-1 rounded-full ${theme.bg}`}>
+                <Text className={`text-[10px] font-black uppercase tracking-widest ${theme.text}`}>{theme.label}</Text>
+              </View>
+              <View className="ml-3 flex-row items-center">
+                <Text className="text-zinc-500 text-[10px] font-bold uppercase tracking-tight">{statusTime.label}</Text>
+                <Text className="text-zinc-300 text-[10px] font-black ml-1 uppercase">{FormatTime(statusTime.time)}</Text>
+              </View>
             </View>
             <View className="flex-row items-center">
               {route.payment_required && (
