@@ -5,6 +5,7 @@ import { getAuthToken } from "../../services/api";
 import { authService } from "../../services/auth.service";
 import { localDatabase } from "../../services/localDatabase";
 import { supabase } from "../../services/supabase";
+import { initDb } from "../../services/sqlite";
 import { setLogUserIdProvider } from "../../services/logSystem";
 import { logger } from "../../utils/logger";
 
@@ -139,6 +140,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ isLoading: true, error: null });
       await authService.logout();
       set({ user: null });
+      
+      // Wipe the whole offline database on sign out to prevent data leaks between sessions/users
+      await initDb(true);
+      logger.info("[AuthStore] Database wiped successfully after sign out.");
     } catch (error: any) {
       set({ error: error.message });
       throw error;

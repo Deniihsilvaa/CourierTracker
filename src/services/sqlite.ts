@@ -25,6 +25,16 @@ export const initDb = async (forceReset = false) => {
       DROP TABLE IF EXISTS work_sessions;
       DROP TABLE IF EXISTS profiles;
       DROP TABLE IF EXISTS log_system;
+      DROP TABLE IF EXISTS route_events;
+      DROP TABLE IF EXISTS tracking_sessions;
+      DROP TABLE IF EXISTS route_segments;
+      DROP TABLE IF EXISTS analytics_sessions;
+      DROP TABLE IF EXISTS category_types;
+      DROP TABLE IF EXISTS expenses;
+      DROP TABLE IF EXISTS incomes;
+      DROP TABLE IF EXISTS fuel_logs;
+      DROP TABLE IF EXISTS maintenance_logs;
+      DROP TABLE IF EXISTS manual_routes;
     `);
   }
 
