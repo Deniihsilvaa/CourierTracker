@@ -39,13 +39,19 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
 
           {/* Navegação */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Navegação Rápida (Maps)</Text>
-            <TouchableOpacity onPress={() => navigationService.navigateToAddress(route.pickup_location)} style={styles.navButton}>
+            <Text style={styles.sectionTitle}>Navegação Rápida</Text>
+            <TouchableOpacity 
+              onPress={() => navigationService.chooseNavigationApp(route.pickup_location, route.pickup_lat, route.pickup_lng)} 
+              style={styles.navButton}
+            >
               <Ionicons name="navigate" size={20} color="#3b82f6" />
               <Text style={styles.navText}>Navegar até a Coleta</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity onPress={() => navigationService.navigateToAddress(route.delivery_location)} style={styles.navButton}>
+            <TouchableOpacity 
+              onPress={() => navigationService.chooseNavigationApp(route.delivery_location, route.delivery_lat, route.delivery_lng)} 
+              style={styles.navButton}
+            >
               <Ionicons name="navigate" size={20} color="#f97316" />
               <Text style={styles.navText}>Navegar até a Entrega</Text>
             </TouchableOpacity>
