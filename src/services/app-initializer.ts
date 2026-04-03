@@ -9,16 +9,20 @@ import { logSystem } from './logSystem';
 import { initDb } from './sqlite';
 
 /**
+ * @description
  * Orchestrates the application startup sequence and global listeners.
  */
 export const AppInitializer = {
   privateSubscriptions: [] as any[],
   timerInterval: null as NodeJS.Timeout | null,
-
+  /**
+   * Initializes the application.
+   * @returns True if the initialization was successful, false otherwise.
+   */
   async prepare() {
     try {
       logger.info('[AppInitializer] Initializing database...');
-      await initDb(true);
+      await initDb(false);
 
       logger.info('[AppInitializer] Recovering tracking session...');
       await sessionManager.initializeSession();

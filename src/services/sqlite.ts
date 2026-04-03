@@ -10,6 +10,10 @@ export const getDb = () => {
 };
 
 // Initialize the database tables
+/**
+ * Initializes the database.
+ * @param forceReset - Whether to force a database reset.
+ */
 export const initDb = async (forceReset = false) => {
   const db = getDb();
 
@@ -247,15 +251,31 @@ export const initDb = async (forceReset = false) => {
           synced INTEGER DEFAULT 0
         );
       `);
+
+      // Manual Routes
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS manual_routes (
+          id TEXT PRIMARY KEY,
+          pickup_location TEXT NOT NULL,
+          delivery_location TEXT NOT NULL,
+          value REAL NOT NULL,
+          distance_km REAL,
+          status TEXT DEFAULT 'pending',
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT,
+          deleted_at TEXT,
+          synced INTEGER DEFAULT 0
+        );
+      `);
     });
 
     // --- 2. RUN MIGRATIONS (Ensure all columns exist) ---
     // These run OUTSIDE the main transaction to prevent rollback on duplicate column errors
 
     const tablesToMigrate = [
-      'profiles', 'work_sessions', 'trips', 'route_events', 
+      'profiles', 'work_sessions', 'trips', 'route_events',
       'expenses', 'incomes', 'fuel_logs', 'maintenance_logs', 'category_types',
-      'gps_points', 'tracking_sessions', 'route_segments', 'analytics_sessions'
+      'gps_points', 'tracking_sessions', 'route_segments', 'analytics_sessions', 'manual_routes'
     ];
 
     for (const table of tablesToMigrate) {
@@ -263,7 +283,7 @@ export const initDb = async (forceReset = false) => {
       try { await db.execAsync(`ALTER TABLE ${table} ADD COLUMN synced INTEGER DEFAULT 0;`); } catch (e) { }
       try { await db.execAsync(`ALTER TABLE ${table} ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP;`); } catch (e) { }
       try { await db.execAsync(`ALTER TABLE ${table} ADD COLUMN updated_at TEXT;`); } catch (e) { }
-      
+
       // Soft delete column (except log_system and gps_points as per localDatabase.ts logic)
       if (table !== 'log_system' && table !== 'gps_points') {
         try { await db.execAsync(`ALTER TABLE ${table} ADD COLUMN deleted_at TEXT;`); } catch (e) { }
@@ -291,8 +311,8 @@ export const initDb = async (forceReset = false) => {
 
     // Performance: Synced indexes
     const syncIndexTables = [
-      'work_sessions', 'trips', 'gps_points', 'route_events', 
-      'expenses', 'incomes', 'fuel_logs', 'maintenance_logs'
+      'work_sessions', 'trips', 'gps_points', 'route_events',
+      'expenses', 'incomes', 'fuel_logs', 'maintenance_logs', 'manual_routes'
     ];
     for (const table of syncIndexTables) {
       try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_${table}_synced ON ${table}(synced);`); } catch (e) { }
@@ -333,7 +353,7 @@ export const cleanupSyncedData = async () => {
 
     // Delete synced and soft-deleted records (no longer needed locally)
     const tablesWithSoftDelete = [
-      'work_sessions', 'trips', 'route_events', 'expenses', 
+      'work_sessions', 'trips', 'route_events', 'expenses',
       'incomes', 'fuel_logs', 'maintenance_logs', 'category_types'
     ];
     for (const table of tablesWithSoftDelete) {

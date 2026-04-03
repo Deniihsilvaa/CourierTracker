@@ -39,6 +39,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="routes"
+        options={{
+          title: 'Rotas',
+          tabBarIcon: ({ color }) => <Ionicons size={24} name="map" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="analytics"
         options={{
           title: 'Analytics',
