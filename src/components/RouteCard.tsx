@@ -72,15 +72,26 @@ export const RouteCard: React.FC<RouteCardProps> = ({ route }) => {
 
           {/* Footer Info */}
           <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-zinc-800">
-            <View>
-              <Text className="text-zinc-500 text-xs font-semibold mb-0.5">Valor da Corrida</Text>
-              <Text className="text-green-400 font-extrabold text-lg">
-                R$ {route.value.toFixed(2).replace('.', ',')}
-              </Text>
+            <View className="flex-row items-center">
+              <View className="mr-6">
+                <Text className="text-zinc-500 text-xs font-semibold mb-0.5">Valor da Corrida</Text>
+                <Text className="text-green-400 font-extrabold text-lg">
+                  R$ {route.value.toFixed(2).replace('.', ',')}
+                </Text>
+              </View>
+              
+              {route.distance_km != null && (
+                <View>
+                  <Text className="text-zinc-500 text-xs font-semibold mb-0.5">Distância</Text>
+                  <Text className="text-zinc-300 font-extrabold text-lg">
+                    {route.distance_km} km
+                  </Text>
+                </View>
+              )}
             </View>
             
             <View className="items-end bg-zinc-800/50 py-1.5 px-3 rounded-lg flex-row">
-              <Text className="text-zinc-300 font-bold text-sm">Ações da Rota</Text>
+              <Text className="text-zinc-300 font-bold text-sm">Opções</Text>
               <Ionicons name="chevron-forward" size={16} color="#a1a1aa" style={{marginLeft: 4, marginTop: 1}} />
             </View>
           </View>

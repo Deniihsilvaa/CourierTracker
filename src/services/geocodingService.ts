@@ -4,7 +4,6 @@ import { logger } from '../utils/logger';
 export interface GeocodingResult {
   lat: number;
   lng: number;
-  displayName: string;
 }
 
 /**
@@ -14,14 +13,21 @@ export const geocodingService = {
   async geocodeAddress(address: string): Promise<GeocodingResult | null> {
     try {
       logger.info(`[Geocoding] Geocoding address: ${address}`);
+      // Append local context for better precision if not explicitly provided
+      const searchQuery = address.toLowerCase().includes('brasil') 
+        ? address 
+        : `${address}, Passos, Minas Gerais, Brasil`;
+
       const response = await axios.get('https://nominatim.openstreetmap.org/search', {
         params: {
-          q: address,
+          q: searchQuery,
           format: 'json',
           limit: 1,
+          addressdetails: 1,
+          countrycodes: 'br'
         },
         headers: {
-          'User-Agent': 'CourierTrackerApp/1.0 (Mobile Delivery Route Tracking)',
+          'User-Agent': 'rotapro-app',
         },
       });
 
@@ -30,7 +36,6 @@ export const geocodingService = {
         return {
           lat: parseFloat(result.lat),
           lng: parseFloat(result.lon),
-          displayName: result.display_name,
         };
       }
       

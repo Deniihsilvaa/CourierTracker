@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Linking, Modal, StyleSheet } from 'react-
 import { Ionicons } from '@expo/vector-icons';
 import { Route } from '../types/route.types';
 import { useRouteStore } from '../store/routeStore';
+import { navigationService } from '../services/navigationService';
 
 interface RouteActionsModalProps {
   visible: boolean;
@@ -14,17 +15,6 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
   const { updateRouteStatus, markPaymentReceived, removeRoute } = useRouteStore();
 
   if (!route) return null;
-
-  const navigateToMap = (lat: number | null, lng: number | null) => {
-    if (!lat || !lng) {
-      alert("Coordenadas indisponíveis para este endereço.");
-      return;
-    }
-    // Deep link example using Google Maps specifically for driving.
-    // In a full implementation, you could use mapping choice logic, or waze.
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
-    Linking.openURL(url).catch(() => alert('Não foi possível abrir o mapa.'));
-  };
 
   const handleStatusUpdate = (status: Route['route_status']) => {
     updateRouteStatus(route.id, status);
@@ -50,12 +40,12 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
           {/* Navegação */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Navegação Rápida (Maps)</Text>
-            <TouchableOpacity onPress={() => navigateToMap(route.pickup_lat, route.pickup_lng)} style={styles.navButton}>
+            <TouchableOpacity onPress={() => navigationService.navigateToAddress(route.pickup_location)} style={styles.navButton}>
               <Ionicons name="navigate" size={20} color="#3b82f6" />
               <Text style={styles.navText}>Navegar até a Coleta</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity onPress={() => navigateToMap(route.delivery_lat, route.delivery_lng)} style={styles.navButton}>
+            <TouchableOpacity onPress={() => navigationService.navigateToAddress(route.delivery_location)} style={styles.navButton}>
               <Ionicons name="navigate" size={20} color="#f97316" />
               <Text style={styles.navText}>Navegar até a Entrega</Text>
             </TouchableOpacity>

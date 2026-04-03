@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { localDatabase } from './localDatabase';
 import { geocodingService } from './geocodingService';
+import { calculateDistanceKm } from './distanceService';
 import { Route } from '../types/route.types';
 import { useSessionStore } from '../modules/sessions/store';
 import { logger } from '../utils/logger';
@@ -23,6 +24,17 @@ export const routeService = {
       geocodingService.geocodeAddress(data.delivery_location)
     ]);
 
+    // 3. Calculate distance offline using Haversine formula
+    let calculatedDistance: number | null = null;
+    if (pickupGeo?.lat && pickupGeo?.lng && deliveryGeo?.lat && deliveryGeo?.lng) {
+      calculatedDistance = calculateDistanceKm(
+        pickupGeo.lat,
+        pickupGeo.lng,
+        deliveryGeo.lat,
+        deliveryGeo.lng
+      );
+    }
+
     // 4. Attach current work_session id
     // We assume useSessionStore returns active session or active Session ID. Check store shape:
     const activeSession = useSessionStore.getState().activeSession;
@@ -44,7 +56,7 @@ export const routeService = {
       delivery_lng: deliveryGeo?.lng ?? null,
       
       value: data.value,
-      distance_km: null, // Basic implementation. Can be updated later with routing api
+      distance_km: calculatedDistance,
       
       route_status: 'pending',
       
