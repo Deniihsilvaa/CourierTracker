@@ -19,11 +19,24 @@ export interface SessionState {
     sessionDuration: string; // "00:00:00" format
     odometer: string;
     isLoading: boolean;
+    
+    // History State
+    history: WorkSession[];
+    loading: boolean;
+    refreshing: boolean;
+    timeFilter: '7d' | '30d' | 'all';
+
     setActiveSession: (session: WorkSession | null) => void;
     setSessionDuration: (duration: string) => void;
     setOdometer: (v: string) => void;
     setIsLoading: (v: boolean) => void;
     updateSessionMetrics: (distanceDeltaKm: number, activeDeltaSec: number, idleDeltaSec: number) => void;
+    
+    // History Actions
+    setHistory: (history: WorkSession[]) => void;
+    setHistoryLoading: (loading: boolean) => void;
+    setHistoryRefreshing: (refreshing: boolean) => void;
+    setTimeFilter: (filter: '7d' | '30d' | 'all') => void;
 }
 
 export interface FinancialAnalytics {

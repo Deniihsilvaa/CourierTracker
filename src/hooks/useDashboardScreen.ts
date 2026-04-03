@@ -1,15 +1,15 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAnalyticsStore } from '@/src/modules/analytics/store';
 import { useAuthStore } from '@/src/modules/auth/store';
-import { endSession, fetchSessionData, recoverActiveSession, startSession } from '@/src/modules/sessions/service';
+import { deleteSession, endSession, fetchSessionData, recoverActiveSession, startSession } from '@/src/modules/sessions/service';
 import { useSessionStore } from '@/src/modules/sessions/store';
 import { createRouteEvent } from '@/src/modules/tracking/routeEventService';
-import { resetWaitingDetection, startTracking, stopTracking } from '@/src/modules/tracking/service';
+import { resetWaitingDetection } from '@/src/modules/tracking/service';
 import { useTrackingStore } from '@/src/modules/tracking/store';
 import { localDatabase } from '@/src/services/localDatabase';
 import { runFullSync } from '@/src/services/sync';
 import { logger } from '@/src/utils/logger';
-import { useAnalyticsStore } from '@/src/modules/analytics/store';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, ToastAndroid } from 'react-native';
@@ -121,6 +121,33 @@ export default function useDashboardScreen() {
         setIsStopModalVisible(true);
     };
 
+    const handleDeleteSession = async () => {
+        if (!activeSession) return;
+
+        Alert.alert(
+            'Excluir Turno',
+            'Deseja realmente excluir este turno? Todos os dados de GPS e tempo serão perdidos permanentemente.',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                { 
+                    text: 'Excluir', 
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setLoadingSession(true);
+                            await deleteSession(activeSession.id);
+                            ToastAndroid.show('Turno excluído.', ToastAndroid.SHORT);
+                        } catch (e) {
+                            Alert.alert('Erro', 'Não foi possível excluir o turno.');
+                        } finally {
+                            setLoadingSession(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const confirmStopSession = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         
@@ -199,6 +226,7 @@ export default function useDashboardScreen() {
         handleManualSync,
         handleStartSession,
         handleStopSession,
+        handleDeleteSession,
         confirmStopSession,
         handleRouteEvent,
         fetchFinancialSummary,

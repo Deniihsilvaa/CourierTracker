@@ -1,5 +1,5 @@
-import { api } from "./api";
 import { logger } from "../utils/logger";
+import { api } from "./api";
 
 export interface FinancialAnalytics {
   day_date: string;
@@ -17,7 +17,7 @@ export interface AnalyticsResponse {
 }
 
 export const fetchFinancialAnalytics = async (
-  groupBy: "day" | "week" | "month" = "month",
+  groupBy: "day" | "week" | "month" = "day",
   startDate?: string,
   endDate?: string
 ): Promise<FinancialAnalytics[]> => {

@@ -1,8 +1,9 @@
-import { api } from '@/src/services/api';
-import { useAuthStore } from '@/src/modules/auth/store';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { deleteSessionOnApi, listSessions } from '@/src/modules/sessions/service';
+import { useSessionStore } from '@/src/modules/sessions/store';
+import { FormatDateLabel } from '@/src/utils/format';
+import { useCallback, useEffect, useMemo } from 'react';
 
 export interface WorkSession {
     id: string;
@@ -17,54 +18,24 @@ export interface WorkSession {
 }
 
 export default function useSessions() {
-    const [sessions, setSessions] = useState<WorkSession[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [refreshing, setRefreshing] = useState(false);
-    const [timeFilter, setTimeFilter] = useState<'7d' | '30d' | 'all'>('7d');
-    const { user } = useAuthStore();
+    const { 
+        history: sessions, 
+        loading, 
+        refreshing, 
+        timeFilter, 
+        setTimeFilter 
+    } = useSessionStore();
+    
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
 
-    const loadSessions = useCallback(async (isRefreshing = false) => {
-        if (!user) return;
-        
-        if (isRefreshing) setRefreshing(true);
-        else setLoading(true);
-
-        try {
-            const response = await api.get(`/sessions/v1/user/${user.id}`);
-            if (response.data.success && Array.isArray(response.data.data)) {
-                setSessions(response.data.data);
-            }
-        } catch (e) {
-            console.error('Failed to load sessions from API', e);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, [user]);
+    const onRefresh = useCallback(() => {
+        listSessions(true);
+    }, []);
 
     useEffect(() => {
-        loadSessions();
-    }, [loadSessions]);
-
-    const onRefresh = () => loadSessions(true);
-
-    const formatDateLabel = (dateStr: string) => {
-        const date = new Date(dateStr);
-        const today = new Date();
-        const yesterday = new Date();
-        yesterday.setDate(today.getDate() - 1);
-
-        if (date.toDateString() === today.toDateString()) return 'Hoje';
-        if (date.toDateString() === yesterday.toDateString()) return 'Ontem';
-
-        return date.toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: 'long',
-            year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
-        });
-    };
+        listSessions();
+    }, []);
 
     const totals = useMemo(() => {
         return sessions.reduce((acc, curr) => ({
@@ -85,18 +56,33 @@ export default function useSessions() {
             return true;
         });
 
+        filtered.sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+
         filtered.forEach(session => {
-            const label = formatDateLabel(session.start_time);
+            const label = FormatDateLabel(session.start_time);
             if (!groups[label]) {
                 groups[label] = { title: label, data: [], totalKm: 0, count: 0 };
             }
-            groups[label].data.push(session);
+            groups[label].data.push(session as unknown as WorkSession);
             groups[label].totalKm += (session.total_distance_km || 0);
             groups[label].count += 1;
         });
 
         return Object.values(groups);
     }, [sessions, timeFilter]);
+
+    const deleteSession = useCallback(async (sessionId: string) => {
+        try {
+            const response = await deleteSessionOnApi(sessionId);
+            if (response) {
+                listSessions(); // Refresh history
+            }
+            return response;
+        } catch (error) {
+            console.error('[Session Hook] Failed to delete session', error);
+            return null;
+        }
+    }, []);
 
     return {
         sessions,
@@ -107,6 +93,7 @@ export default function useSessions() {
         sections,
         timeFilter,
         setTimeFilter,
-        theme
+        theme,
+        deleteSession
     };
 }

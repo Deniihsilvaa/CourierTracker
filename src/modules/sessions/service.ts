@@ -189,3 +189,62 @@ export const recoverActiveSession = async () => {
     console.warn('[Session Service] Failed to recover session from API:', error);
   }
 };
+export const listSessions = async (isRefreshing = false) => {
+  const user = useAuthStore.getState().user;
+  if (!user) return;
+
+  const { setHistory, setHistoryLoading, setHistoryRefreshing } = useSessionStore.getState();
+
+  if (isRefreshing) setHistoryRefreshing(true);
+  else setHistoryLoading(true);
+
+  try {
+    const response = await api.get(`/sessions/v1/user/${user.id}`);
+    if (response.data.success && Array.isArray(response.data.data)) {
+      setHistory(response.data.data);
+    }
+  } catch (e) {
+    console.error('[Session Service] Failed to load sessions from API', e);
+  } finally {
+    setHistoryLoading(false);
+    setHistoryRefreshing(false);
+  }
+};
+
+export const deleteSession = async (sessionId: string) => {
+  const { setActiveSession } = useSessionStore.getState();
+  
+  try {
+    // 1. Delete on API
+    await deleteSessionOnApi(sessionId);
+    
+    // 2. Cleanup local state if it's the active one
+    const active = useSessionStore.getState().activeSession;
+    if (active?.id === sessionId) {
+      setActiveSession(null);
+      sessionManager.setSessionId(null);
+    }
+
+    // 3. Cleanup local database
+    await localDatabase.delete('work_sessions', 'id = ?', [sessionId]);
+    await localDatabase.delete('gps_points', 'session_id = ?', [sessionId]);
+    
+    console.log(`[Session Service] Session ${sessionId} deleted successfully.`);
+  } catch (error) {
+    console.error('[Session Service] Failed to delete session', error);
+    throw error;
+  }
+};
+
+export const deleteSessionOnApi = async (sessionId: string) => {
+  try {
+    const response = await api.delete(`/sessions/v1/${sessionId}`);
+    if (response.data.success) {
+      return response.data.data;
+    }
+    return null;
+  } catch (error) {
+    console.error('[Session Service] Failed to delete session', error);
+    throw error;
+  }
+};

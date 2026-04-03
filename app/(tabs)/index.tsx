@@ -227,7 +227,7 @@ const MetricsSummary = ({ data, isLoading }: { data: any, isLoading: boolean }) 
   return (
     <>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Resumo do Mês</Text>
+        <Text style={styles.sectionTitle}>Resumo diário</Text>
         {isLoading && <ActivityIndicator size="small" color="#2563eb" style={{ marginLeft: 8 }} />}
       </View>
 
@@ -238,12 +238,14 @@ const MetricsSummary = ({ data, isLoading }: { data: any, isLoading: boolean }) 
           icon="wallet"
           color="#10b981"
         />
+
         <MetricCard
-          title="Líquido"
-          value={formatCurrency(data?.net_profit)}
-          icon="trending-up"
-          color="#2563eb"
+          title="Custos"
+          value={formatCurrency(data?.total_costs)}
+          icon="trending-down"
+          color="#ef4444"
         />
+
       </View>
       <View style={[styles.metricsGrid, { marginTop: 12 }]}>
         <MetricCard
@@ -253,10 +255,10 @@ const MetricsSummary = ({ data, isLoading }: { data: any, isLoading: boolean }) 
           color="#f59e0b"
         />
         <MetricCard
-          title="Custos"
-          value={formatCurrency(data?.total_costs)}
-          icon="trending-down"
-          color="#ef4444"
+          title="Líquido"
+          value={formatCurrency(data?.net_profit)}
+          icon="trending-up"
+          color="#2563eb"
         />
       </View>
     </>

@@ -19,6 +19,7 @@ interface ActiveSessionCardProps {
 
 export const ActiveSessionCard = ({
   handleStopSession,
+  handleDeleteSession,
   sessionDuration,
   isLoading,
   odometer
@@ -32,9 +33,9 @@ export const ActiveSessionCard = ({
 
   if (isLoading) {
     return (
-      <Card style={styles.loadingCard}>
-        <ActivityIndicator size="large" color="#2563eb" />
-        <Text style={styles.loadingText}>Carregando dados da sessão...</Text>
+      <Card style={[styles.loadingCard, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.tint} />
+        <Text style={[styles.loadingText, { color: theme.text }]}>Carregando dados da sessão...</Text>
       </Card>
     );
   }
@@ -42,37 +43,23 @@ export const ActiveSessionCard = ({
   if (!activeSession) return null;
 
   return (
-    <Card style={styles.card}>
+    <Card style={[styles.card, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
         <View style={styles.statItem}>
-          <Text style={styles.label}>Tempo de Turno</Text>
-          <Text style={styles.timer}>{sessionDuration}</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Tempo de Turno</Text>
+          <Text style={[styles.timer, { color: theme.text }]}>{sessionDuration}</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Ganhos est.</Text>
-          <Text style={styles.statValue}>R$ 0,00</Text>
+          <Text style={[styles.statLabel, { color: theme.text + '80' }]}>Ganhos est.</Text>
+          <Text style={[styles.statValue, { color: theme.text }]}>R$ 0,00</Text>
         </View>
       </View>
 
-      {/* <View style={styles.statsGrid}>
-        <View style={styles.statItem}>
-        </View>
-        <View style={styles.statDivider} />
-        <View>
-          <Text style={styles.label}>Tempo de Turno</Text>
-          <Text style={styles.timer}>{sessionDuration}</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Ganhos est.</Text>
-          <Text style={styles.statValue}>R$ 0,00</Text>
-        </View>
-      </View> */}
-
       <View style={styles.odometerSection}>
-        <Text style={styles.odometerLabel}>Odômetro Inicial</Text>
+        <Text style={[styles.odometerLabel, { color: theme.text }]}>Odômetro Inicial</Text>
         <View style={styles.odometerInputContainer}>
           <TextInput
-            style={[styles.input, { backgroundColor: '#e5e7eb' }]}
+            style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.text + '20' }]}
             value={odometer}
             editable={false}
           />
@@ -87,6 +74,12 @@ export const ActiveSessionCard = ({
           leftIcon={<Ionicons name="stop" size={20} color="#fff" />}
           title="Parar Turno"
         />
+        <Button
+          variant="secondary"
+          onPress={handleDeleteSession}
+          style={styles.deleteButton}
+          leftIcon={<Ionicons name="trash-outline" size={20} color="#ef4444" />}
+        />
       </View>
     </Card>
   );
@@ -94,110 +87,68 @@ export const ActiveSessionCard = ({
 
 const styles = StyleSheet.create({
   card: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 10,
-    padding: 15,
-    marginBottom: 10,
-    backgroundColor: Colors.dark.background,
-    color: Colors.dark.text,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
   },
   loadingCard: {
     padding: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
+    borderRadius: 24,
   },
   loadingText: {
     marginTop: 12,
-    color: Colors.dark.text,
+    fontSize: 14,
+    fontWeight: '500',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
     fontSize: 14,
-    color: Colors.dark.text,
+    fontWeight: '500',
     marginBottom: 4,
   },
   timer: {
     fontSize: 32,
-    fontWeight: '700',
+    fontWeight: '800',
     fontVariant: ['tabular-nums'],
-    color: Colors.dark.text,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.dark.text,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
   },
   statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statDivider: {
-    height: '100%',
-    backgroundColor: '#e5e7eb',
-    marginHorizontal: 16,
-    color: Colors.dark.text,
+    alignItems: 'flex-start',
   },
   statLabel: {
     fontSize: 12,
-    color: '#6b7280',
     marginBottom: 4,
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: Colors.dark.text,
   },
   odometerSection: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   odometerLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.dark.text,
     marginBottom: 8,
   },
   odometerInputContainer: {
     flexDirection: 'row',
-    gap: 10,
-    color: Colors.dark.text,
   },
   input: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 40,
-  },
-  saveButton: {
-    height: 40,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 48,
+    fontSize: 16,
+    borderWidth: 1,
   },
   actions: {
     flexDirection: 'row',
@@ -205,5 +156,10 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
+  },
+  deleteButton: {
+    width: 56,
+    backgroundColor: '#fee2e2',
+    borderColor: '#fecaca',
   },
 });

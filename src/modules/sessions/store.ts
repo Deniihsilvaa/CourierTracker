@@ -1,12 +1,17 @@
 import { SessionState } from '@/src/types/stores';
 import { create } from 'zustand';
 
-
 export const useSessionStore = create<SessionState>((set) => ({
   activeSession: null,
   sessionDuration: '00:00:00',
   odometer: '',
   isLoading: false,
+
+  // History State
+  history: [],
+  loading: false,
+  refreshing: false,
+  timeFilter: '7d',
 
   setActiveSession: (session) => set({
     activeSession: session,
@@ -17,6 +22,12 @@ export const useSessionStore = create<SessionState>((set) => ({
   setSessionDuration: (duration) => set({ sessionDuration: duration }),
   setOdometer: (v) => set({ odometer: v }),
   setIsLoading: (v) => set({ isLoading: v }),
+
+  // History Actions
+  setHistory: (history) => set({ history }),
+  setHistoryLoading: (loading) => set({ loading }),
+  setHistoryRefreshing: (refreshing) => set({ refreshing }),
+  setTimeFilter: (filter) => set({ timeFilter: filter }),
 
   updateSessionMetrics: (distanceDeltaKm, activeDeltaSec, idleDeltaSec) => set((state) => {
     if (!state.activeSession) return state;
