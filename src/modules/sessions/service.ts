@@ -226,8 +226,8 @@ export const deleteSession = async (sessionId: string) => {
     }
 
     // 3. Cleanup local database
-    await localDatabase.delete('work_sessions', 'id = ?', [sessionId]);
-    await localDatabase.delete('gps_points', 'session_id = ?', [sessionId]);
+    await localDatabase.delete('work_sessions', [sessionId] as any);
+    await localDatabase.delete('gps_points',[sessionId] as any);
     
     console.log(`[Session Service] Session ${sessionId} deleted successfully.`);
   } catch (error) {

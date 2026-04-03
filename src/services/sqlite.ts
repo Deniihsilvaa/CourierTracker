@@ -55,11 +55,15 @@ export const initDb = async (forceReset = false) => {
           user_id TEXT NOT NULL,
           start_time TEXT NOT NULL,
           end_time TEXT,
+          start_odometer TEXT,
+          end_odometer TEXT,
           total_distance_km REAL DEFAULT 0.0,
           total_active_seconds INTEGER DEFAULT 0,
           total_idle_seconds INTEGER DEFAULT 0,
           status TEXT DEFAULT 'open',
           created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT,
+          deleted_at TEXT,
           synced INTEGER DEFAULT 0
         );
       `);
@@ -243,154 +247,56 @@ export const initDb = async (forceReset = false) => {
           synced INTEGER DEFAULT 0
         );
       `);
-      // --- 2. RUN MIGRATIONS (Ensure all columns exist) ---
-
-      // Profiles
-      const profileCols = [
-        { name: 'full_name', type: 'TEXT' },
-        { name: 'email', type: 'TEXT' },
-        { name: 'vehicle_type', type: 'TEXT' },
-        { name: 'city', type: 'TEXT' },
-        { name: 'synced', type: 'INTEGER DEFAULT 0' }
-      ];
-      for (const col of profileCols) {
-        try {
-          await db.execAsync(`ALTER TABLE profiles ADD COLUMN ${col.name} ${col.type};`);
-        } catch (e) { }
-      }
-
-      // Work Sessions
-      const sessionCols = [
-        { name: 'total_distance_km', type: 'REAL DEFAULT 0.0' },
-        { name: 'total_active_seconds', type: 'INTEGER DEFAULT 0' },
-        { name: 'total_idle_seconds', type: 'INTEGER DEFAULT 0' },
-        { name: 'start_odometer', type: 'TEXT' },
-        { name: 'end_odometer', type: 'TEXT' }
-      ];
-      for (const col of sessionCols) {
-        try {
-          await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN ${col.name} ${col.type};`);
-        } catch (e) { }
-      }
-
-      // Trips
-      const tripCols = [
-        { name: 'user_id', type: 'TEXT' },
-        { name: 'start_time', type: 'TEXT' },
-        { name: 'end_time', type: 'TEXT' },
-        { name: 'distance_km', type: 'REAL DEFAULT 0.0' },
-        { name: 'duration_seconds', type: 'INTEGER DEFAULT 0' }
-      ];
-      for (const col of tripCols) {
-        try {
-          await db.execAsync(`ALTER TABLE trips ADD COLUMN ${col.name} ${col.type};`);
-        } catch (e) { }
-      }
-
-      // Route Events migrations
-      const routeEventCols = [
-        { name: 'user_id', type: 'TEXT' },
-        { name: 'session_id', type: 'TEXT' },
-        { name: 'event_type', type: 'TEXT' },
-        { name: 'latitude', type: 'REAL' },
-        { name: 'longitude', type: 'REAL' },
-        { name: 'created_at', type: 'TEXT' },
-        { name: 'metadata', type: 'TEXT' },
-        { name: 'synced', type: 'INTEGER DEFAULT 0' },
-      ];
-      for (const col of routeEventCols) {
-        try {
-          await db.execAsync(`ALTER TABLE route_events ADD COLUMN ${col.name} ${col.type};`);
-        } catch (e) { }
-      }
-
-      // Indices
-      try {
-        await db.execAsync(`CREATE UNIQUE INDEX IF NOT EXISTS idx_gps_dedup ON gps_points (session_id, recorded_at);`);
-      } catch (e) { }
-
-      try {
-        await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_gps_points_session ON gps_points(session_id);`);
-      } catch (e) { }
-
-      try {
-        await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_route_events_session ON route_events(session_id);`);
-      } catch (e) { }
-
-      try {
-        await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_route_events_time ON route_events(created_at);`);
-      } catch (e) { }
-
-      // GPS Points migrations
-      const gpsCols = [
-        { name: 'recorded_at', type: 'TEXT' },
-        { name: 'created_at', type: 'TEXT DEFAULT CURRENT_TIMESTAMP' },
-        { name: 'synced', type: 'INTEGER DEFAULT 0' }
-      ];
-      for (const col of gpsCols) {
-        try {
-          await db.execAsync(`ALTER TABLE gps_points ADD COLUMN ${col.name} ${col.type};`);
-        } catch (e) { }
-      }
-
-      // Log system migrations
-      const logCols = [
-        { name: 'created_at', type: 'TEXT DEFAULT CURRENT_TIMESTAMP' },
-        { name: 'message', type: 'TEXT' },
-        { name: 'level', type: 'TEXT' },
-        { name: 'data', type: 'TEXT' },
-        { name: 'meta_dados', type: 'TEXT' },
-        { name: 'synced', type: 'INTEGER DEFAULT 0' },
-      ];
-      for (const col of logCols) {
-        try {
-          await db.execAsync(`ALTER TABLE log_system ADD COLUMN ${col.name} ${col.type};`);
-        } catch (e) { }
-      }
-
-      // --- 3. SYNC METADATA ---
-      const tablesForMetadata = [
-        'profiles', 'work_sessions', 'trips', 'route_events', 
-        'expenses', 'incomes', 'fuel_logs', 'maintenance_logs', 'category_types',
-        'gps_points'
-      ];
-      for (const table of tablesForMetadata) {
-        try { 
-          await db.execAsync(`ALTER TABLE ${table} ADD COLUMN updated_at TEXT;`);
-        } catch(e) {}
-        try {
-          await db.execAsync(`ALTER TABLE ${table} ADD COLUMN deleted_at TEXT;`);
-        } catch(e) {}
-      }
-
-      // GPS point deduplication key
-      try {
-        await db.execAsync(`ALTER TABLE gps_points ADD COLUMN point_uuid TEXT;`);
-      } catch(e) {}
-
-      // Tables missing created_at
-      const missingCreatedAt = ['category_types', 'route_segments', 'analytics_sessions', 'tracking_sessions'];
-      for (const table of missingCreatedAt) {
-        try {
-          await db.execAsync(`ALTER TABLE ${table} ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP;`);
-        } catch(e) {}
-      }
-
-      try {
-        await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_log_system_synced ON log_system (synced, created_at);`);
-      } catch (e) { }
-
-      // Performance: Synced indexes
-      const syncIndexTables = [
-        'work_sessions', 'trips', 'gps_points', 'route_events', 
-        'expenses', 'incomes', 'fuel_logs', 'maintenance_logs'
-      ];
-      for (const table of syncIndexTables) {
-        try {
-          await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_${table}_synced ON ${table}(synced);`);
-        } catch (e) { }
-      }
     });
+
+    // --- 2. RUN MIGRATIONS (Ensure all columns exist) ---
+    // These run OUTSIDE the main transaction to prevent rollback on duplicate column errors
+
+    const tablesToMigrate = [
+      'profiles', 'work_sessions', 'trips', 'route_events', 
+      'expenses', 'incomes', 'fuel_logs', 'maintenance_logs', 'category_types',
+      'gps_points', 'tracking_sessions', 'route_segments', 'analytics_sessions'
+    ];
+
+    for (const table of tablesToMigrate) {
+      // Basic sync columns
+      try { await db.execAsync(`ALTER TABLE ${table} ADD COLUMN synced INTEGER DEFAULT 0;`); } catch (e) { }
+      try { await db.execAsync(`ALTER TABLE ${table} ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP;`); } catch (e) { }
+      try { await db.execAsync(`ALTER TABLE ${table} ADD COLUMN updated_at TEXT;`); } catch (e) { }
+      
+      // Soft delete column (except log_system and gps_points as per localDatabase.ts logic)
+      if (table !== 'log_system' && table !== 'gps_points') {
+        try { await db.execAsync(`ALTER TABLE ${table} ADD COLUMN deleted_at TEXT;`); } catch (e) { }
+      }
+    }
+
+    // Specific columns for work_sessions
+    try { await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN start_odometer TEXT;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN end_odometer TEXT;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN total_distance_km REAL DEFAULT 0.0;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN total_active_seconds INTEGER DEFAULT 0;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN total_idle_seconds INTEGER DEFAULT 0;`); } catch (e) { }
+
+    // Specific columns for profiles
+    try { await db.execAsync(`ALTER TABLE profiles ADD COLUMN full_name TEXT;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE profiles ADD COLUMN vehicle_type TEXT;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE profiles ADD COLUMN city TEXT;`); } catch (e) { }
+
+    // Indices
+    try { await db.execAsync(`CREATE UNIQUE INDEX IF NOT EXISTS idx_gps_dedup ON gps_points (session_id, recorded_at);`); } catch (e) { }
+    try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_gps_points_session ON gps_points(session_id);`); } catch (e) { }
+    try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_route_events_session ON route_events(session_id);`); } catch (e) { }
+    try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_route_events_time ON route_events(created_at);`); } catch (e) { }
+    try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_log_system_synced ON log_system (synced, created_at);`); } catch (e) { }
+
+    // Performance: Synced indexes
+    const syncIndexTables = [
+      'work_sessions', 'trips', 'gps_points', 'route_events', 
+      'expenses', 'incomes', 'fuel_logs', 'maintenance_logs'
+    ];
+    for (const table of syncIndexTables) {
+      try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_${table}_synced ON ${table}(synced);`); } catch (e) { }
+    }
 
     console.log('[Storage] Local database initialized successfully.');
   } catch (error) {

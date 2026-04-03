@@ -184,6 +184,26 @@ export const localDatabase = {
         throw e;
       }
     }
+    if (tableName === 'gps_points') {
+      const query = `DELETE FROM ${tableName} WHERE session_id = ?`;
+      try {
+        await db.runAsync(query, [id]);
+        return;
+      } catch (e) {
+        console.error(`[DB] GPS points delete failed:`, e);
+        throw e;
+      }
+    }
+    if (tableName === 'work_sessions') {
+      const query = `DELETE FROM ${tableName} WHERE id = ?`;
+      try {
+        await db.runAsync(query, [id]);
+        return;
+      } catch (e) {
+        console.error(`[DB] Work sessions delete failed:`, e);
+        throw e;
+      }
+    }
 
     // SOFT DELETE: Marking as deleted and unsynced so the deletion can sync
     const query = `UPDATE ${tableName} SET deleted_at = ?, synced = 0 WHERE id = ?`;

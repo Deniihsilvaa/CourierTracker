@@ -18,7 +18,7 @@ export const AppInitializer = {
   async prepare() {
     try {
       logger.info('[AppInitializer] Initializing database...');
-      await initDb(false);
+      await initDb(true);
 
       logger.info('[AppInitializer] Recovering tracking session...');
       await sessionManager.initializeSession();
