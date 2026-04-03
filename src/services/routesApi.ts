@@ -18,7 +18,7 @@ export const routesApi = {
     return true;
   },
 
-  async updateRouteStatus(routeId: string, status: Route['status']): Promise<boolean> {
+  async updateRouteStatus(routeId: string, status: Route['route_status']): Promise<boolean> {
     console.log('[API] updateRouteStatus placeholder called with:', routeId, status);
     return true;
   }

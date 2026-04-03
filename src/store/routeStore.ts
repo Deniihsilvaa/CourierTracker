@@ -1,8 +1,6 @@
 import { create } from 'zustand';
-import { v4 as uuidv4 } from 'uuid';
 import { Route } from '../types/route.types';
-import { localDatabase } from '../services/localDatabase';
-import { routesApi } from '../services/routesApi';
+import { routeService, CreateRouteData } from '../services/routeService';
 
 interface RouteState {
   routes: Route[];
@@ -10,10 +8,10 @@ interface RouteState {
   
   // Actions
   loadRoutes: () => Promise<void>;
-  addRoute: (route: Omit<Route, 'id' | 'created_at' | 'synced'>) => Promise<void>;
+  addRoute: (data: CreateRouteData) => Promise<void>;
   removeRoute: (id: string) => Promise<void>;
-  updateRouteStatus: (id: string, status: Route['status']) => Promise<void>;
-  syncRoutes: () => Promise<void>;
+  updateRouteStatus: (id: string, status: Route['route_status']) => Promise<void>;
+  markPaymentReceived: (id: string) => Promise<void>;
 }
 
 export const useRouteStore = create<RouteState>((set, get) => ({
@@ -23,14 +21,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
   loadRoutes: async () => {
     set({ isLoading: true });
     try {
-      const storedRoutes = await localDatabase.list<any>('manual_routes');
-      // Map SQLite integer 'synced' to boolean
-      const parsedRoutes = storedRoutes.map(r => ({
-        ...r,
-        synced: Boolean(r.synced)
-      }));
-      
-      // Sort routes: newest first
+      const parsedRoutes = await routeService.getAllRoutes();
       parsedRoutes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
       set({ routes: parsedRoutes, isLoading: false });
@@ -40,50 +31,35 @@ export const useRouteStore = create<RouteState>((set, get) => ({
     }
   },
 
-  addRoute: async (routeData) => {
-    const now = new Date().toISOString().split('.')[0] + 'Z';
-    const newRoute: Route = {
-      ...routeData,
-      id: uuidv4(),
-      created_at: now,
-      synced: false
-    };
-
-    // Save locally
-    await localDatabase.insert('manual_routes', { ...newRoute, synced: 0 });
+  addRoute: async (data: CreateRouteData) => {
+    // Calling service which handles Geolocation + SQLite Insert
+    const newRoute = await routeService.createManualRoute(data);
     
     // Update local state
     set((state) => ({ routes: [newRoute, ...state.routes] }));
   },
 
-  removeRoute: async (id) => {
-    // Soft delete locally
-    await localDatabase.delete('manual_routes', id);
+  removeRoute: async (id: string) => {
+    await routeService.deleteRoute(id);
     set((state) => ({ routes: state.routes.filter(r => r.id !== id) }));
   },
 
-  updateRouteStatus: async (id, status) => {
-    await localDatabase.update('manual_routes', id, { status });
+  updateRouteStatus: async (id: string, status: Route['route_status']) => {
+    await routeService.updateRouteStatus(id, status);
     set((state) => ({
-      routes: state.routes.map(r => r.id === id ? { ...r, status } : r)
+      routes: state.routes.map(r => r.id === id ? { ...r, route_status: status } : r)
     }));
   },
 
-  syncRoutes: async () => {
-    const { routes } = get();
-    const unsynced = routes.filter(r => !r.synced);
-    if (unsynced.length === 0) return;
-
-    try {
-      await routesApi.syncRoutes(unsynced);
-      // Mark as synced locally
-      for (const route of unsynced) {
-        await localDatabase.update('manual_routes', route.id, { synced: 1 });
-      }
-      // Reload to reflect changes
-      await get().loadRoutes();
-    } catch (e) {
-      console.error('Failed to sync routes', e);
-    }
+  markPaymentReceived: async (id: string) => {
+    await routeService.markPaymentReceived(id);
+    const now = new Date().toISOString().split('.')[0] + 'Z';
+    set((state) => ({
+      routes: state.routes.map(r => 
+        r.id === id 
+          ? { ...r, payment_status: 'paid', payment_received_at: now } 
+          : r
+      )
+    }));
   }
 }));

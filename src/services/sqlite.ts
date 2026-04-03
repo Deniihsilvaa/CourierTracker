@@ -35,6 +35,7 @@ export const initDb = async (forceReset = false) => {
       DROP TABLE IF EXISTS fuel_logs;
       DROP TABLE IF EXISTS maintenance_logs;
       DROP TABLE IF EXISTS manual_routes;
+      DROP TABLE IF EXISTS clients;
     `);
   }
 
@@ -262,15 +263,47 @@ export const initDb = async (forceReset = false) => {
         );
       `);
 
+      // Clients
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS clients (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          address TEXT NOT NULL,
+          phone TEXT,
+          latitude REAL,
+          longitude REAL,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT,
+          deleted_at TEXT,
+          synced INTEGER DEFAULT 0
+        );
+      `);
+
       // Manual Routes
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS manual_routes (
           id TEXT PRIMARY KEY,
+
+          session_id TEXT,
+          client_id TEXT,
+
           pickup_location TEXT NOT NULL,
+          pickup_lat REAL,
+          pickup_lng REAL,
+
           delivery_location TEXT NOT NULL,
+          delivery_lat REAL,
+          delivery_lng REAL,
+
           value REAL NOT NULL,
           distance_km REAL,
-          status TEXT DEFAULT 'pending',
+
+          route_status TEXT DEFAULT 'pending',
+
+          payment_required INTEGER DEFAULT 1,
+          payment_status TEXT DEFAULT 'pending',
+          payment_received_at TEXT,
+
           created_at TEXT DEFAULT CURRENT_TIMESTAMP,
           updated_at TEXT,
           deleted_at TEXT,
@@ -285,7 +318,7 @@ export const initDb = async (forceReset = false) => {
     const tablesToMigrate = [
       'profiles', 'work_sessions', 'trips', 'route_events',
       'expenses', 'incomes', 'fuel_logs', 'maintenance_logs', 'category_types',
-      'gps_points', 'tracking_sessions', 'route_segments', 'analytics_sessions', 'manual_routes'
+      'gps_points', 'tracking_sessions', 'route_segments', 'analytics_sessions', 'manual_routes', 'clients'
     ];
 
     for (const table of tablesToMigrate) {
@@ -318,6 +351,7 @@ export const initDb = async (forceReset = false) => {
     try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_route_events_session ON route_events(session_id);`); } catch (e) { }
     try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_route_events_time ON route_events(created_at);`); } catch (e) { }
     try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_log_system_synced ON log_system (synced, created_at);`); } catch (e) { }
+    try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_routes_session ON manual_routes (session_id);`); } catch (e) { }
 
     // Performance: Synced indexes
     const syncIndexTables = [

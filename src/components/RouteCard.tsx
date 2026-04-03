@@ -1,106 +1,97 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Route } from '../types/route.types';
-import { useRouteStore } from '../store/routeStore';
+import { RouteActionsModal } from './RouteActionsModal';
+import { Ionicons } from '@expo/vector-icons';
 
 interface RouteCardProps {
   route: Route;
-  onEdit: (route: Route) => void;
 }
 
-const statusTheme: Record<Route['status'], { bg: string, border: string, text: string, label: string }> = {
+const statusTheme: Record<Route['route_status'], { bg: string, border: string, text: string, label: string }> = {
   pending: { bg: 'bg-yellow-500', border: 'border-yellow-600', text: 'text-yellow-950', label: 'Pendente' },
   pickup: { bg: 'bg-blue-500', border: 'border-blue-600', text: 'text-white', label: 'Em Coleta' },
   delivering: { bg: 'bg-orange-500', border: 'border-orange-600', text: 'text-white', label: 'Em Entrega' },
-  completed: { bg: 'bg-green-500', border: 'border-green-600', text: 'text-white', label: 'Finalizado' }
+  completed: { bg: 'bg-green-500', border: 'border-green-600', text: 'text-white', label: 'Finalizado' },
+  cancelled: { bg: 'bg-red-500', border: 'border-red-600', text: 'text-white', label: 'Cancelado' }
 };
 
-export const RouteCard: React.FC<RouteCardProps> = ({ route, onEdit }) => {
-  const { removeRoute, updateRouteStatus } = useRouteStore();
-  const theme = statusTheme[route.status];
-
-  const handleLongPress = () => {
-    Alert.alert(
-      'Ações da Rota',
-      'O que deseja fazer?',
-      [
-        { text: 'Editar / Alterar Status', onPress: () => onEdit(route) },
-        { 
-          text: 'Marcar como Concluída', 
-          onPress: () => updateRouteStatus(route.id, 'completed') 
-        },
-        { 
-          text: 'Excluir Rota', 
-          onPress: () => confirmDelete(), 
-          style: 'destructive' 
-        },
-        { text: 'Cancelar', style: 'cancel' }
-      ]
-    );
-  };
-
-  const confirmDelete = () => {
-    Alert.alert(
-      'Excluir Rota',
-      'Tem certeza que deseja excluir esta rota?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Excluir', onPress: () => removeRoute(route.id), style: 'destructive' }
-      ]
-    );
-  };
+export const RouteCard: React.FC<RouteCardProps> = ({ route }) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const theme = statusTheme[route.route_status] || statusTheme.pending;
 
   return (
-    <TouchableOpacity 
-      onLongPress={handleLongPress}
-      delayLongPress={500}
-      activeOpacity={0.8}
-      className={`p-4 mb-4 rounded-xl border-l-4 bg-zinc-900 border-zinc-800 shadow-md flex-row justify-between dark:bg-zinc-800 ${theme.border}`}
-    >
-      <View className="flex-1 flex-col">
-        <View className="flex-row items-center mb-3 justify-between">
-          <View className={`px-2 py-1 rounded-md ${theme.bg}`}>
-            <Text className={`text-xs font-bold uppercase ${theme.text}`}>{theme.label}</Text>
+    <>
+      <TouchableOpacity 
+        onPress={() => setModalVisible(true)}
+        activeOpacity={0.8}
+        className={`p-4 mb-4 rounded-xl border-l-4 bg-zinc-900 border-zinc-800 shadow-md flex-col justify-between dark:bg-zinc-800 ${theme.border}`}
+      >
+        <View className="flex-col">
+          {/* Header Row */}
+          <View className="flex-row items-center mb-4 justify-between">
+            <View className={`px-2 py-1 rounded-md ${theme.bg}`}>
+              <Text className={`text-xs font-bold uppercase ${theme.text}`}>{theme.label}</Text>
+            </View>
+            <View className="flex-row items-center">
+              {route.payment_required && (
+                <View className={`px-2 py-1 rounded-md ml-2 flex-row items-center ${route.payment_status === 'paid' ? 'bg-green-500/20 border border-green-500' : 'bg-red-500/20 border border-red-500'}`}>
+                  <Ionicons name={route.payment_status === 'paid' ? 'checkmark' : 'close'} size={12} color={route.payment_status === 'paid' ? '#22c55e' : '#ef4444'} />
+                  <Text className={`text-[10px] font-bold uppercase ml-1 ${route.payment_status === 'paid' ? 'text-green-400' : 'text-red-400'}`}>
+                    {route.payment_status === 'paid' ? 'Pago' : 'Pagar na Entrega'}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
-          {!route.synced && (
-            <Text className="text-xs text-orange-400 font-semibold bg-orange-400/10 px-2 py-1 rounded-md">
-              Aguardando Sync
-            </Text>
-          )}
-        </View>
 
-        <View className="mb-2">
-          <Text className="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-1">Coleta</Text>
-          <Text className="text-white font-medium text-base" numberOfLines={2}>
-            {route.pickup_location}
-          </Text>
-        </View>
-        
-        <View className="mb-3">
-          <Text className="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-1">Entrega</Text>
-          <Text className="text-white font-medium text-base" numberOfLines={2}>
-            {route.delivery_location}
-          </Text>
-        </View>
+          {/* Route Content */}
+          <View className="flex-row items-center">
+            <View className="items-center mr-3 mt-1">
+              <View className="w-3 h-3 rounded-full bg-blue-500" />
+              <View className="w-1 h-6 bg-zinc-700" />
+              <View className="w-3 h-3 rounded-full bg-orange-500" />
+            </View>
 
-        <View className="flex-row items-center justify-between mt-2 pt-3 border-t border-zinc-800">
-          <View>
-            <Text className="text-zinc-400 text-xs font-semibold mb-1">Valor Final</Text>
-            <Text className="text-green-400 font-bold text-lg">
-              R$ {route.value.toFixed(2).replace('.', ',')}
-            </Text>
+            <View className="flex-1">
+              <View className="mb-2">
+                <Text className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider mb-0.5">Coletar em</Text>
+                <Text className="text-white font-medium text-sm leading-tight" numberOfLines={2}>
+                  {route.pickup_location}
+                </Text>
+              </View>
+              
+              <View>
+                <Text className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider mb-0.5">Entregar para</Text>
+                <Text className="text-white font-medium text-sm leading-tight" numberOfLines={2}>
+                  {route.delivery_location}
+                </Text>
+              </View>
+            </View>
           </View>
-          
-          {route.distance_km != null && (
-            <View className="items-end">
-              <Text className="text-zinc-400 text-xs font-semibold mb-1">Distância</Text>
-              <Text className="text-zinc-300 font-medium">
-                {route.distance_km.toFixed(1)} km
+
+          {/* Footer Info */}
+          <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-zinc-800">
+            <View>
+              <Text className="text-zinc-500 text-xs font-semibold mb-0.5">Valor da Corrida</Text>
+              <Text className="text-green-400 font-extrabold text-lg">
+                R$ {route.value.toFixed(2).replace('.', ',')}
               </Text>
             </View>
-          )}
+            
+            <View className="items-end bg-zinc-800/50 py-1.5 px-3 rounded-lg flex-row">
+              <Text className="text-zinc-300 font-bold text-sm">Ações da Rota</Text>
+              <Ionicons name="chevron-forward" size={16} color="#a1a1aa" style={{marginLeft: 4, marginTop: 1}} />
+            </View>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+
+      <RouteActionsModal 
+        visible={modalVisible} 
+        onClose={() => setModalVisible(false)} 
+        route={route} 
+      />
+    </>
   );
 };

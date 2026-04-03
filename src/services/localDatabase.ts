@@ -18,7 +18,8 @@ const ALLOWED_TABLES = [
   'incomes',
   'fuel_logs',
   'maintenance_logs',
-  'manual_routes'
+  'manual_routes',
+  'clients'
 ] as const;
 
 type TableName = typeof ALLOWED_TABLES[number];

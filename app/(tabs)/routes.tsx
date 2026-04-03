@@ -10,21 +10,13 @@ import { Route } from '../../src/types/route.types';
 export default function RoutesScreen() {
   const { routes, loadRoutes, isLoading } = useRouteStore();
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
+  const handleCreate = () => {
+    setModalVisible(true);
+  };
 
   useEffect(() => {
     loadRoutes();
   }, []);
-
-  const handleEdit = (route: Route) => {
-    setSelectedRoute(route);
-    setModalVisible(true);
-  };
-
-  const handleCreate = () => {
-    setSelectedRoute(null);
-    setModalVisible(true);
-  };
 
   return (
     <SafeAreaView className="flex-1 bg-black" edges={['top']}>
@@ -47,7 +39,7 @@ export default function RoutesScreen() {
           data={routes}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <RouteCard route={item} onEdit={handleEdit} />
+            <RouteCard route={item} />
           )}
           contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
@@ -85,7 +77,6 @@ export default function RoutesScreen() {
       <CreateRouteModal 
         visible={modalVisible} 
         onClose={() => setModalVisible(false)} 
-        routeToEdit={selectedRoute}
       />
     </SafeAreaView>
   );
