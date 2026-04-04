@@ -4,11 +4,15 @@ import { AppInitializer } from '@/src/services/app-initializer';
 import { logger } from '@/src/utils/logger';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-get-random-values';
+
+// Prevent the splash screen from auto-hiding before asset loading is complete.
+SplashScreen.preventAutoHideAsync();
 
 // Global error handler
 AppInitializer.setupErrorHandling();
@@ -28,10 +32,15 @@ export default function RootLayout() {
   useEffect(() => {
     // Phase 1: Heavy Initialization
     const prepareApp = async () => {
-      await AppInitializer.prepare();
-      await checkSession();
-      AppInitializer.setupGlobalListeners();
-      setIsReady(true);
+      try {
+        await AppInitializer.prepare();
+        await checkSession();
+        AppInitializer.setupGlobalListeners();
+      } catch (e) {
+        logger.error('[AppInitializer] Error during preparation:', e);
+      } finally {
+        setIsReady(true);
+      }
     };
 
     prepareApp();
@@ -41,7 +50,7 @@ export default function RootLayout() {
     };
   }, []);
 
-  // Phase 2: Routing Control
+  // Phase 2: Routing Control & Splash Screen
   useEffect(() => {
     if (!isReady || isLoading) return;
 
@@ -54,6 +63,9 @@ export default function RootLayout() {
       logger.info('[Auth] Redirecting to /');
       router.replace('/');
     }
+
+    // Hide splash screen after initialization and first routing check
+    SplashScreen.hideAsync();
   }, [user, segments, isReady, isLoading]);
 
   if (!isReady) return null;
@@ -83,4 +95,3 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
-
