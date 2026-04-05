@@ -1,15 +1,15 @@
+import { PrimaryButton } from "@/components/buttons/primary-button";
+import { GlassCard } from "@/components/cards/glass-card";
+import { StatCard } from "@/components/cards/stat-card";
+import { AppScreen } from "@/components/layout/app-screen";
+import { SectionHeader } from "@/components/layout/section-header";
 import { ClientForm } from "@/src/modules/clients/components/ClientForm";
 import { useClientStore } from "@/src/modules/clients/store/clientStore";
+import { appColors, spacing } from "@/src/theme/colors";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
 
 interface ClientDetailsScreenProps {
   clientId: string;
@@ -19,7 +19,7 @@ const typeLabels = {
   store: "Loja",
   restaurant: "Restaurante",
   customer: "Cliente",
-  warehouse: "Depósito",
+  warehouse: "Deposito",
 } as const;
 
 export function ClientDetailsScreen({ clientId }: ClientDetailsScreenProps) {
@@ -35,11 +35,16 @@ export function ClientDetailsScreen({ clientId }: ClientDetailsScreenProps) {
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    fetchClientById(clientId);
-  }, [clientId]);
+    void fetchClientById(clientId);
+  }, [clientId, fetchClientById]);
+
+  const clientTypeLabel = useMemo(
+    () => (currentClient?.client_type ? typeLabels[currentClient.client_type] : "Nao definido"),
+    [currentClient]
+  );
 
   const handleDelete = () => {
-    Alert.alert("Excluir cliente", "Esse cliente será removido da lista ativa.", [
+    Alert.alert("Excluir cliente", "Esse cliente sera removido da lista ativa.", [
       { text: "Cancelar", style: "cancel" },
       {
         text: "Excluir",
@@ -53,7 +58,7 @@ export function ClientDetailsScreen({ clientId }: ClientDetailsScreenProps) {
               "Falha ao excluir",
               deleteError instanceof Error
                 ? deleteError.message
-                : "Não foi possível excluir o cliente."
+                : "Nao foi possivel excluir o cliente."
             );
           }
         },
@@ -63,135 +68,127 @@ export function ClientDetailsScreen({ clientId }: ClientDetailsScreenProps) {
 
   if (isLoading && !currentClient) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#030712" }}>
-        <ActivityIndicator size="large" color="#60a5fa" />
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: appColors.background }}>
+        <ActivityIndicator size="large" color={appColors.primary} />
       </View>
     );
   }
 
   if (!currentClient) {
     return (
-      <View style={{ flex: 1, padding: 20, backgroundColor: "#030712", gap: 8 }}>
-        <Text style={{ color: "#f9fafb", fontSize: 22, fontWeight: "900" }}>Cliente não encontrado</Text>
-        <Text style={{ color: "#9ca3af", fontSize: 15 }}>{error || "O cadastro pode ter sido removido."}</Text>
-      </View>
+      <AppScreen title="Cliente" subtitle="Nao foi possivel carregar este cadastro.">
+        <GlassCard>
+          <Text style={{ color: appColors.textPrimary, fontSize: 22, fontWeight: "800" }}>Cliente nao encontrado</Text>
+          <Text style={{ color: appColors.textSecondary, fontSize: 15, lineHeight: 22 }}>
+            {error || "O cadastro pode ter sido removido."}
+          </Text>
+        </GlassCard>
+      </AppScreen>
     );
   }
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: "#030712" }}
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 40 }}
+    <AppScreen
+      title="Cliente"
+      subtitle="Visualize dados, coordenadas e sincronizacao antes de editar."
+      scrollable={false}
+      rightSlot={
+        <PrimaryButton
+          label={isEditing ? "Fechar" : "Editar"}
+          onPress={() => setIsEditing((value) => !value)}
+          variant={isEditing ? "ghost" : "secondary"}
+          icon={<Ionicons name={isEditing ? "close-outline" : "create-outline"} size={18} color={appColors.textPrimary} />}
+        />
+      }
     >
-      <View
-        style={{
-          backgroundColor: "#111827",
-          borderRadius: 22,
-          padding: 18,
-          borderWidth: 1,
-          borderColor: "#1f2937",
-          gap: 12,
-        }}
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ gap: spacing.sm, paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
-          <View style={{ flex: 1, gap: 6 }}>
-            <Text selectable style={{ color: "#f9fafb", fontSize: 28, fontWeight: "900" }}>
-              {currentClient.name}
+        <GlassCard>
+          <SectionHeader title={currentClient.name} subtitle={currentClient.address} />
+          <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
+            <StatCard
+              label="Tipo"
+              value={clientTypeLabel}
+              icon="layers-outline"
+              tone="primary"
+            />
+            <StatCard
+              label="Status"
+              value={currentClient.synced ? "Sincronizado" : "Pendente"}
+              icon={currentClient.synced ? "cloud-done-outline" : "cloud-offline-outline"}
+              tone={currentClient.synced ? "success" : "warning"}
+            />
+          </View>
+        </GlassCard>
+
+        <GlassCard>
+          <SectionHeader title="Informacoes" subtitle="Dados usados na operacao e na criacao de rotas." />
+          <View style={{ gap: spacing.xs, marginTop: spacing.sm }}>
+            <Text style={{ color: appColors.textSecondary, fontSize: 14, fontWeight: "700" }}>
+              Telefone
             </Text>
-            <Text selectable style={{ color: "#9ca3af", fontSize: 15, lineHeight: 22 }}>
-              {currentClient.address}
+            <Text style={{ color: appColors.textPrimary, fontSize: 16, fontWeight: "700" }}>
+              {currentClient.phone || "Nao informado"}
             </Text>
           </View>
-
-          <Pressable
-            onPress={() => setIsEditing((value) => !value)}
-            style={{
-              minHeight: 46,
-              borderRadius: 14,
-              paddingHorizontal: 14,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: "#1d4ed8",
-            }}
-          >
-            <Text style={{ color: "#eff6ff", fontWeight: "800" }}>
-              {isEditing ? "Fechar edição" : "Editar"}
+          <View style={{ gap: spacing.xs, marginTop: spacing.sm }}>
+            <Text style={{ color: appColors.textSecondary, fontSize: 14, fontWeight: "700" }}>
+              Latitude
             </Text>
-          </Pressable>
-        </View>
+            <Text style={{ color: appColors.textPrimary, fontSize: 16, fontWeight: "700" }}>
+              {currentClient.latitude ?? "Nao informada"}
+            </Text>
+          </View>
+          <View style={{ gap: spacing.xs, marginTop: spacing.sm }}>
+            <Text style={{ color: appColors.textSecondary, fontSize: 14, fontWeight: "700" }}>
+              Longitude
+            </Text>
+            <Text style={{ color: appColors.textPrimary, fontSize: 16, fontWeight: "700" }}>
+              {currentClient.longitude ?? "Nao informada"}
+            </Text>
+          </View>
+        </GlassCard>
 
-        <View style={{ gap: 8 }}>
-          <Text selectable style={{ color: "#d1d5db", fontSize: 16, fontWeight: "700" }}>
-            Telefone: {currentClient.phone || "Não informado"}
-          </Text>
-          <Text selectable style={{ color: "#d1d5db", fontSize: 16, fontWeight: "700" }}>
-            Tipo: {currentClient.client_type ? typeLabels[currentClient.client_type] : "Não definido"}
-          </Text>
-          <Text selectable style={{ color: "#d1d5db", fontSize: 16, fontWeight: "700" }}>
-            Latitude: {currentClient.latitude ?? "Não informada"}
-          </Text>
-          <Text selectable style={{ color: "#d1d5db", fontSize: 16, fontWeight: "700" }}>
-            Longitude: {currentClient.longitude ?? "Não informada"}
-          </Text>
-          <Text selectable style={{ color: currentClient.synced ? "#86efac" : "#fcd34d", fontSize: 14, fontWeight: "700" }}>
-            {currentClient.synced ? "Sincronizado" : "Pendente de sincronização"}
-          </Text>
-        </View>
-      </View>
+        {error ? (
+          <GlassCard style={{ borderColor: "rgba(239, 68, 68, 0.28)", backgroundColor: "rgba(127, 29, 29, 0.24)" }}>
+            <Text selectable style={{ color: "#fecaca", fontSize: 14, fontWeight: "700" }}>
+              {error}
+            </Text>
+          </GlassCard>
+        ) : null}
 
-      {error ? (
-        <View
-          style={{
-            backgroundColor: "#3f1d1d",
-            borderRadius: 16,
-            padding: 14,
-            borderWidth: 1,
-            borderColor: "#7f1d1d",
-          }}
-        >
-          <Text selectable style={{ color: "#fecaca", fontSize: 14, fontWeight: "600" }}>
-            {error}
-          </Text>
-        </View>
-      ) : null}
+        {isEditing ? (
+          <ClientForm
+            initialValues={currentClient}
+            submitLabel="Salvar alteracoes"
+            isSubmitting={isSaving}
+            onSubmit={async (payload) => {
+              try {
+                await updateClient(clientId, payload);
+                setIsEditing(false);
+              } catch (submissionError) {
+                Alert.alert(
+                  "Falha ao atualizar",
+                  submissionError instanceof Error
+                    ? submissionError.message
+                    : "Nao foi possivel atualizar o cliente."
+                );
+              }
+            }}
+          />
+        ) : null}
 
-      {isEditing ? (
-        <ClientForm
-          initialValues={currentClient}
-          submitLabel="Salvar alterações"
-          isSubmitting={isSaving}
-          onSubmit={async (payload) => {
-            try {
-              await updateClient(clientId, payload);
-              setIsEditing(false);
-            } catch (submissionError) {
-              Alert.alert(
-                "Falha ao atualizar",
-                submissionError instanceof Error
-                  ? submissionError.message
-                  : "Não foi possível atualizar o cliente."
-              );
-            }
-          }}
+        <PrimaryButton
+          label={isSaving ? "Excluindo..." : "Excluir cliente"}
+          onPress={handleDelete}
+          variant="danger"
+          icon={<Ionicons name="trash-outline" size={18} color={appColors.white} />}
+          loading={isSaving}
         />
-      ) : null}
-
-      <Pressable
-        onPress={handleDelete}
-        disabled={isSaving}
-        style={{
-          minHeight: 54,
-          borderRadius: 18,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#7f1d1d",
-        }}
-      >
-        <Text style={{ color: "#fee2e2", fontSize: 16, fontWeight: "800" }}>
-          {isSaving ? "Excluindo..." : "Excluir cliente"}
-        </Text>
-      </Pressable>
-    </ScrollView>
+      </ScrollView>
+    </AppScreen>
   );
 }

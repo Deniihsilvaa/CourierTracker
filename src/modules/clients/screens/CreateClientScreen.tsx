@@ -1,7 +1,13 @@
+import { PrimaryButton } from "@/components/buttons/primary-button";
+import { GlassCard } from "@/components/cards/glass-card";
+import { AppScreen } from "@/components/layout/app-screen";
+import { SectionHeader } from "@/components/layout/section-header";
 import { ClientForm } from "@/src/modules/clients/components/ClientForm";
 import { useClientStore } from "@/src/modules/clients/store/clientStore";
+import { appColors } from "@/src/theme/colors";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Alert, ScrollView, Text, View } from "react-native";
+import { Alert, ScrollView, Text } from "react-native";
 
 export function CreateClientScreen() {
   const router = useRouter();
@@ -10,51 +16,54 @@ export function CreateClientScreen() {
   const error = useClientStore((state) => state.error);
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: "#030712" }}
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ padding: 20, gap: 18, paddingBottom: 40 }}
+    <AppScreen
+      title="Novo cliente"
+      subtitle="Cadastro manual com coordenadas geradas automaticamente a partir do endereco."
+      scrollable={false}
+      rightSlot={
+        <PrimaryButton
+          label="Voltar"
+          onPress={() => router.back()}
+          variant="ghost"
+          icon={<Ionicons name="arrow-back-outline" size={18} color={appColors.textPrimary} />}
+        />
+      }
     >
-      <View style={{ gap: 6 }}>
-        <Text style={{ color: "#f9fafb", fontSize: 28, fontWeight: "900" }}>Novo cliente</Text>
-        <Text style={{ color: "#9ca3af", fontSize: 15, lineHeight: 22 }}>
-          Cadastro manual com estrutura pronta para receber autocomplete de endereço depois.
-        </Text>
-      </View>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ gap: 16, paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <GlassCard>
+          <SectionHeader title="Cadastro rapido" subtitle="Preencha o basico e deixe o app localizar latitude e longitude." />
+        </GlassCard>
 
-      {error ? (
-        <View
-          style={{
-            backgroundColor: "#3f1d1d",
-            borderRadius: 16,
-            padding: 14,
-            borderWidth: 1,
-            borderColor: "#7f1d1d",
+        {error ? (
+          <GlassCard style={{ borderColor: "rgba(239, 68, 68, 0.28)", backgroundColor: "rgba(127, 29, 29, 0.24)" }}>
+            <Text selectable style={{ color: "#fecaca", fontSize: 14, fontWeight: "700" }}>
+              {error}
+            </Text>
+          </GlassCard>
+        ) : null}
+
+        <ClientForm
+          submitLabel="Salvar cliente"
+          isSubmitting={isSaving}
+          onSubmit={async (payload) => {
+            try {
+              const client = await createClient(payload);
+              router.replace(`/clients/${client.id}`);
+            } catch (submissionError) {
+              Alert.alert(
+                "Falha ao salvar",
+                submissionError instanceof Error
+                  ? submissionError.message
+                  : "Nao foi possivel salvar o cliente."
+              );
+            }
           }}
-        >
-          <Text selectable style={{ color: "#fecaca", fontSize: 14, fontWeight: "600" }}>
-            {error}
-          </Text>
-        </View>
-      ) : null}
-
-      <ClientForm
-        submitLabel="Salvar cliente"
-        isSubmitting={isSaving}
-        onSubmit={async (payload) => {
-          try {
-            const client = await createClient(payload);
-            router.replace(`/clients/${client.id}`);
-          } catch (submissionError) {
-            Alert.alert(
-              "Falha ao salvar",
-              submissionError instanceof Error
-                ? submissionError.message
-                : "Não foi possível salvar o cliente."
-            );
-          }
-        }}
-      />
-    </ScrollView>
+        />
+      </ScrollView>
+    </AppScreen>
   );
 }

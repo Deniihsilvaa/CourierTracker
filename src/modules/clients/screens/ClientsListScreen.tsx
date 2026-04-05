@@ -1,17 +1,17 @@
+import { FloatingActionButton } from "@/components/buttons/floating-action-button";
+import { PrimaryButton } from "@/components/buttons/primary-button";
+import { GlassCard } from "@/components/cards/glass-card";
+import { StatCard } from "@/components/cards/stat-card";
+import { AppScreen } from "@/components/layout/app-screen";
+import { SectionHeader } from "@/components/layout/section-header";
+import { SkeletonCard } from "@/components/skeleton/skeleton-card";
 import { ClientCard } from "@/src/modules/clients/components/ClientCard";
 import { useClientStore } from "@/src/modules/clients/store/clientStore";
+import { appColors, radius, spacing } from "@/src/theme/colors";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useDeferredValue, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { FlatList, Pressable, RefreshControl, Text, TextInput, View } from "react-native";
 
 export function ClientsListScreen() {
   const router = useRouter();
@@ -26,8 +26,8 @@ export function ClientsListScreen() {
   const deferredSearch = useDeferredValue(search);
 
   useEffect(() => {
-    fetchClients({ page: 1, q: deferredSearch });
-  }, [deferredSearch]);
+    void fetchClients({ page: 1, q: deferredSearch });
+  }, [deferredSearch, fetchClients]);
 
   const handleRefresh = async () => {
     await fetchClients({ page: 1, q: deferredSearch, refresh: true });
@@ -45,144 +45,133 @@ export function ClientsListScreen() {
     });
   };
 
+  const syncedCount = useMemo(() => clients.filter((client) => client.synced).length, [clients]);
+  const pendingCount = Math.max(0, clients.length - syncedCount);
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030712" }} edges={["top"]}>
+    <AppScreen
+      title="Clientes"
+      subtitle="Busca rapida, base offline e selecao pronta para rotas manuais."
+      scrollable={false}
+      rightSlot={
+        <Pressable
+          onPress={handleRefresh}
+          style={({ pressed }) => ({
+            width: 46,
+            height: 46,
+            borderRadius: radius.lg,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: pressed ? "rgba(96,165,250,0.16)" : appColors.surface,
+            borderWidth: 1,
+            borderColor: appColors.border,
+          })}
+        >
+          <Ionicons name="sync-outline" size={20} color={appColors.textPrimary} />
+        </Pressable>
+      }
+    >
       <FlatList
         data={clients}
         keyExtractor={(item) => item.id}
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ padding: 20, gap: 14, paddingBottom: 120 }}
-        refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#60a5fa" />
-        }
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120, gap: spacing.sm }}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={appColors.primary} />}
         ListHeaderComponent={
-          <View style={{ gap: 16, marginBottom: 4 }}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text style={{ color: "#f9fafb", fontSize: 30, fontWeight: "900" }}>Clientes</Text>
-                <Text style={{ color: "#93c5fd", fontSize: 14, fontWeight: "600" }}>
-                  Busca rápida, cache local e seleção pronta para rotas manuais.
-                </Text>
+          <View style={{ gap: spacing.sm, paddingBottom: spacing.sm }}>
+            <GlassCard>
+              <SectionHeader title="Busca operacional" subtitle="Encontre clientes por nome, endereco ou telefone." />
+              <View style={{ marginTop: spacing.sm }}>
+                <PrimaryButton
+                  label="Criar novo cliente"
+                  onPress={() => router.push("/clients/new")}
+                  icon={<Ionicons name="add-outline" size={18} color={appColors.white} />}
+                />
               </View>
-
-              <Pressable
-                onPress={() => router.push("/clients/new")}
+              <View
                 style={{
-                  minHeight: 52,
-                  borderRadius: 16,
-                  paddingHorizontal: 18,
+                  marginTop: spacing.sm,
+                  minHeight: 56,
+                  borderRadius: radius.lg,
+                  borderWidth: 1,
+                  borderColor: appColors.border,
+                  backgroundColor: appColors.surface,
+                  flexDirection: "row",
                   alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: "#16a34a",
+                  paddingHorizontal: spacing.sm,
+                  gap: spacing.xs,
                 }}
               >
-                <Text style={{ color: "#f9fafb", fontWeight: "800" }}>Novo</Text>
-              </Pressable>
+                <Ionicons name="search-outline" size={18} color={appColors.textMuted} />
+                <TextInput
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder="Buscar por nome, endereco ou telefone"
+                  placeholderTextColor={appColors.textMuted}
+                  style={{ flex: 1, color: appColors.textPrimary, fontSize: 16, fontWeight: "600" }}
+                />
+              </View>
+            </GlassCard>
+
+            <View style={{ flexDirection: "row", gap: spacing.sm }}>
+              <StatCard label="Total" value={String(pagination.total)} icon="people-outline" tone="primary" />
+              <StatCard label="Sincronizados" value={String(syncedCount)} icon="cloud-done-outline" tone="success" />
             </View>
-
-            <TextInput
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Buscar por nome, endereço ou telefone"
-              placeholderTextColor="#6b7280"
-              style={{
-                backgroundColor: "#111827",
-                borderRadius: 18,
-                minHeight: 56,
-                color: "#f9fafb",
-                paddingHorizontal: 16,
-                borderWidth: 1,
-                borderColor: "#1f2937",
-              }}
-            />
-
-            <View
-              style={{
-                backgroundColor: "#111827",
-                borderRadius: 18,
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-                borderWidth: 1,
-                borderColor: "#1f2937",
-                flexDirection: "row",
-                justifyContent: "space-between",
-              }}
-            >
-              <Text style={{ color: "#e5e7eb", fontWeight: "700" }}>
-                {pagination.total} cliente{pagination.total === 1 ? "" : "s"}
-              </Text>
-              <Text style={{ color: "#9ca3af", fontWeight: "600" }}>
-                Página {pagination.page} de {pagination.totalPages}
-              </Text>
+            <View style={{ flexDirection: "row", gap: spacing.sm }}>
+              <StatCard label="Pendentes" value={String(pendingCount)} icon="cloud-offline-outline" tone="warning" />
+              <StatCard label="Pagina" value={`${pagination.page}/${Math.max(1, pagination.totalPages)}`} icon="albums-outline" tone="danger" />
             </View>
 
             {error ? (
-              <View
-                style={{
-                  backgroundColor: "#3f1d1d",
-                  borderRadius: 16,
-                  padding: 14,
-                  borderWidth: 1,
-                  borderColor: "#7f1d1d",
-                }}
-              >
-                <Text selectable style={{ color: "#fecaca", fontSize: 14, fontWeight: "600" }}>
-                  {error}
-                </Text>
-              </View>
+              <GlassCard style={{ borderColor: "rgba(239, 68, 68, 0.28)", backgroundColor: "rgba(127, 29, 29, 0.24)" }}>
+                <Text style={{ color: "#fecaca", fontSize: 14, fontWeight: "700" }}>{error}</Text>
+              </GlassCard>
             ) : null}
+
+            <SectionHeader title="Lista de clientes" subtitle="Toque em um cadastro para ver detalhes ou editar." />
           </View>
         }
-        renderItem={({ item }) => (
-          <ClientCard client={item} onPress={() => router.push(`/clients/${item.id}`)} />
-        )}
+        renderItem={({ item }) => <ClientCard client={item} onPress={() => router.push(`/clients/${item.id}`)} />}
         ListEmptyComponent={
           isLoading ? (
-            <View style={{ paddingVertical: 48, alignItems: "center" }}>
-              <ActivityIndicator size="large" color="#60a5fa" />
+            <View style={{ gap: spacing.sm }}>
+              <SkeletonCard height={116} />
+              <SkeletonCard height={116} />
+              <SkeletonCard height={116} />
             </View>
           ) : (
-            <View
-              style={{
-                backgroundColor: "#111827",
-                borderRadius: 20,
-                padding: 20,
-                borderWidth: 1,
-                borderColor: "#1f2937",
-                gap: 8,
-              }}
-            >
-              <Text style={{ color: "#f9fafb", fontSize: 20, fontWeight: "800" }}>
-                Nenhum cliente disponível
+            <GlassCard>
+              <Text style={{ color: appColors.textPrimary, fontSize: 20, fontWeight: "800" }}>Nenhum cliente disponivel</Text>
+              <Text style={{ color: appColors.textSecondary, fontSize: 15, lineHeight: 22 }}>
+                Cadastre clientes para acelerar a criacao de rotas e reduzir digitacao no app.
               </Text>
-              <Text style={{ color: "#9ca3af", fontSize: 15, lineHeight: 22 }}>
-                Cadastre clientes para agilizar a criação de rotas e reduzir digitação no app.
-              </Text>
-            </View>
+            </GlassCard>
           )
         }
         ListFooterComponent={
           pagination.hasNextPage ? (
             <Pressable
               onPress={handleLoadMore}
-              style={{
+              style={({ pressed }) => ({
                 minHeight: 52,
-                borderRadius: 16,
+                borderRadius: radius.lg,
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: "#111827",
+                backgroundColor: pressed ? "rgba(96, 165, 250, 0.12)" : appColors.surface,
                 borderWidth: 1,
-                borderColor: "#1f2937",
-                marginTop: 8,
-              }}
+                borderColor: appColors.border,
+                marginTop: spacing.xs,
+              })}
             >
-              <Text style={{ color: "#dbeafe", fontWeight: "800" }}>
+              <Text style={{ color: appColors.textPrimary, fontWeight: "800" }}>
                 {isLoading ? "Carregando..." : "Carregar mais"}
               </Text>
             </Pressable>
           ) : null
         }
       />
-    </SafeAreaView>
+
+      <FloatingActionButton label="Novo cliente" icon="add" onPress={() => router.push("/clients/new")} />
+    </AppScreen>
   );
 }
