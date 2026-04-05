@@ -1,7 +1,7 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/src/modules/auth/store';
-import { visualization } from '@/src/services/supabase';
+import { analyticsService } from '@/src/services/analytics.service';
 import { useEffect, useMemo, useState } from 'react';
 import { TripPerformance } from '../types/route-trip';
 
@@ -19,18 +19,11 @@ export default function useTrip() {
 
     const loadTrips = async () => {
         if (!user) return;
-        // TODO: Mover essa funcao para o service
         try {
-            const { data, error } = await visualization
-                .from('trip_performance')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('start_time', { ascending: false });
-
-            if (error) throw error;
+            const data = await analyticsService.getTrips();
             if (data) setTrips(data);
         } catch (e) {
-            console.error('Failed to load trips from Supabase', e);
+            console.error('Failed to load trips from API', e);
         }
     };
 

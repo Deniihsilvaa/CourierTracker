@@ -1,15 +1,15 @@
 # RotaPro 🚚
 
-Aplicativo mobile **offline-first** para rastreamento de rotas e controle de jornada de entregadores. Construído com React Native + Expo, Supabase e SQLite local.
+Aplicativo mobile **offline-first** para rastreamento de rotas e controle de jornada de entregadores. Construído com React Native + Expo, API Customizada (Node.js/Prisma) e SQLite local.
 
 ## ✨ Funcionalidades
 
 - **Rastreamento GPS em segundo plano** — Continua registrando mesmo com o app fechado
 - **Dashboard de turno** — Distância, tempo ativo e tempo ocioso em tempo real
-- **Histórico de viagens** — Listagem e detalhamento de todos os turnos realizados
-- **Analytics** — Gráficos de performance e tendências por período
-- **Sincronização offline-first** — Dados salvos localmente e enviados ao servidor quando há conexão
-- **Proteção contra duplicação** — Índice único no SQLite + upsert no Supabase
+- **Histórico de viagens** — Listagem e detalhamento de todos os turnos realizados via API
+- **Analytics Avançado** — Gráficos de performance, tendências e médias diárias processadas no servidor
+- **Sincronização Batch (Atômica)** — Dados salvos localmente e enviados em um único lote otimizado
+- **Proteção contra duplicação** — Índice único no SQLite + Lógica de UPSERT na API
 - **Modo claro/escuro** — Suporte automático ao tema do sistema
 
 ## 🛠️ Stack
@@ -20,7 +20,7 @@ Aplicativo mobile **offline-first** para rastreamento de rotas e controle de jor
 | Linguagem      | TypeScript                        |
 | Estado Global  | Zustand                           |
 | Banco Local    | expo-sqlite (SQLite)              |
-| Backend / Auth | Supabase (PostgreSQL + Auth)      |
+| Backend / Auth | Custom API (Node.js + JWT)        |
 | Localização    | expo-location + expo-task-manager |
 | Feedback Tátil | expo-haptics                      |
 | Build / Deploy | EAS Build                         |
@@ -30,13 +30,13 @@ Aplicativo mobile **offline-first** para rastreamento de rotas e controle de jor
 ```
 courier-tracker/
 ├── app/                          # Rotas (Expo Router - file-based)
-│   ├── _layout.tsx               # Root layout, inicialização do DB e sessão
+│   ├── _layout.tsx               # Root layout, Splash Screen e Sessão
 │   ├── login.tsx                 # Tela de login
 │   ├── register.tsx              # Tela de registro
 │   └── (tabs)/
 │       ├── index.tsx             # Dashboard principal (turno ativo)
 │       ├── trips.tsx             # Histórico de viagens
-│       ├── analytics.tsx         # Gráficos e métricas
+│       ├── analytics.tsx         # Gráficos e métricas da API
 │       └── settings.tsx          # Configurações e perfil
 │
 └── src/
@@ -46,11 +46,14 @@ courier-tracker/
     │   └── tracking/             # GPS e processamento de localização
     │
     ├── services/                 # Serviços de infraestrutura
+    │   ├── api.ts                # Cliente Axios centralizado (Interceptors)
+    │   ├── auth.service.ts       # Login, Signup, Google OAuth e Reset
+    │   ├── sync.service.ts       # Comunicação com endpoint de Batch Sync
+    │   ├── analytics.service.ts  # Consumo de métricas e performance
     │   ├── sqlite.ts             # Init do banco local + migrations
     │   ├── localDatabase.ts      # Camada de acesso seguro ao SQLite
-    │   ├── supabase.ts           # Cliente Supabase + schema visualization
-    │   ├── sync.ts               # Engine de sincronização offline→online
-    │   └── authSessionGuard.ts   # Guarda de sessão ao retornar ao app
+    │   ├── sync.ts               # Engine de orquestração de sincronização
+    │   └── authSessionGuard.ts   # Validação de sessão (Foreground/Background)
     │
     ├── infrastructure/
     │   └── location-provider.ts  # Registro da task de background GPS
@@ -69,7 +72,7 @@ courier-tracker/
 
 - Node.js 18+
 - Expo CLI (`npm install -g expo-cli`)
-- Conta no [Supabase](https://supabase.com)
+- Servidor Backend RotaPro ativo
 - App [Expo Go](https://expo.dev/go) no celular (para desenvolvimento)
 
 ### 1. Configurar variáveis de ambiente
@@ -77,8 +80,7 @@ courier-tracker/
 Crie um arquivo `.env` na raiz do projeto:
 
 ```env
-EXPO_PUBLIC_SUPABASE_URL=https://SEU-PROJETO.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=sua-anon-key-aqui
+EXPO_PUBLIC_API_URL=https://api.seudominio.com
 ```
 
 ### 2. Instalar dependências
@@ -92,10 +94,6 @@ npm install
 ```bash
 npx expo start
 ```
-
-Escaneie o QR code com o Expo Go para testar no celular.
-
-> **Nota:** O rastreamento GPS em segundo plano **não funciona no Expo Go**. O app faz fallback automático para `watchPosition` (apenas com app aberto). Para testar o modo background completo, use um [development build](#build-de-desenvolvimento).
 
 ## 📦 Build
 
@@ -111,7 +109,7 @@ eas build -p android --profile preview
 eas build -p android --profile production
 ```
 
-## 🗄️ Banco de Dados
+## 🗄️ Banco de Dados e Sincronização
 
 ### Tabelas Locais (SQLite)
 
@@ -121,29 +119,23 @@ eas build -p android --profile production
 | `work_sessions` | Turnos de trabalho com métricas agregadas   |
 | `trips`         | Resumo de cada viagem finalizada            |
 | `gps_points`    | Pontos GPS brutos coletados durante o turno |
+| `expenses`      | Registros de gastos (combustível, etc)      |
 
-### Proteção Contra Duplicação
+### Sincronização Batch
 
-- **Índice único** em `gps_points (session_id, recorded_at)` no SQLite
-- **Guard explícito** antes de cada inserção (`queryFirst` → `if (existing) return`)
-- **`upsert`** no Supabase para tolerância a falhas de rede
-- Registros marcados com `synced = 1` após envio para evitar re-sincronização
+O app utiliza uma estratégia de **Batch Sync** atômica para otimizar o uso de rede e bateria:
 
-### Sincronização
-
-O fluxo de sync (`src/services/sync.ts`) é acionado:
-
-1. Manualmente pelo botão de sync no dashboard
-2. Automaticamente ao finalizar um turno
-
-Ordem de sincronização: `profiles` → `work_sessions` → `trips` → `gps_points` (em batches de 500)
+1. Os dados são coletados e preparados em um `SyncPayload`.
+2. Enviados para o endpoint `POST /sync/v1/batch`.
+3. O servidor processa todas as tabelas em uma única transação (UPSERT).
+4. O app marca os registros como `synced = 1` localmente após o sucesso.
 
 ## 🔐 Segurança
 
-- Sessão armazenada no `expo-secure-store` (keychain/keystore nativo)
-- `logger` silenciado em produção — sem dados sensíveis em logs
-- Acesso ao SQLite via `localDatabase` com whitelist de tabelas permitidas
-- Variáveis do Supabase via `EXPO_PUBLIC_*` — nunca hardcoded
+- Sessão (JWT) armazenada no `expo-secure-store`.
+- Interceptor Axios remove sessão e limpa DB local em caso de erro `401 Unauthorized`.
+- `logger` silenciado em produção.
+- `localDatabase` com whitelist para evitar SQL injection ou acesso indevido.
 
 ## 📍 Permissões Android
 
@@ -156,23 +148,6 @@ FOREGROUND_SERVICE_LOCATION
 ```
 
 O usuário é informado sobre o uso de localização em background através do `LocationDisclosureModal`, exibido antes do primeiro início de turno — requisito obrigatório do Google Play.
-
-## 🔧 Comandos Úteis
-
-```bash
-# Desenvolvimento
-npx expo start                    # Inicia servidor de dev
-npx expo start --android          # Abre no emulador Android
-npx expo lint                     # Lint do projeto
-
-# Build
-eas build -p android --profile preview     # APK de teste
-eas build -p android --profile production  # Build de produção
-eas build -p android --clear-cache         # Força rebuild limpo
-
-# Diagnóstico
-eas build:list                    # Lista builds recentes
-```
 
 ## 📄 Licença
 

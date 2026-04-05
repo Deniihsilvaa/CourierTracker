@@ -4,7 +4,6 @@ import { create } from "zustand";
 import { getAuthToken } from "../../services/api";
 import { authService } from "../../services/auth.service";
 import { localDatabase } from "../../services/localDatabase";
-import { supabase } from "../../services/supabase";
 import { initDb } from "../../services/sqlite";
 import { setLogUserIdProvider } from "../../services/logSystem";
 import { logger } from "../../utils/logger";
@@ -96,37 +95,48 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  signInWithGoogle: async () => {
+  signInWithGoogle: async (idToken?: string) => {
     try {
       set({ isLoading: true, error: null });
-      const redirectTo = Linking.createURL("/(tabs)");
+      
+      if (!idToken) {
+        throw new Error("ID Token is required for Google login");
+      }
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo,
-        },
-      });
+      const user = await authService.googleLogin(idToken);
+      
+      if (user) {
+        const finalProfile: Profile = {
+          id: user.id,
+          name: user.user_metadata?.name ?? user.name ?? null,
+          email: user.email ?? null,
+          vehicle_type: user.user_metadata?.vehicle_type ?? null,
+          city: user.user_metadata?.city ?? null,
+        };
 
-      if (error) throw error;
+        await localDatabase.insert("profiles", finalProfile).catch(() => {
+          localDatabase.update("profiles", finalProfile.id, {
+            name: finalProfile.name,
+            email: finalProfile.email,
+            city: finalProfile.city,
+            vehicle_type: finalProfile.vehicle_type,
+          });
+        });
+
+        set({ user: finalProfile });
+      }
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       throw error;
     } finally {
-      // Don't set isLoading to false here, as we are redirecting away from app
+      set({ isLoading: false });
     }
   },
 
   resetPassword: async (email: string) => {
     try {
       set({ isLoading: true, error: null });
-      const redirectTo = Linking.createURL("/login");
-
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo,
-      });
-
-      if (error) throw error;
+      await authService.resetPassword(email);
     } catch (error: any) {
       set({ error: error.message });
       throw error;

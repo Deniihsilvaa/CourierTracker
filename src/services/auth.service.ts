@@ -46,6 +46,17 @@ export const authService = {
     }
   },
 
+  async googleLogin(idToken: string): Promise<LoginReturn["user"]> {
+    const { data } = await api.post("/auth/v1/google", { idToken });
+    const returnApi: LoginReturn = data.data;
+    await setAuthToken(returnApi.session.access_token);
+    return returnApi.user;
+  },
+
+  async resetPassword(email: string): Promise<void> {
+    await api.post("/auth/v1/password-reset", { email });
+  },
+
   async me(): Promise<Profile> {
     const response = await api.get("/auth/v1/profile");
     if (response.data?.success) {

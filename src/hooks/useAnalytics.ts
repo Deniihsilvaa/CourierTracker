@@ -2,8 +2,8 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/src/modules/auth/store';
 import { useTrackingStore } from '@/src/modules/tracking/store';
-import { supabase, visualization } from '@/src/services/supabase';
 import { runFullSync } from '@/src/services/sync';
+import { analyticsService } from '@/src/services/analytics.service';
 import { useEffect, useState } from 'react';
 
 export function useAnalytics() {
@@ -33,86 +33,41 @@ export function useAnalytics() {
         if (!user) return;
 
         try {
-            console.log('[Analytics] Loading data for user:', user.id);
+            console.log('[Analytics] Loading data from API for user:', user.id);
 
-            // 1. Fetch RAW Work Sessions for faithful summary
-            const { data: rawSessions, error: sessionsError } = await supabase
-                .from('work_sessions')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('start_time', { ascending: false });
-
-            if (sessionsError) throw sessionsError;
-
-            // 2. Fetch daily aggregated stats for the list (using view for speed)
-            const { data: statsData } = await visualization
-                .from('daily_driver_stats')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('work_day', { ascending: false })
-                .limit(10);
-
-            // 3. Process Summary from RAW data (Most accurate)
-            if (rawSessions && rawSessions.length > 0) {
-                // First, group sessions by date to find unique working days
-                const workingDays = new Set(rawSessions.map(s => s.start_time.split('T')[0]));
-                const numDays = workingDays.size || 1;
-
-                const totalKm = rawSessions.reduce((acc, curr) => acc + (curr?.total_distance_km || 0), 0);
-                const totalActiveSeconds = rawSessions.reduce((acc, curr) => acc + (curr?.total_active_seconds || 0), 0);
-                const totalIdleSeconds = rawSessions.reduce((acc, curr) => acc + (curr?.total_idle_seconds || 0), 0);
-
-                const totalHours = totalActiveSeconds / 3600;
-                const totalIdleHours = totalIdleSeconds / 3600;
-
-                // Speed calculation: Distance / Time (avoid division by zero)
-                const avgSpeed = totalHours > 0 ? totalKm / totalHours : 0;
-                const idlePct = (totalHours + totalIdleHours) > 0
-                    ? (totalIdleHours / (totalHours + totalIdleHours)) * 100
-                    : 0;
-
+            // 1. Fetch Summary (Aggregated metrics)
+            const summaryData = await analyticsService.getSummary();
+            if (summaryData) {
                 setSummary({
-                    totalKm: totalKm / numDays, // Show Average KM PER DAY
-                    totalHours: totalHours / numDays, // Show Average HOURS PER DAY
-                    avgSpeed,
-                    idlePct,
-                    efficiency: avgSpeed
+                    totalKm: summaryData.avg_km_per_day || summaryData.total_distance_km || 0,
+                    totalHours: summaryData.avg_hours_per_day || (summaryData.total_active_seconds / 3600) || 0,
+                    avgSpeed: summaryData.avg_speed || 0,
+                    idlePct: summaryData.idle_percentage || 0,
+                    efficiency: summaryData.avg_speed || 0
                 });
-
-                // 4. Generate Hourly Activity based on the last 10 trips
-                const { data: tripsData } = await visualization
-                    .from('trip_performance')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .order('start_time', { ascending: false })
-                    .limit(20);
-
-                if (tripsData) {
-                    const hours = new Array(24).fill(0);
-                    tripsData.forEach(trip => {
-                        const hour = new Date(trip.start_time).getHours();
-                        hours[hour] += (trip.distance_km || 0);
-                    });
-                    setHourlyData(hours);
-                    setPerformance(tripsData);
-                }
-
-                // 5. Fetch route for map
-                const { data: routeData } = await visualization
-                    .from('session_route')
-                    .select('latitude, longitude')
-                    .eq('user_id', user.id)
-                    .limit(100)
-                    .order('recorded_at', { ascending: false });
-
-                if (routeData) {
-                    setRoutePoints(routeData.map(p => ({ latitude: p.latitude, longitude: p.longitude })));
-                }
             }
 
+            // 2. Fetch Daily Stats
+            const statsData = await analyticsService.getDailyStats();
             if (statsData) {
                 setDailyStats(statsData);
             }
+
+            // 3. Fetch Trips for hourly activity and performance list
+            const tripsData = await analyticsService.getTrips();
+            if (tripsData) {
+                const hours = new Array(24).fill(0);
+                tripsData.slice(0, 20).forEach((trip: any) => {
+                    const hour = new Date(trip.start_time).getHours();
+                    hours[hour] += (trip.distance_km || 0);
+                });
+                setHourlyData(hours);
+                setPerformance(tripsData);
+            }
+
+            // Note: If route points are still needed for a map and not in summary/trips,
+            // we might need an extra endpoint or check if trips include them.
+            // For now, keeping routePoints empty or assuming they come from a trip detail if selected.
 
         } catch (e) {
             console.error('[Analytics] Critical data load error:', e);
@@ -133,9 +88,12 @@ export function useAnalytics() {
 
     const handleManualSync = async () => {
         setRefreshing(true);
-        await runFullSync();
-        await loadData();
-        setRefreshing(false);
+        try {
+            await runFullSync();
+            await loadData();
+        } finally {
+            setRefreshing(false);
+        }
     };
 
 
