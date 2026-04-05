@@ -110,8 +110,8 @@ export const refreshToken = async () => {
     `/auth/v1/refresh`,
     { refreshToken }
   );
-  const { access_token, refresh_token } = response.data
-  await authStorage.setToken(access_token, refresh_token);
-  return access_token;
+  const { session } = response.data
+  await authStorage.setToken(session.access_token, session.refresh_token);
+  return session.access_token;
 };
 
