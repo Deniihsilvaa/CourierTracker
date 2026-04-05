@@ -1,5 +1,5 @@
-import { ClientForm } from "@/src/modules/clients/components/ClientForm";
 import { ClientCard } from "@/src/modules/clients/components/ClientCard";
+import { ClientForm } from "@/src/modules/clients/components/ClientForm";
 import { useClientStore } from "@/src/modules/clients/store/clientStore";
 import { Client } from "@/src/types/route.types";
 import { useDeferredValue, useEffect, useState } from "react";
@@ -63,6 +63,7 @@ export function ClientPickerModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+
       <SafeAreaView style={{ flex: 1, backgroundColor: "#030712" }} edges={["top", "bottom"]}>
         <View
           style={{

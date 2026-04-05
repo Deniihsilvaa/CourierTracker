@@ -10,6 +10,7 @@ import { appColors, radius, spacing } from "@/src/theme/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
+import { ScrollView } from "react-native-gesture-handler";
 
 interface ClientFormProps {
   initialValues?: Partial<ClientPayload>;
@@ -194,126 +195,134 @@ export function ClientForm({
   };
 
   return (
-    <View style={{ gap: spacing.sm }}>
-      <GlassCard>
-        <SectionHeader title="Dados principais" subtitle="Cadastro manual com busca automatica de coordenadas." />
-        <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
-          <Field label="Nome">
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="Ex.: Mercado Central"
-              placeholderTextColor={appColors.textMuted}
-              editable={!isSubmitting}
-              style={inputStyle}
-            />
-          </Field>
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={{ gap: spacing.sm, paddingBottom: 220 }}
+      showsVerticalScrollIndicator={false}
+    >
 
-          <Field label="Endereco">
-            <TextInput
-              value={address}
-              onChangeText={(value) => {
-                setAddress(value);
-                setGeocodeStatus(value.trim() ? "idle" : "idle");
-              }}
-              onBlur={handleAddressBlur}
-              placeholder="Rua, numero e referencia"
-              placeholderTextColor={appColors.textMuted}
-              editable={!isSubmitting}
-              multiline
-              style={[inputStyle, { minHeight: 88, textAlignVertical: "top" }]}
-            />
-          </Field>
 
-          <Field label="Telefone">
-            <TextInput
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="Ex.: +55 11 99999-9999"
-              placeholderTextColor={appColors.textMuted}
-              editable={!isSubmitting}
-              keyboardType="phone-pad"
-              style={inputStyle}
-            />
-          </Field>
-        </View>
-      </GlassCard>
-
-      <GlassCard>
-        <SectionHeader title="Tipo de cliente" subtitle="Classifique o cadastro para facilitar a operacao." />
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.sm }}>
-          {clientTypeOptions.map((option) => {
-            const active = clientType === option.value;
-
-            return (
-              <Pressable
-                key={option.value}
-                onPress={() => setClientType(option.value)}
-                disabled={isSubmitting}
-                style={{
-                  backgroundColor: active ? appColors.primaryStrong : appColors.surface,
-                  borderColor: active ? appColors.primaryGradientStart : appColors.border,
-                  borderWidth: 1,
-                  borderRadius: radius.pill,
-                  paddingHorizontal: 14,
-                  paddingVertical: 10,
-                  minHeight: 44,
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ color: appColors.textPrimary, fontWeight: "700" }}>{option.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </GlassCard>
-
-      <GlassCard>
-        <SectionHeader title="Coordenadas" subtitle="Geradas automaticamente a partir do endereco informado." />
-        <View style={{ gap: spacing.xs, marginTop: spacing.sm }}>
-          <GeocodeStatus status={geocodeStatus} />
-
-          <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <Field label="Latitude" style={{ flex: 1 }}>
+      <View style={{ gap: spacing.sm }}>
+        <GlassCard>
+          <SectionHeader title="Dados principais" subtitle="Cadastro manual com busca automatica de coordenadas." />
+          <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
+            <Field label="Nome">
               <TextInput
-                value={latitude}
-                editable={false}
-                selectTextOnFocus
-                placeholder="Aguardando endereco"
+                value={name}
+                onChangeText={setName}
+                placeholder="Ex.: Mercado Central"
                 placeholderTextColor={appColors.textMuted}
-                style={[inputStyle, readOnlyInputStyle]}
+                editable={!isSubmitting}
+                style={inputStyle}
               />
             </Field>
 
-            <Field label="Longitude" style={{ flex: 1 }}>
+            <Field label="Endereco">
               <TextInput
-                value={longitude}
-                editable={false}
-                selectTextOnFocus
-                placeholder="Aguardando endereco"
+                value={address}
+                onChangeText={(value) => {
+                  setAddress(value);
+                  setGeocodeStatus(value.trim() ? "idle" : "idle");
+                }}
+                onBlur={handleAddressBlur}
+                placeholder="Rua, numero e referencia"
                 placeholderTextColor={appColors.textMuted}
-                style={[inputStyle, readOnlyInputStyle]}
+                editable={!isSubmitting}
+                multiline
+                style={[inputStyle, { minHeight: 88, textAlignVertical: "top" }]}
+              />
+            </Field>
+
+            <Field label="Telefone">
+              <TextInput
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="Ex.: +55 11 99999-9999"
+                placeholderTextColor={appColors.textMuted}
+                editable={!isSubmitting}
+                keyboardType="phone-pad"
+                style={inputStyle}
               />
             </Field>
           </View>
-        </View>
-      </GlassCard>
-
-      {error ? (
-        <GlassCard style={{ borderColor: "rgba(239, 68, 68, 0.28)", backgroundColor: "rgba(127, 29, 29, 0.24)" }}>
-          <Text selectable style={{ color: "#fecaca", fontSize: 14, fontWeight: "700" }}>
-            {error}
-          </Text>
         </GlassCard>
-      ) : null}
 
-      <PrimaryButton
-        label={isSubmitting ? "Salvando..." : submitLabel}
-        onPress={() => void handleSubmit()}
-        loading={isSubmitting}
-        icon={<Ionicons name="checkmark-outline" size={18} color={appColors.white} />}
-      />
-    </View>
+        <GlassCard>
+          <SectionHeader title="Tipo de cliente" subtitle="Classifique o cadastro para facilitar a operacao." />
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.sm }}>
+            {clientTypeOptions.map((option) => {
+              const active = clientType === option.value;
+
+              return (
+                <Pressable
+                  key={option.value}
+                  onPress={() => setClientType(option.value)}
+                  disabled={isSubmitting}
+                  style={{
+                    backgroundColor: active ? appColors.primaryStrong : appColors.surface,
+                    borderColor: active ? appColors.primaryGradientStart : appColors.border,
+                    borderWidth: 1,
+                    borderRadius: radius.pill,
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    minHeight: 44,
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ color: appColors.textPrimary, fontWeight: "700" }}>{option.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </GlassCard>
+
+        <GlassCard>
+          <SectionHeader title="Coordenadas" subtitle="Geradas automaticamente a partir do endereco informado." />
+          <View style={{ gap: spacing.xs, marginTop: spacing.sm }}>
+            <GeocodeStatus status={geocodeStatus} />
+
+            <View style={{ flexDirection: "row", gap: spacing.sm }}>
+              <Field label="Latitude" style={{ flex: 1 }}>
+                <TextInput
+                  value={latitude}
+                  editable={false}
+                  selectTextOnFocus
+                  placeholder="Aguardando endereco"
+                  placeholderTextColor={appColors.textMuted}
+                  style={[inputStyle, readOnlyInputStyle]}
+                />
+              </Field>
+
+              <Field label="Longitude" style={{ flex: 1 }}>
+                <TextInput
+                  value={longitude}
+                  editable={false}
+                  selectTextOnFocus
+                  placeholder="Aguardando endereco"
+                  placeholderTextColor={appColors.textMuted}
+                  style={[inputStyle, readOnlyInputStyle]}
+                />
+              </Field>
+            </View>
+          </View>
+        </GlassCard>
+
+        {error ? (
+          <GlassCard style={{ borderColor: "rgba(239, 68, 68, 0.28)", backgroundColor: "rgba(127, 29, 29, 0.24)" }}>
+            <Text selectable style={{ color: "#fecaca", fontSize: 14, fontWeight: "700" }}>
+              {error}
+            </Text>
+          </GlassCard>
+        ) : null}
+
+        <PrimaryButton
+          label={isSubmitting ? "Salvando..." : submitLabel}
+          onPress={() => void handleSubmit()}
+          loading={isSubmitting}
+          icon={<Ionicons name="checkmark-outline" size={18} color={appColors.white} />}
+        />
+      </View>
+    </ScrollView>
   );
 }
 

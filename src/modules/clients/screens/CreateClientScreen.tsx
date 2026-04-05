@@ -1,38 +1,33 @@
-import { PrimaryButton } from "@/components/buttons/primary-button";
 import { GlassCard } from "@/components/cards/glass-card";
 import { AppScreen } from "@/components/layout/app-screen";
 import { SectionHeader } from "@/components/layout/section-header";
+import useSessions from "@/src/hooks/useSessions";
 import { ClientForm } from "@/src/modules/clients/components/ClientForm";
 import { useClientStore } from "@/src/modules/clients/store/clientStore";
-import { appColors } from "@/src/theme/colors";
-import { Ionicons } from "@expo/vector-icons";
+import { appColors, spacing } from "@/src/theme/colors";
 import { useRouter } from "expo-router";
 import { Alert, ScrollView, Text } from "react-native";
+import { RefreshControl } from "react-native-gesture-handler";
 
 export function CreateClientScreen() {
   const router = useRouter();
   const createClient = useClientStore((state) => state.createClient);
   const isSaving = useClientStore((state) => state.isSaving);
   const error = useClientStore((state) => state.error);
+  const { refreshing, onRefresh } = useSessions();
+
 
   return (
     <AppScreen
       title="Novo cliente"
       subtitle="Cadastro manual com coordenadas geradas automaticamente a partir do endereco."
       scrollable={false}
-      rightSlot={
-        <PrimaryButton
-          label="Voltar"
-          onPress={() => router.back()}
-          variant="ghost"
-          icon={<Ionicons name="arrow-back-outline" size={18} color={appColors.textPrimary} />}
-        />
-      }
     >
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ gap: 16, paddingBottom: 40 }}
+        contentContainerStyle={{ gap: spacing.sm, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={appColors.primary} />}
       >
         <GlassCard>
           <SectionHeader title="Cadastro rapido" subtitle="Preencha o basico e deixe o app localizar latitude e longitude." />

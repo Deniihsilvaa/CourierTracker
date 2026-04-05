@@ -10,9 +10,9 @@ export default function ClientsLayout() {
         contentStyle: { backgroundColor: "#030712" },
       }}
     >
-      <Stack.Screen name="index" options={{ title: "Clientes" }} />
-      <Stack.Screen name="new" options={{ title: "Novo cliente" }} />
-      <Stack.Screen name="[id]" options={{ title: "Detalhes do cliente" }} />
+      <Stack.Screen name="index" options={{ title: "Clientes", headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="new" options={{ title: "Novo cliente", headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="[id]" options={{ title: "Detalhes do cliente", headerShown: false, animation: 'slide_from_right' }} />
     </Stack>
   );
 }
