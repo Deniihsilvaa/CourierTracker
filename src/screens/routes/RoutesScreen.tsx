@@ -1,10 +1,12 @@
 import { FloatingActionButton } from "@/components/buttons/floating-action-button";
+import { PrimaryButton } from "@/components/buttons/primary-button";
 import { GlassCard } from "@/components/cards/glass-card";
 import { AppScreen } from "@/components/layout/app-screen";
 import { SectionHeader } from "@/components/layout/section-header";
 import { SkeletonCard } from "@/components/skeleton/skeleton-card";
 import { CreateRouteModal } from "@/src/components/CreateRouteModal";
 import { RouteActionsModal } from "@/src/components/RouteActionsModal";
+import { RouteJourneyMap } from "@/src/modules/map/components/RouteJourneyMap";
 import { useRouteStore } from "@/src/store/routeStore";
 import { Route } from "@/src/types/route.types";
 import { appColors, radius, spacing } from "@/src/theme/colors";
@@ -25,6 +27,7 @@ export default function RoutesScreen() {
   const { routes, loadRoutes, isLoading } = useRouteStore();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
+  const [expandedRouteId, setExpandedRouteId] = useState<string | null>(null);
 
   useEffect(() => {
     void loadRoutes();
@@ -53,6 +56,13 @@ export default function RoutesScreen() {
             <RouteMetric label="Ativas" value={String(summary.active)} icon="navigate-outline" />
             <RouteMetric label="Cobrancas" value={String(summary.pendingPayment)} icon="cash-outline" />
           </View>
+          <View style={{ marginTop: spacing.sm }}>
+            <PrimaryButton
+              label="Criar nova rota"
+              onPress={() => setModalVisible(true)}
+              icon={<Ionicons name="add-outline" size={18} color={appColors.textPrimary} />}
+            />
+          </View>
         </GlassCard>
 
         {isLoading ? (
@@ -67,11 +77,24 @@ export default function RoutesScreen() {
             <Text style={{ color: appColors.textSecondary, fontSize: 14, lineHeight: 20, marginTop: spacing.xs }}>
               Crie rotas manuais com cliente, coleta e entrega para iniciar o fluxo do motorista.
             </Text>
+            <View style={{ marginTop: spacing.sm }}>
+              <PrimaryButton
+                label="Criar rota agora"
+                onPress={() => setModalVisible(true)}
+                icon={<Ionicons name="add-outline" size={18} color={appColors.textPrimary} />}
+              />
+            </View>
           </GlassCard>
         ) : (
           <ScrollView contentContainerStyle={{ gap: spacing.sm, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
             {routes.map((route) => (
-              <RouteOverviewCard key={route.id} route={route} onOpenActions={setSelectedRoute} />
+              <RouteOverviewCard
+                key={route.id}
+                route={route}
+                expanded={expandedRouteId === route.id}
+                onToggleExpand={() => setExpandedRouteId((current) => (current === route.id ? null : route.id))}
+                onOpenActions={setSelectedRoute}
+              />
             ))}
           </ScrollView>
         )}
@@ -87,12 +110,22 @@ export default function RoutesScreen() {
 
 function RouteOverviewCard({
   route,
+  expanded,
+  onToggleExpand,
   onOpenActions,
 }: {
   route: Route;
+  expanded: boolean;
+  onToggleExpand: () => void;
   onOpenActions: (route: Route) => void;
 }) {
   const status = statusMeta[route.route_status];
+  const routeDistance = (route.driver_to_pickup_km || 0) + (route.pickup_to_delivery_km || 0);
+  const hasMapData =
+    (route.route_geometry?.length ?? 0) > 1 ||
+    (route.driver_start_lat != null && route.driver_start_lng != null) ||
+    (route.pickup_lat != null && route.pickup_lng != null) ||
+    (route.delivery_lat != null && route.delivery_lng != null);
 
   return (
     <GlassCard>
@@ -118,6 +151,9 @@ function RouteOverviewCard({
         </View>
 
         <View style={{ alignItems: "flex-end", gap: spacing.xs }}>
+          {route.client?.name ? (
+            <Text style={{ color: appColors.textSecondary, fontSize: 13, fontWeight: "700" }}>{route.client.name}</Text>
+          ) : null}
           {route.value != null ? (
             <Text style={{ color: appColors.success, fontSize: 18, fontWeight: "900" }}>
               {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(route.value)}
@@ -130,25 +166,80 @@ function RouteOverviewCard({
       </View>
 
       <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
-        <RouteMetric label="Cliente" value={route.client_id ? "Vinculado" : "Livre"} icon="person-outline" compact />
+        <RouteMetric label="Cliente" value={route.client?.name || (route.client_id ? "Vinculado" : "Livre")} icon="person-outline" compact />
         <RouteMetric label="Status" value={status.label} icon="pulse-outline" compact />
       </View>
 
-      <Pressable
-        onPress={() => onOpenActions(route)}
-        style={{
-          marginTop: spacing.sm,
-          minHeight: 44,
-          borderRadius: radius.lg,
-          alignItems: "center",
-          justifyContent: "center",
-          borderWidth: 1,
-          borderColor: appColors.borderStrong,
-          backgroundColor: "rgba(255,255,255,0.04)",
-        }}
-      >
-        <Text style={{ color: appColors.textPrimary, fontWeight: "800" }}>Abrir acoes da rota</Text>
-      </Pressable>
+      <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
+        <RouteMetric
+          label="Distancia"
+          value={routeDistance > 0 ? `${routeDistance.toFixed(1)} km` : "--"}
+          icon="git-commit-outline"
+          compact
+        />
+        <RouteMetric
+          label="Duracao"
+          value={route.estimated_duration_minutes ? `${route.estimated_duration_minutes.toFixed(0)} min` : "--"}
+          icon="time-outline"
+          compact
+        />
+      </View>
+
+      {expanded && hasMapData ? (
+        <View style={{ marginTop: spacing.sm, gap: spacing.sm }}>
+          <RouteJourneyMap route={route} />
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <RouteMetric
+              label="Ate coleta"
+              value={route.driver_to_pickup_km ? `${route.driver_to_pickup_km.toFixed(1)} km` : "--"}
+              icon="flag-outline"
+              compact
+            />
+            <RouteMetric
+              label="Ate entrega"
+              value={route.pickup_to_delivery_km ? `${route.pickup_to_delivery_km.toFixed(1)} km` : "--"}
+              icon="checkmark-done-outline"
+              compact
+            />
+          </View>
+        </View>
+      ) : null}
+
+      <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
+        <Pressable
+          onPress={onToggleExpand}
+          style={{
+            flex: 1,
+            minHeight: 44,
+            borderRadius: radius.lg,
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 1,
+            borderColor: appColors.borderStrong,
+            backgroundColor: "rgba(255,255,255,0.04)",
+          }}
+        >
+          <Text style={{ color: appColors.textPrimary, fontWeight: "800" }}>
+            {expanded ? "Ocultar trajeto" : "Ver trajeto"}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => onOpenActions(route)}
+          style={{
+            flex: 1,
+            minHeight: 44,
+            borderRadius: radius.lg,
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 1,
+            borderColor: appColors.borderStrong,
+            backgroundColor: "rgba(255,255,255,0.04)",
+          }}
+        >
+          <Text style={{ color: appColors.textPrimary, fontWeight: "800" }}>Abrir acoes</Text>
+        </Pressable>
+      </View>
     </GlassCard>
   );
 }

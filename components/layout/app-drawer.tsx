@@ -9,6 +9,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const drawerItems = [
   { label: "Dashboard", icon: "grid-outline", route: "/" },
   { label: "Clientes", icon: "people-outline", route: "/clients" },
+  { label: "Receitas", icon: "trending-up-outline", route: "/incomes" },
+  { label: "Despesas", icon: "receipt-outline", route: "/expenses" },
+  { label: "Categorias", icon: "layers-outline", route: "/categories" },
   { label: "Analytics", icon: "analytics-outline", route: "/analytics" },
   { label: "Relatórios", icon: "document-text-outline", route: "/reports" },
   { label: "Combustível", icon: "water-outline", route: "/fuels" },

@@ -29,8 +29,6 @@ export const useRouteStore = create<RouteState>((set, get) => ({
     set({ isLoading: true });
     try {
       const parsedRoutes = await routeService.getAllRoutes();
-      parsedRoutes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      
       set({ routes: parsedRoutes, isLoading: false });
     } catch (e) {
       console.error('Failed to load routes from local DB', e);
@@ -51,7 +49,6 @@ export const useRouteStore = create<RouteState>((set, get) => ({
   updateRouteStatus: async (id: string, status: Route['route_status']) => {
     await routeService.updateRouteStatus(id, status);
     const updatedRoutes = await routeService.getAllRoutes();
-    updatedRoutes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     set({ routes: updatedRoutes });
   },
 

@@ -328,6 +328,8 @@ export const initDb = async (forceReset = false) => {
 
           driver_to_pickup_km REAL,
           pickup_to_delivery_km REAL,
+          estimated_duration_minutes REAL,
+          route_geometry TEXT,
 
           route_status TEXT DEFAULT 'pending',
 
@@ -376,6 +378,8 @@ export const initDb = async (forceReset = false) => {
     try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_at TEXT;`); } catch (e) { }
     try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_to_pickup_km REAL;`); } catch (e) { }
     try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_to_delivery_km REAL;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN estimated_duration_minutes REAL;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN route_geometry TEXT;`); } catch (e) { }
     try { await db.execAsync(`ALTER TABLE clients ADD COLUMN client_type TEXT;`); } catch (e) { }
 
     // Specific columns for work_sessions

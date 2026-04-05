@@ -1,5 +1,6 @@
 import { FloatingActionButton } from "@/components/buttons/floating-action-button";
 import { PrimaryButton } from "@/components/buttons/primary-button";
+import { SessionSelector } from "@/components/blocks/financial/session-selector";
 import { GlassCard } from "@/components/cards/glass-card";
 import { StatCard } from "@/components/cards/stat-card";
 import { AppScreen } from "@/components/layout/app-screen";
@@ -25,6 +26,8 @@ export default function ExpensesScreen() {
     setDescription,
     categoryTypeId,
     setCategoryTypeId,
+    selectedSessionId,
+    setSelectedSessionId,
     editingId,
     setEditingId,
     editAmount,
@@ -33,10 +36,13 @@ export default function ExpensesScreen() {
     setEditDescription,
     editCategoryTypeId,
     setEditCategoryTypeId,
+    editSessionId,
+    setEditSessionId,
     toggleForm,
     handleCreate,
     handleUpdate,
     startEdit,
+    sessions,
   } = useExpensesScreen();
 
   const stats = useMemo(() => {
@@ -76,13 +82,16 @@ export default function ExpensesScreen() {
                     </Text>
                   ) : (
                     <ExpenseForm
+                      sessions={sessions}
                       amount={amount}
                       description={description}
                       categoryId={categoryTypeId}
+                      selectedSessionId={selectedSessionId}
                       categories={categories}
                       onChangeAmount={setAmount}
                       onChangeDescription={setDescription}
                       onChangeCategory={setCategoryTypeId}
+                      onChangeSession={setSelectedSessionId}
                       onSubmit={handleCreate}
                       saving={saving}
                     />
@@ -119,13 +128,16 @@ export default function ExpensesScreen() {
               <SectionHeader title="Editar despesa" subtitle={item.category || "Registro em edicao"} />
               <View style={{ marginTop: spacing.sm }}>
                 <ExpenseForm
+                  sessions={sessions}
                   amount={editAmount}
                   description={editDescription}
                   categoryId={editCategoryTypeId}
+                  selectedSessionId={editSessionId}
                   categories={categories}
                   onChangeAmount={setEditAmount}
                   onChangeDescription={setEditDescription}
                   onChangeCategory={setEditCategoryTypeId}
+                  onChangeSession={setEditSessionId}
                   onSubmit={handleUpdate}
                   onCancel={() => setEditingId(null)}
                   saving={saving}
@@ -163,10 +175,13 @@ function ExpenseForm({
   amount,
   description,
   categoryId,
+  selectedSessionId,
+  sessions,
   categories,
   onChangeAmount,
   onChangeDescription,
   onChangeCategory,
+  onChangeSession,
   onSubmit,
   onCancel,
   saving = false,
@@ -174,10 +189,13 @@ function ExpenseForm({
   amount: string;
   description: string;
   categoryId: string;
+  selectedSessionId: string;
+  sessions: Array<{ id: string; start_time: string; end_time: string | null; total_distance_km: number; total_active_seconds: number; total_idle_seconds: number; status: "open" | "closed"; }>;
   categories: Array<{ id: string; name: string }>;
   onChangeAmount: (value: string) => void;
   onChangeDescription: (value: string) => void;
   onChangeCategory: (value: string) => void;
+  onChangeSession: (value: string) => void;
   onSubmit: () => void;
   onCancel?: () => void;
   saving?: boolean;
@@ -219,6 +237,12 @@ function ExpenseForm({
           ))}
         </View>
       </FormField>
+
+      <SessionSelector
+        sessions={sessions}
+        selectedSessionId={selectedSessionId}
+        onSelectSession={onChangeSession}
+      />
 
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
         <PrimaryButton

@@ -16,6 +16,12 @@ export interface Route {
   id: string;
   session_id: string | null;
   client_id: string | null;
+  client?: {
+    id: string;
+    name: string;
+    address: string;
+    client_type?: "store" | "restaurant" | "customer" | "warehouse" | null;
+  } | null;
   
   pickup_location: string;
   pickup_lat: number | null;
@@ -42,6 +48,8 @@ export interface Route {
 
   driver_to_pickup_km: number | null;
   pickup_to_delivery_km: number | null;
+  estimated_duration_minutes: number | null;
+  route_geometry: [number, number][] | null;
   
   route_status: "pending" | "going_to_pickup" | "pickup_arrived" | "delivering" | "completed" | "cancelled";
   

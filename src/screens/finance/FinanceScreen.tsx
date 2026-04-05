@@ -1,10 +1,14 @@
 import { ChartCard } from "@/components/cards/chart-card";
+import { PrimaryButton } from "@/components/buttons/primary-button";
+import { GlassCard } from "@/components/cards/glass-card";
 import { StatCard } from "@/components/cards/stat-card";
 import { AppScreen } from "@/components/layout/app-screen";
 import { SectionHeader } from "@/components/layout/section-header";
 import { SkeletonCard } from "@/components/skeleton/skeleton-card";
 import { useAnalytics } from "@/src/hooks/useAnalytics";
 import { appColors, spacing } from "@/src/theme/colors";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useMemo } from "react";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
 
@@ -12,6 +16,7 @@ const currency = (value?: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
 
 export default function FinanceScreen() {
+  const router = useRouter();
   const { refreshing, handleManualSync, dailyStats, hourlyData } = useAnalytics();
   const safeDailyStats = Array.isArray(dailyStats) ? dailyStats : [];
   const safeHourlyData = Array.isArray(hourlyData) ? hourlyData : [];
@@ -65,6 +70,47 @@ export default function FinanceScreen() {
           </>
         ) : (
           <>
+            <GlassCard>
+              <SectionHeader title="Lancamentos" subtitle="Acesso direto para receitas, despesas e operacao do veiculo." />
+              <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
+                <View style={{ flexDirection: "row", gap: spacing.sm }}>
+                  <View style={{ flex: 1 }}>
+                    <PrimaryButton
+                      label="Receitas"
+                      onPress={() => router.push("/incomes")}
+                      icon={<Ionicons name="trending-up-outline" size={18} color={appColors.textPrimary} />}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <PrimaryButton
+                      label="Despesas"
+                      onPress={() => router.push("/expenses")}
+                      icon={<Ionicons name="receipt-outline" size={18} color={appColors.textPrimary} />}
+                      variant="secondary"
+                    />
+                  </View>
+                </View>
+                <View style={{ flexDirection: "row", gap: spacing.sm }}>
+                  <View style={{ flex: 1 }}>
+                    <PrimaryButton
+                      label="Combustivel"
+                      onPress={() => router.push("/fuels")}
+                      icon={<Ionicons name="water-outline" size={18} color={appColors.textPrimary} />}
+                      variant="ghost"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <PrimaryButton
+                      label="Manutencao"
+                      onPress={() => router.push("/maintenance")}
+                      icon={<Ionicons name="construct-outline" size={18} color={appColors.textPrimary} />}
+                      variant="ghost"
+                    />
+                  </View>
+                </View>
+              </View>
+            </GlassCard>
+
             <View style={{ flexDirection: "row", gap: spacing.sm }}>
               <StatCard label="Ganhos" value={currency(totals.totalIncome)} icon="wallet-outline" tone="success" trend="+6%" />
               <StatCard label="Combustivel" value={currency(totals.estimatedFuel)} icon="water-outline" tone="warning" trend="+2%" />

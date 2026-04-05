@@ -52,6 +52,14 @@ const prepareTableData = async (db: any, localTableName: string) => {
             };
         }
 
+        if (localTableName === 'manual_routes') {
+            return {
+                ...rest,
+                payment_required: Boolean(rest.payment_required),
+                route_geometry: rest.route_geometry ? JSON.parse(rest.route_geometry) : null,
+            };
+        }
+
         return rest;
     });
 
@@ -90,6 +98,7 @@ export const runFullSync = async () => {
             'incomes',
             'fuel_logs',
             'maintenance_logs',
+            'manual_routes',
             'clients'
         ];
 

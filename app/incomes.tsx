@@ -1,5 +1,6 @@
 import { FloatingActionButton } from "@/components/buttons/floating-action-button";
 import { PrimaryButton } from "@/components/buttons/primary-button";
+import { SessionSelector } from "@/components/blocks/financial/session-selector";
 import { GlassCard } from "@/components/cards/glass-card";
 import { StatCard } from "@/components/cards/stat-card";
 import { AppScreen } from "@/components/layout/app-screen";
@@ -33,6 +34,8 @@ export default function IncomesScreen() {
     setCategoryId,
     dateCompetition,
     setDateCompetition,
+    selectedSessionId,
+    setSelectedSessionId,
     editingId,
     setEditingId,
     editAmount,
@@ -45,10 +48,13 @@ export default function IncomesScreen() {
     setEditCategoryId,
     editDateCompetition,
     setEditDateCompetition,
+    editSessionId,
+    setEditSessionId,
     toggleForm,
     handleCreate,
     handleUpdate,
     startEdit,
+    sessions,
   } = useIncomesScreen();
 
   const stats = useMemo(() => {
@@ -88,17 +94,20 @@ export default function IncomesScreen() {
                     </Text>
                   ) : (
                     <IncomeForm
+                      sessions={sessions}
                       amount={amount}
                       source={source}
                       description={description}
                       categoryId={categoryId}
                       dateCompetition={dateCompetition}
+                      selectedSessionId={selectedSessionId}
                       categories={categories}
                       onChangeAmount={setAmount}
                       onChangeSource={setSource}
                       onChangeDescription={setDescription}
                       onChangeCategory={setCategoryId}
                       onChangeDate={setDateCompetition}
+                      onChangeSession={setSelectedSessionId}
                       onSubmit={handleCreate}
                       saving={saving}
                     />
@@ -185,17 +194,20 @@ export default function IncomesScreen() {
               <SectionHeader title="Editar receita" subtitle={item.source || "Registro em edicao"} />
               <View style={{ marginTop: spacing.sm }}>
                 <IncomeForm
+                  sessions={sessions}
                   amount={editAmount}
                   source={editSource}
                   description={editDescription}
                   categoryId={editCategoryId}
                   dateCompetition={editDateCompetition}
+                  selectedSessionId={editSessionId}
                   categories={categories}
                   onChangeAmount={setEditAmount}
                   onChangeSource={setEditSource}
                   onChangeDescription={setEditDescription}
                   onChangeCategory={setEditCategoryId}
                   onChangeDate={setEditDateCompetition}
+                  onChangeSession={setEditSessionId}
                   onSubmit={handleUpdate}
                   onCancel={() => setEditingId(null)}
                   saving={saving}
@@ -235,12 +247,15 @@ function IncomeForm({
   description,
   categoryId,
   dateCompetition,
+  selectedSessionId,
+  sessions,
   categories,
   onChangeAmount,
   onChangeSource,
   onChangeDescription,
   onChangeCategory,
   onChangeDate,
+  onChangeSession,
   onSubmit,
   onCancel,
   saving = false,
@@ -250,12 +265,15 @@ function IncomeForm({
   description: string;
   categoryId: string;
   dateCompetition: string;
+  selectedSessionId: string;
+  sessions: Array<{ id: string; start_time: string; end_time: string | null; total_distance_km: number; total_active_seconds: number; total_idle_seconds: number; status: "open" | "closed"; }>;
   categories: Array<{ id: string; name: string }>;
   onChangeAmount: (value: string) => void;
   onChangeSource: (value: string) => void;
   onChangeDescription: (value: string) => void;
   onChangeCategory: (value: string) => void;
   onChangeDate: (value: string) => void;
+  onChangeSession: (value: string) => void;
   onSubmit: () => void;
   onCancel?: () => void;
   saving?: boolean;
@@ -318,6 +336,12 @@ function IncomeForm({
           ))}
         </View>
       </FormField>
+
+      <SessionSelector
+        sessions={sessions}
+        selectedSessionId={selectedSessionId}
+        onSelectSession={onChangeSession}
+      />
 
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
         <PrimaryButton
