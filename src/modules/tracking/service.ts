@@ -27,146 +27,220 @@ const MIN_MOVEMENT_THRESHOLD = 5; // metros
  * - Crawling (1–5 km/h):     15s  — on foot / searching for address
  * - Stationary (< 1 km/h):   30s  — waiting, parking, delivering on foot
  */
-const SAMPLE_INTERVAL_MS = {
-  HIGH:       5_000,
-  LOW:       10_000,
-  CRAWLING:  15_000,
-  IDLE:      30_000,
-} as const;
+const SPEED_RULES = [
+  { minKmh: 20, interval: 5000 },
+  { minKmh: 5, interval: 10000 },
+  { minKmh: 1, interval: 15000 },
+  { minKmh: 0, interval: 30000 },
+] as const;
 
-const getAdaptiveSampleInterval = (speedMs: number | null): number => {
-  if (speedMs === null || speedMs < 0) return SAMPLE_INTERVAL_MS.LOW;
-  const kmh = speedMs * 3.6;
-  if (kmh >= 20) return SAMPLE_INTERVAL_MS.HIGH;
-  if (kmh >= 5)  return SAMPLE_INTERVAL_MS.LOW;
-  if (kmh >= 1)  return SAMPLE_INTERVAL_MS.CRAWLING;
-  return SAMPLE_INTERVAL_MS.IDLE;
-};
-
-// Re-export for external modules (e.g. Dashboard)
-export const resetWaitingDetection = eventDetector.resetWaitingDetection;
-
-export const startTracking = async () => {
-  const session = useSessionStore.getState().activeSession;
-  if (!session) {
-    logger.error('[Tracking] Cannot start tracking without active work session');
-    return;
+export const getAdaptiveSampleInterval = (speedMs: number | null): number => {
+  if (!speedMs || Number.isNaN(speedMs) || speedMs < 0) {
+    return 10000;
   }
 
-  try {
-    logger.info('[Tracking] Initializing tracking pipeline...');
+  const kmh = speedMs * 3.6;
 
-    // 1. GUARANTEE SESSION CREATION
-    // This MUST succeed before we enable any GPS listeners
-    const trackingSessionId = await sessionManager.startTrackingSession(session.user_id!);
+  for (const rule of SPEED_RULES) {
+    if (kmh >= rule.minKmh) {
+      return rule.interval;
+    }
+  }
+
+  return 10000;
+};
+/*
+* @description a funcao startTracking para o tracking
+*/
+export const startTracking = async () => {
+  const session = useSessionStore.getState().activeSession
+
+  if (!session) {
+    logger.error('[Tracking] Cannot start tracking without active work session')
+    return
+  }
+
+  const store = useTrackingStore.getState()
+
+  try {
+    logger.info('[Tracking] Initializing tracking pipeline...')
+
+    // 1️⃣ Check foreground permission
+    let { status } = await Location.getForegroundPermissionsAsync()
+
+    if (status !== 'granted') {
+      const request = await Location.requestForegroundPermissionsAsync()
+      status = request.status
+    }
+
+    if (status !== 'granted') {
+      logger.warn('[Tracking] Location permission denied by user')
+      return
+    }
+
+    // 2️⃣ Ensure tracking session exists
+    const trackingSessionId = await sessionManager.startTrackingSession(session.user_id!)
 
     if (!trackingSessionId) {
-      throw new Error('Failed to generate tracking session ID');
+      throw new Error('Failed to generate tracking session ID')
     }
 
-    const alreadyRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
-    if (alreadyRunning) {
-      logger.info('[Tracking] Pipeline already active, reusing existing service.');
-      useTrackingStore.getState().setIsTracking(true);
-      await startTrackingNotification(session.id, session.user_id!);
-      return;
+    // 3️⃣ Prevent duplicate pipelines
+    const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME)
+
+    if (hasStarted) {
+      logger.info('[Tracking] Pipeline already active')
+      store.setIsTracking(true)
+      await startTrackingNotification(session.id, session.user_id!)
+      return
     }
 
-    const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
-    if (foregroundStatus !== 'granted') throw new Error('Permissão de localização negada');
-
-    await Location.requestBackgroundPermissionsAsync();
-
-    // 2. ENABLE GPS
+    // 4️⃣ Start background GPS
     try {
       await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-        accuracy: Location.Accuracy.High,
+        accuracy: Location.Accuracy.Balanced,
         distanceInterval: MIN_MOVEMENT_THRESHOLD,
         timeInterval: 5000,
-        showsBackgroundLocationIndicator: true,
+        deferredUpdatesDistance: 20,
+        deferredUpdatesInterval: 10000,
         activityType: Location.ActivityType.AutomotiveNavigation,
         foregroundService: {
           notificationTitle: "🚛 RotaPro Ativo",
-          notificationBody: "Rastreando sua rota... Aguardando primeiro ponto GPS.",
+          notificationBody: "Rastreando sua rota...",
           notificationColor: "#007AFF",
         }
-      });
-      logger.info('[Tracking] Background GPS enabled.');
-    } catch (error: any) {
-      if (error.message.includes('foreground service') || error.message.includes('permissions')) {
-        logger.warn('[Tracking] Background GPS failed (Missing permissions in manifest). Falling back to watchPosition.');
+      })
 
-        // Inform user that background tracking might be limited
-        if (__DEV__) {
-          console.warn('CRITICAL: Foreground Service permissions not found. Ensure you have rebuilt the APK/Development Build after modifying app.json.');
+      logger.info('[Tracking] Background GPS enabled')
+
+    } catch (error) {
+      logger.warn('[Tracking] Background tracking failed, using foreground tracking')
+
+      const subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.Balanced,
+          distanceInterval: MIN_MOVEMENT_THRESHOLD,
+          timeInterval: 5000,
+        },
+        (location) => processLocationUpdate([location])
+      )
+
+      store.setLocationSubscription(subscription)
+    }
+
+    // 5️⃣ Request background permission (non-blocking)
+    Location.getBackgroundPermissionsAsync()
+      .then(async (bg) => {
+        if (bg.status !== 'granted') {
+          const req = await Location.requestBackgroundPermissionsAsync()
+          logger.info('[Tracking] Background permission result', { status: req.status })
         }
+      })
+      .catch(() => { })
 
-        const subscription = await Location.watchPositionAsync(
-          {
-            accuracy: Location.Accuracy.High,
-            distanceInterval: MIN_MOVEMENT_THRESHOLD,
-            timeInterval: 3000,
-          },
-          (location) => processLocationUpdate([location])
-        );
-        (global as any).foregroundSubscription = subscription;
-      } else {
-        throw error;
+    // 6️⃣ Start notification
+    await startTrackingNotification(session.id, session.user_id!)
+
+    store.setIsTracking(true)
+
+    logger.info('[Tracking] Tracking started successfully')
+
+  } catch (error: any) {
+    logger.error('[Tracking] Pipeline initialization failure', { error: error.message })
+
+    await sessionManager.stopTrackingSession()
+
+    throw error
+  }
+}
+/**
+ * @description a funcao stopTracking para o tracking e fecha a sessao
+ * - Analytics e segmentation paralelos.
+ * - AndroTracking sempre para mesmo se analytics falhar.
+ */
+export const stopTracking = async () => {
+  logger.info('[Tracking] Stopping tracking pipeline...');
+
+  const store = useTrackingStore.getState()
+
+  try {
+    //  stop backgoud gps
+    const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+    if (hasStarted) await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+
+    //  stop foreground gps
+    const sub = store.locationSubscription as Location.LocationSubscription | null
+    if (sub) {
+      sub.remove()
+      store.setLocationSubscription(null)
+    }
+    const currentSessionId = await sessionManager.getCurrentSessionId()
+    // closed tracking
+    await sessionManager.stopTrackingSession()
+    if (currentSessionId) {
+      try {
+        await Promise.all([
+          analyticsService.generateSessionAnalytics(currentSessionId),
+          segmentationService.generateRouteSegments(currentSessionId)
+        ])
+      } catch (err) {
+        logger.error('[Tracking] Analytics generation failed', { err })
       }
     }
 
-    await startTrackingNotification(session.id, session.user_id!);
-    logger.info('[Tracking] Tracking started successfully.');
 
-  } catch (error: any) {
-    logger.error('[Tracking] Pipeline stabilization failure:', { error: error.message });
-    // Cleanup if partially started
-    await sessionManager.stopTrackingSession();
-    throw error;
+
+  } catch (error) {
+    logger.error('[Tracking] Error stopping background GPS', { error });
+  } finally {
+    await stopTrackingNotification();
+    useTrackingStore.getState().setIsTracking(false);
+    logger.info('[Tracking] Tracking stopped and session closed.');
   }
-
-  useTrackingStore.getState().setIsTracking(true);
 };
-
-export const stopTracking = async () => {
-  logger.info('[Tracking] Stopping tracking pipeline...');
-  const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
-  if (hasStarted) await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-
-  if ((global as any).foregroundSubscription) {
-    (global as any).foregroundSubscription.remove();
-    (global as any).foregroundSubscription = null;
-  }
-
-  const currentSessionId = await sessionManager.getCurrentSessionId();
-
-  // GUARANTEE SESSION CLOSE
-  await sessionManager.stopTrackingSession();
-
-  // Aciona os placeholders de análise e segmentação para o futuro
-  if (currentSessionId) {
-    await analyticsService.generateSessionAnalytics(currentSessionId);
-    await segmentationService.generateRouteSegments(currentSessionId);
-  }
-
-  await stopTrackingNotification();
-  useTrackingStore.getState().setIsTracking(false);
-  logger.info('[Tracking] Tracking stopped and session closed.');
-};
-
+/* 
+* @description a funcao pauseTrackingSession para o tracking
+*/
 export const pauseTrackingSession = async () => {
-  const session = useSessionStore.getState().activeSession;
-  if (!session) return;
+  const session = useSessionStore.getState().activeSession
+
+  if (!session) {
+    logger.warn('[Tracking] Cannot pause without active session')
+    return
+  }
 
   try {
-    await stopTracking();
-    await createRouteEvent(session.id, session.user_id!, 'pause');
-    await updateTrackingNotificationMetrics(session.id, session.user_id!, true);
-    logger.info('[Tracking] Session paused.');
+    logger.info('[Tracking] Pausing tracking session...')
+
+    // Stop GPS but keep session alive
+    const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME)
+
+    if (hasStarted) {
+      await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME)
+    }
+
+    const store = useTrackingStore.getState()
+    const sub = store.locationSubscription as Location.LocationSubscription | null
+
+    if (sub) {
+      sub.remove()
+      store.setLocationSubscription(null)
+    }
+
+    // Register pause event
+    await createRouteEvent(session.id, session.user_id!, 'pause')
+
+    // Update notification
+    await updateTrackingNotificationMetrics(session.id, session.user_id!, true)
+
+    store.setIsTracking(false)
+
+    logger.info('[Tracking] Session paused successfully')
+
   } catch (error) {
-    logger.error('[Tracking] Error pausing session', { error });
+    logger.error('[Tracking] Error pausing session', { error })
   }
-};
+}
 
 export const resumeTrackingSession = async () => {
   const session = useSessionStore.getState().activeSession;
@@ -187,61 +261,99 @@ export const resumeTrackingSession = async () => {
  * Atua como o Orquestrador leve do sistema.
  */
 export const processLocationUpdate = async (locations: Location.LocationObject[]) => {
-  const trackingState = useTrackingStore.getState();
-  const sessionState = useSessionStore.getState();
 
-  // Recovery: Recupera sessão ativa se estado global foi limpo (background)
-  let activeSession = sessionState.activeSession;
-  if (!activeSession) {
-    activeSession = await localDatabase.queryFirst<any>(
+  const trackingStore = useTrackingStore.getState()
+  const sessionStore = useSessionStore.getState()
+
+  // Recover session if state was cleared
+  let session = sessionStore.activeSession
+
+  if (!session) {
+    session = await localDatabase.queryFirst<any>(
       'work_sessions',
       'WHERE status = "active" ORDER BY created_at DESC'
-    );
-    if (activeSession) sessionState.setActiveSession(activeSession);
+    )
+
+    if (session) sessionStore.setActiveSession(session)
   }
 
-  if (!activeSession) return;
-  const session = activeSession;
-  const userId = (session as any).user_id ?? null;
+  if (!session || !session.user_id) return
+
+  let lastLocation = trackingStore.currentLocation
 
   for (const loc of locations) {
-    // 1. Behavioral Detection (Delegated)
-    await eventDetector.processLocationForEvents(loc, session.id, userId!);
 
-    const { latitude, longitude, accuracy, speed } = loc.coords;
-    const timestamp = loc.timestamp;
-    const lastLocation = trackingState.currentLocation;
+    const { latitude, longitude, accuracy, speed } = loc.coords
+    const timestamp = loc.timestamp
 
-    // 2. Noise Filtering
-    if (!isValidLocation(accuracy, speed)) continue;
+    // 1️⃣ Basic validation
+    if (!latitude || !longitude || !timestamp) continue
 
-    // Adaptive throttle: sample less when slow/idle
-    const minInterval = getAdaptiveSampleInterval(speed ?? null);
-    if (lastLocation && (timestamp - lastLocation.timestamp) < minInterval) continue;
+    // 2️⃣ Noise filtering
+    if (!isValidLocation(accuracy, speed)) continue
 
-    // 3. Persistence (Delegated)
-    const stored = await trackingRecorder.recordGpsPoint(userId, session.id, loc);
+    // 3️⃣ Adaptive sampling
+    const minInterval = getAdaptiveSampleInterval(speed ?? null)
 
-    // 4. UI Metric Updates (Volatile state only - analytics in SQLite removed)
-    if (stored && lastLocation) {
+    if (lastLocation && (timestamp - lastLocation.timestamp) < minInterval) {
+      continue
+    }
+
+    // 4️⃣ Detect behavioral events
+    eventDetector.processLocationForEvents(loc, session.id, session.user_id)
+
+    // 5️⃣ Persist GPS point
+    const stored = await trackingRecorder.recordGpsPoint(
+      session.user_id,
+      session.id,
+      loc
+    )
+
+    if (!stored) continue
+
+    // 6️⃣ Distance calculation
+    let distanceDeltaKm = 0
+    let timeDeltaSeconds = 0
+
+    if (lastLocation) {
+
       const distanceMeters = calculateDistance(
-        lastLocation.latitude, lastLocation.longitude,
-        latitude, longitude
-      );
+        lastLocation.latitude,
+        lastLocation.longitude,
+        latitude,
+        longitude
+      )
 
-      const timeDeltaSeconds = (timestamp - lastLocation.timestamp) / 1000;
-      const distanceDeltaKm = distanceMeters / 1000;
-
-      // Update UI state (Zustand) for real-time visualization
-      trackingState.setCurrentLocation({ latitude, longitude, accuracy, speed, timestamp });
+      distanceDeltaKm = distanceMeters / 1000
+      timeDeltaSeconds = (timestamp - lastLocation.timestamp) / 1000
 
       if (distanceMeters > 5) {
-        sessionState.updateSessionMetrics(distanceDeltaKm, Math.round(timeDeltaSeconds), 0);
+        sessionStore.updateSessionMetrics(
+          distanceDeltaKm,
+          Math.round(timeDeltaSeconds),
+          0
+        )
       } else {
-        sessionState.updateSessionMetrics(0, 0, Math.round(timeDeltaSeconds));
+        sessionStore.updateSessionMetrics(
+          0,
+          0,
+          Math.round(timeDeltaSeconds)
+        )
       }
-    } else if (stored) {
-      trackingState.setCurrentLocation({ latitude, longitude, accuracy, speed, timestamp });
     }
+
+    // 7️⃣ Update UI state
+    const newLocation = {
+      latitude,
+      longitude,
+      accuracy,
+      speed,
+      timestamp
+    }
+
+    trackingStore.setCurrentLocation(newLocation)
+
+    // Update local variable
+    lastLocation = newLocation
   }
-};
+}
