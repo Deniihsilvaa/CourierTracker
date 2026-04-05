@@ -1,6 +1,6 @@
 // Low-level database operations should use console directly to avoid cycles with logSystem
 import { v4 as uuidv4 } from 'uuid';
-import { getDb } from './sqlite';
+import { getDb, initDb } from './sqlite';
 
 /**
  * Modern, Generic Offline-First Database Layer
@@ -29,6 +29,7 @@ export const localDatabase = {
    * Generic query for multiple rows
    */
   async list<T>(tableName: TableName, where: string = '', params: any[] = []): Promise<T[]> {
+    await initDb(false);
     const db = getDb();
     
     // Auto filter soft-deleted except for log_system (doesn't have the column)
@@ -63,6 +64,7 @@ export const localDatabase = {
    * Generic query for a single row
    */
   async find<T>(tableName: TableName, where: string = '', params: any[] = []): Promise<T | null> {
+    await initDb(false);
     const db = getDb();
     const query = `SELECT * FROM ${tableName} ${where} LIMIT 1`;
     try {
@@ -84,6 +86,7 @@ export const localDatabase = {
    * Generic Insert (Always Offline-First)
    */
   async insert<T extends Record<string, any>>(tableName: TableName, data: T): Promise<string> {
+    await initDb(false);
     const db = getDb();
 
     // For log_system, we let SQLite handle the INTEGER AUTOINCREMENT ID
@@ -143,6 +146,7 @@ export const localDatabase = {
    * Generic Update
    */
   async update(tableName: TableName, id: string, data: Record<string, any>): Promise<void> {
+    await initDb(false);
     const db = getDb();
     const keys = Object.keys(data);
     const now = new Date().toISOString().split('.')[0] + 'Z';
@@ -172,6 +176,7 @@ export const localDatabase = {
    * Generic Delete
    */
   async delete(tableName: TableName, id: string): Promise<void> {
+    await initDb(false);
     const db = getDb();
     const now = new Date().toISOString().split('.')[0] + 'Z';
     

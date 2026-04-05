@@ -1,6 +1,8 @@
 import * as SQLite from 'expo-sqlite';
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
+let initPromise: Promise<void> | null = null;
+let isInitialized = false;
 
 export const getDb = () => {
   if (!dbInstance) {
@@ -15,6 +17,20 @@ export const getDb = () => {
  * @param forceReset - Whether to force a database reset.
  */
 export const initDb = async (forceReset = false) => {
+  if (initPromise) {
+    if (!forceReset) {
+      await initPromise;
+      return;
+    }
+
+    await initPromise;
+  }
+
+  if (isInitialized && !forceReset) {
+    return;
+  }
+
+  initPromise = (async () => {
   const db = getDb();
 
   if (forceReset) {
@@ -393,9 +409,18 @@ export const initDb = async (forceReset = false) => {
     }
 
     console.log('[Storage] Local database initialized successfully.');
+    isInitialized = true;
   } catch (error) {
+    isInitialized = false;
     console.error('Error initializing database:', error);
     throw error;
+  }
+  })();
+
+  try {
+    await initPromise;
+  } finally {
+    initPromise = null;
   }
 };
 

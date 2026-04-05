@@ -13,8 +13,7 @@ export function useAuth() {
     const handleSignIn = async () => {
         try {
             await signIn(email, password);
-            // Após login, solicitar permissões de notificação
-            await requestNotificationPermissions();
+            void requestNotificationPermissions();
         } catch (e: any) {
             console.error(e);
         }
@@ -23,8 +22,7 @@ export function useAuth() {
     const handleGoogleSignIn = async () => {
         try {
             await signInWithGoogle();
-            // Após login, solicitar permissões de notificação
-            await requestNotificationPermissions();
+            void requestNotificationPermissions();
         } catch (e: any) {
             Alert.alert('Error', e.message);
         }
@@ -46,7 +44,6 @@ export function useAuth() {
     const handleRegister = () => {
         router.push('/register' as any);
     };
-
 
     return {
         email,
