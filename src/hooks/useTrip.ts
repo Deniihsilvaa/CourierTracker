@@ -20,10 +20,11 @@ export default function useTrip() {
     const loadTrips = async () => {
         if (!user) return;
         try {
-            const data = await analyticsService.getTrips();
-            if (data) setTrips(data);
+            const data = await analyticsService.getTrips<TripPerformance>();
+            setTrips(data);
         } catch (e) {
             console.error('Failed to load trips from API', e);
+            setTrips([]);
         }
     };
 

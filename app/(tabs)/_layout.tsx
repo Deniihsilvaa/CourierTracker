@@ -1,27 +1,57 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { appColors, radius } from '@/src/theme/colors';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: appColors.textPrimary,
+        tabBarInactiveTintColor: appColors.textMuted,
         headerShown: false,
-
         tabBarButton: HapticTab,
+        tabBarShowLabel: true,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+          marginBottom: 2,
+        },
+        tabBarBackground: () => (
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(9, 16, 28, 0.92)',
+              borderRadius: radius.xl,
+              borderWidth: 1,
+              borderColor: appColors.border,
+            }}
+          />
+        ),
         tabBarStyle: Platform.select({
           ios: {
             position: 'absolute',
+            left: 16,
+            right: 16,
+            bottom: 18,
+            height: 74,
+            paddingTop: 8,
+            borderTopWidth: 0,
+            backgroundColor: 'transparent',
           },
-          default: {},
+          default: {
+            position: 'absolute',
+            left: 16,
+            right: 16,
+            bottom: 18,
+            height: 74,
+            paddingTop: 8,
+            borderTopWidth: 0,
+            backgroundColor: 'transparent',
+          },
         }),
       }}>
       <Tabs.Screen
@@ -46,17 +76,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="clients"
+        name="finance"
         options={{
-          title: 'Clientes',
-          tabBarIcon: ({ color }) => <Ionicons size={24} name="people" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="analytics"
-        options={{
-          title: 'Analytics',
-          tabBarIcon: ({ color }) => <Ionicons size={24} name="stats-chart" color={color} />,
+          title: 'Financeiro',
+          tabBarIcon: ({ color }) => <Ionicons size={24} name="wallet" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -67,12 +90,23 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name='rastreamento'
+        name="clients"
         options={{
-          title: 'Rastreamento'
+          href: null,
         }}
       />
-
+      <Tabs.Screen
+        name="analytics"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name='rastreamento'
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

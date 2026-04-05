@@ -2,9 +2,18 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/src/modules/auth/store';
 import { useTrackingStore } from '@/src/modules/tracking/store';
-import { runFullSync } from '@/src/services/sync';
 import { analyticsService } from '@/src/services/analytics.service';
+import { runFullSync } from '@/src/services/sync';
 import { useEffect, useState } from 'react';
+
+function ensureHourlyData(value: unknown): number[] {
+    if (!Array.isArray(value)) return new Array(24).fill(0);
+
+    const safe = value.map((item) => Number(item || 0));
+    if (safe.length >= 24) return safe.slice(0, 24);
+
+    return [...safe, ...new Array(24 - safe.length).fill(0)];
+}
 
 export function useAnalytics() {
     const [dailyStats, setDailyStats] = useState<any[]>([]);
@@ -26,56 +35,68 @@ export function useAnalytics() {
     const [routePoints, setRoutePoints] = useState<any[]>([]);
 
     useEffect(() => {
-        loadData();
+        void loadData();
     }, [user]);
 
     const loadData = async () => {
-        if (!user) return;
+        if (!user) {
+            setDailyStats([]);
+            setPerformance([]);
+            setHourlyData(new Array(24).fill(0));
+            return;
+        }
 
         try {
             console.log('[Analytics] Loading data from API for user:', user.id);
 
-            // 1. Fetch Summary (Aggregated metrics)
-            const summaryData = await analyticsService.getSummary();
+            const summaryData = await analyticsService.getSummary<any>();
             if (summaryData) {
                 setSummary({
-                    totalKm: summaryData.avg_km_per_day || summaryData.total_distance_km || 0,
-                    totalHours: summaryData.avg_hours_per_day || (summaryData.total_active_seconds / 3600) || 0,
-                    avgSpeed: summaryData.avg_speed || 0,
-                    idlePct: summaryData.idle_percentage || 0,
-                    efficiency: summaryData.avg_speed || 0
+                    totalKm: Number(summaryData.avg_km_per_day || summaryData.total_distance_km || 0),
+                    totalHours: Number(summaryData.avg_hours_per_day || 0) || Number(summaryData.total_active_seconds || 0) / 3600,
+                    avgSpeed: Number(summaryData.avg_speed || 0),
+                    idlePct: Number(summaryData.idle_percentage || 0),
+                    efficiency: Number(summaryData.avg_speed || 0)
+                });
+            } else {
+                setSummary({
+                    totalKm: 0,
+                    totalHours: 0,
+                    avgSpeed: 0,
+                    idlePct: 0,
+                    efficiency: 0
                 });
             }
 
-            // 2. Fetch Daily Stats
-            const statsData = await analyticsService.getDailyStats();
-            if (statsData) {
-                setDailyStats(statsData);
-            }
+            const normalizedDailyStats = await analyticsService.getDailyStats<any>();
+            setDailyStats(normalizedDailyStats);
 
-            // 3. Fetch Trips for hourly activity and performance list
-            const tripsData = await analyticsService.getTrips();
-            if (tripsData) {
+            const tripsData = await analyticsService.getTrips<any>();
+            if (tripsData.length > 0) {
                 const hours = new Array(24).fill(0);
                 tripsData.slice(0, 20).forEach((trip: any) => {
-                    const hour = new Date(trip.start_time).getHours();
-                    hours[hour] += (trip.distance_km || 0);
+                    const startTime = trip?.start_time ? new Date(trip.start_time) : null;
+                    const hour = startTime && !Number.isNaN(startTime.getTime()) ? startTime.getHours() : -1;
+                    if (hour >= 0 && hour <= 23) {
+                        hours[hour] += Number(trip?.distance_km || 0);
+                    }
                 });
-                setHourlyData(hours);
+                setHourlyData(ensureHourlyData(hours));
                 setPerformance(tripsData);
+            } else {
+                setHourlyData(new Array(24).fill(0));
+                setPerformance([]);
             }
-
-            // Note: If route points are still needed for a map and not in summary/trips,
-            // we might need an extra endpoint or check if trips include them.
-            // For now, keeping routePoints empty or assuming they come from a trip detail if selected.
-
         } catch (e) {
             console.error('[Analytics] Critical data load error:', e);
+            setDailyStats([]);
+            setPerformance([]);
+            setHourlyData(new Array(24).fill(0));
         }
     };
 
     const formatDate = (dateStr: string) => {
-        const date = new Date(dateStr + 'T12:00:00'); // Mid-day to avoid TZ issues
+        const date = new Date(dateStr + 'T12:00:00');
         const today = new Date();
         const yesterday = new Date();
         yesterday.setDate(today.getDate() - 1);
@@ -95,7 +116,6 @@ export function useAnalytics() {
             setRefreshing(false);
         }
     };
-
 
     return {
         dailyStats,

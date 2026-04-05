@@ -1,5 +1,7 @@
+import { AppDrawer } from '@/components/layout/app-drawer';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/src/modules/auth/store';
+import { AppShellProvider } from '@/src/providers/app-shell-provider';
 import { AppInitializer } from '@/src/services/app-initializer';
 import { logger } from '@/src/utils/logger';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
@@ -72,26 +74,35 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack
-          screenOptions={{
-            animation: 'slide_from_right',
-            animationDuration: 250,
-            gestureEnabled: true,
-            gestureDirection: 'horizontal',
-          }}
-        >
-          <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
-          <Stack.Screen name="register" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal', animation: 'slide_from_bottom' }} />
-          <Stack.Screen name="incomes" options={{ headerShown: false, animation: 'slide_from_right' }} />
-          <Stack.Screen name="fuels" options={{ headerShown: false, animation: 'slide_from_right' }} />
-          <Stack.Screen name="expenses" options={{ headerShown: false, animation: 'slide_from_right' }} />
-          <Stack.Screen name="categories" options={{ headerShown: false, animation: 'slide_from_right' }} />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <AppShellProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack
+            screenOptions={{
+              animation: 'slide_from_right',
+              animationDuration: 250,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+            }}
+          >
+            <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
+            <Stack.Screen name="register" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal', animation: 'fade_from_bottom' }} />
+            <Stack.Screen name="incomes" options={{ headerShown: false, animation: 'slide_from_right' }} />
+            <Stack.Screen name="fuels" options={{ headerShown: false, animation: 'slide_from_right' }} />
+            <Stack.Screen name="expenses" options={{ headerShown: false, animation: 'slide_from_right' }} />
+            <Stack.Screen name="categories" options={{ headerShown: false, animation: 'slide_from_right' }} />
+            <Stack.Screen name="reports" options={{ headerShown: false }} />
+            <Stack.Screen name="maintenance" options={{ headerShown: false }} />
+            <Stack.Screen name="export-data" options={{ headerShown: false }} />
+            <Stack.Screen name="backup" options={{ headerShown: false }} />
+            <Stack.Screen name="help" options={{ headerShown: false }} />
+            <Stack.Screen name="about" options={{ headerShown: false }} />
+          </Stack>
+          <AppDrawer />
+          <StatusBar style="light" />
+        </ThemeProvider>
+      </AppShellProvider>
     </GestureHandlerRootView>
   );
 }

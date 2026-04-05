@@ -1,5 +1,5 @@
 import { analyticsService } from "@/src/services/analytics.service";
-import { AnalyticsState } from "@/src/types/stores";
+import { AnalyticsState, FinancialAnalytics } from "@/src/types/stores";
 import { logger } from "@/src/utils/logger";
 import { create } from "zustand";
 
@@ -17,7 +17,7 @@ export const useAnalyticsStore = create<AnalyticsState>((set) => ({
     const startDate = new Date().toISOString().split('T')[0];
     const endDate = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0];
     try {
-      const data = await analyticsService.fetchFinancialAnalytics(groupBy, startDate, endDate);
+      const data = await analyticsService.fetchFinancialAnalytics<FinancialAnalytics>(groupBy, startDate, endDate);
       if (data && data.length > 0) {
         set({ financials: data[0], isLoading: false });
       } else {
