@@ -12,6 +12,7 @@ export interface SyncPayload {
   incomes?: any[];
   fuel_logs?: any[];
   maintenance_logs?: any[];
+  clients?: any[];
 }
 
 export const syncService = {

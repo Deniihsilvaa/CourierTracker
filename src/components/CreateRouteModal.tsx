@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, Platform, KeyboardAvoidingView, Switch } from 'react-native';
 import { useRouteStore } from '../store/routeStore';
 import { Ionicons } from '@expo/vector-icons';
+import { ClientPickerModal } from '@/src/modules/clients/components/ClientPickerModal';
+import { Client } from '../types/route.types';
 
 interface CreateRouteModalProps {
   visible: boolean;
@@ -15,6 +17,8 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
   const [value, setValue] = useState('');
   const [paymentRequired, setPaymentRequired] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [pickerVisible, setPickerVisible] = useState(false);
 
   const handleConfirm = async () => {
     if (!pickup.trim()) return;
@@ -27,7 +31,8 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
         pickup_location: pickup,
         delivery_location: delivery.trim() || null,
         value: numericValue,
-        payment_required: paymentRequired
+        payment_required: paymentRequired,
+        client_id: selectedClient?.id ?? undefined,
       });
 
       // Reset
@@ -35,6 +40,7 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
       setDelivery('');
       setValue('');
       setPaymentRequired(true);
+      setSelectedClient(null);
       onClose();
     } catch (e) {
       console.error(e);
@@ -61,6 +67,40 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
 
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <View style={{ gap: 16 }}>
+              <View className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+                <View className="flex-row items-center justify-between mb-3">
+                  <View className="flex-1 pr-3">
+                    <Text className="text-zinc-400 font-bold uppercase tracking-wider text-xs">Cliente</Text>
+                    <Text className="text-white font-bold text-base mt-1">
+                      {selectedClient ? selectedClient.name : 'Nenhum cliente selecionado'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => setPickerVisible(true)}
+                    className="bg-blue-600 rounded-xl px-4 py-3"
+                    disabled={isSubmitting}
+                  >
+                    <Text className="text-white font-bold">
+                      {selectedClient ? 'Trocar' : 'Selecionar'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {selectedClient ? (
+                  <View style={{ gap: 4 }}>
+                    <Text className="text-zinc-300 font-medium">{selectedClient.address}</Text>
+                    <Text className="text-zinc-500 text-sm">{selectedClient.phone || 'Sem telefone'}</Text>
+                    <TouchableOpacity onPress={() => setSelectedClient(null)} disabled={isSubmitting}>
+                      <Text className="text-red-400 font-semibold mt-2">Remover cliente</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <Text className="text-zinc-500 font-medium">
+                    Use um cliente salvo para preencher a coleta mais rápido.
+                  </Text>
+                )}
+              </View>
+
               <View>
                 <Text className="text-zinc-400 mb-2 font-bold uppercase tracking-wider text-xs">Coleta</Text>
                 <TextInput
@@ -126,6 +166,16 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
+
+      <ClientPickerModal
+        visible={pickerVisible}
+        onClose={() => setPickerVisible(false)}
+        onSelectClient={(client) => {
+          setSelectedClient(client);
+          setPickup(client.address);
+          setPickerVisible(false);
+        }}
+      />
     </Modal>
   );
 };

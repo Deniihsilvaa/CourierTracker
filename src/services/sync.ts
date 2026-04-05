@@ -89,7 +89,8 @@ export const runFullSync = async () => {
             'expenses',
             'incomes',
             'fuel_logs',
-            'maintenance_logs'
+            'maintenance_logs',
+            'clients'
         ];
 
         const payload: SyncPayload = {};

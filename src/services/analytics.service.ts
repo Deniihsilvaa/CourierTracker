@@ -24,4 +24,11 @@ export const analyticsService = {
     const { data } = await api.get("/analytics/v1/daily-stats");
     return data;
   },
+
+  async fetchFinancialAnalytics(groupBy: string, startDate: string, endDate: string) {
+    const { data } = await api.get("/analytics/v1/financial", {
+      params: { groupBy, startDate, endDate },
+    });
+    return data;
+  },
 };

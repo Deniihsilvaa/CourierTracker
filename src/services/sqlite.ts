@@ -272,6 +272,7 @@ export const initDb = async (forceReset = false) => {
           phone TEXT,
           latitude REAL,
           longitude REAL,
+          client_type TEXT,
           created_at TEXT DEFAULT CURRENT_TIMESTAMP,
           updated_at TEXT,
           deleted_at TEXT,
@@ -359,6 +360,7 @@ export const initDb = async (forceReset = false) => {
     try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_at TEXT;`); } catch (e) { }
     try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_to_pickup_km REAL;`); } catch (e) { }
     try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_to_delivery_km REAL;`); } catch (e) { }
+    try { await db.execAsync(`ALTER TABLE clients ADD COLUMN client_type TEXT;`); } catch (e) { }
 
     // Specific columns for work_sessions
     try { await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN start_odometer TEXT;`); } catch (e) { }
@@ -379,6 +381,7 @@ export const initDb = async (forceReset = false) => {
     try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_route_events_time ON route_events(created_at);`); } catch (e) { }
     try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_log_system_synced ON log_system (synced, created_at);`); } catch (e) { }
     try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_routes_session ON manual_routes (session_id);`); } catch (e) { }
+    try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_clients_search ON clients(name, address, phone);`); } catch (e) { }
 
     // Performance: Synced indexes
     const syncIndexTables = [
@@ -425,7 +428,7 @@ export const cleanupSyncedData = async () => {
     // Delete synced and soft-deleted records (no longer needed locally)
     const tablesWithSoftDelete = [
       'work_sessions', 'trips', 'route_events', 'expenses',
-      'incomes', 'fuel_logs', 'maintenance_logs', 'category_types'
+      'incomes', 'fuel_logs', 'maintenance_logs', 'category_types', 'clients', 'manual_routes'
     ];
     for (const table of tablesWithSoftDelete) {
       await db.runAsync(
