@@ -252,7 +252,11 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
                 <SectionHeader title="Cliente" subtitle="Opcional: use um cliente salvo para preencher a coleta mais rapido." />
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, marginTop: spacing.sm }}>
                   <View style={{ flex: 1, gap: 4 }}>
-                    <Text style={{ color: appColors.textPrimary, fontSize: 16, fontWeight: "800" }}>
+                    <Text style={{ 
+                      color: selectedClient ? appColors.textPrimary : appColors.textMuted, 
+                      fontSize: 16, 
+                      fontWeight: selectedClient ? "800" : "500" 
+                    }}>
                       {selectedClient ? selectedClient.name : "Nenhum cliente selecionado"}
                     </Text>
                     <Text style={{ color: appColors.textSecondary, fontSize: 13 }}>
@@ -358,25 +362,35 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
                     <Text style={{ color: appColors.textSecondary, fontSize: 12, fontWeight: "700", textTransform: "uppercase" }}>
                       Valor da entrega
                     </Text>
-                    <TextInput
+                    <View
                       style={{
                         minHeight: 56,
                         borderRadius: radius.lg,
                         borderWidth: 1,
                         borderColor: appColors.border,
                         backgroundColor: appColors.surface,
-                        color: appColors.success,
+                        flexDirection: "row",
+                        alignItems: "center",
                         paddingHorizontal: spacing.sm,
-                        fontSize: 18,
-                        fontWeight: "800",
                       }}
-                      placeholder="0,00"
-                      placeholderTextColor={appColors.textMuted}
-                      keyboardType="decimal-pad"
-                      value={value}
-                      onChangeText={setValue}
-                      editable={!isSubmitting}
-                    />
+                    >
+                      <Text style={{ color: appColors.textMuted, fontSize: 18, fontWeight: "800", marginRight: 4 }}>R$</Text>
+                      <TextInput
+                        style={{
+                          flex: 1,
+                          color: appColors.success,
+                          fontSize: 18,
+                          fontWeight: "800",
+                          height: "100%",
+                        }}
+                        placeholder="0,00"
+                        placeholderTextColor={appColors.textMuted}
+                        keyboardType="decimal-pad"
+                        value={value}
+                        onChangeText={setValue}
+                        editable={!isSubmitting}
+                      />
+                    </View>
                   </View>
 
                   <View

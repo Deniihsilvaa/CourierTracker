@@ -8,11 +8,11 @@ import { CreateRouteModal } from "@/src/components/CreateRouteModal";
 import { RouteActionsModal } from "@/src/components/RouteActionsModal";
 import { RouteJourneyMap } from "@/src/modules/map/components/RouteJourneyMap";
 import { useRouteStore } from "@/src/store/routeStore";
-import { Route } from "@/src/types/route.types";
 import { appColors, radius, spacing } from "@/src/theme/colors";
+import { Route } from "@/src/types/route.types";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 const statusMeta: Record<Route["route_status"], { label: string; color: string }> = {
   pending: { label: "Pendente", color: appColors.warning },
@@ -46,59 +46,57 @@ export default function RoutesScreen() {
     <AppScreen
       title="Rotas"
       subtitle="Fluxo manual com prioridade para velocidade de selecao e leitura operacional."
-      scrollable={false}
+      scrollable={true}
     >
-      <View style={{ flex: 1, gap: spacing.sm }}>
+      <GlassCard>
+        <SectionHeader title="Painel de entregas" subtitle="Indicadores rapidos para o turno atual." />
+        <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
+          <RouteMetric label="Total" value={String(summary.total)} icon="albums-outline" />
+          <RouteMetric label="Ativas" value={String(summary.active)} icon="navigate-outline" />
+          <RouteMetric label="Cobrancas" value={String(summary.pendingPayment)} icon="cash-outline" />
+        </View>
+        <View style={{ marginTop: spacing.sm }}>
+          <PrimaryButton
+            label="Criar nova rota"
+            onPress={() => setModalVisible(true)}
+            icon={<Ionicons name="add-outline" size={18} color={appColors.textPrimary} />}
+          />
+        </View>
+      </GlassCard>
+
+      {isLoading ? (
+        <View style={{ gap: spacing.sm }}>
+          <SkeletonCard height={210} />
+          <SkeletonCard height={210} />
+          <SkeletonCard height={210} />
+        </View>
+      ) : routes.length === 0 ? (
         <GlassCard>
-          <SectionHeader title="Painel de entregas" subtitle="Indicadores rapidos para o turno atual." />
-          <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
-            <RouteMetric label="Total" value={String(summary.total)} icon="albums-outline" />
-            <RouteMetric label="Ativas" value={String(summary.active)} icon="navigate-outline" />
-            <RouteMetric label="Cobrancas" value={String(summary.pendingPayment)} icon="cash-outline" />
-          </View>
+          <Text style={{ color: appColors.textPrimary, fontSize: 18, fontWeight: "800" }}>Nenhuma rota ativa</Text>
+          <Text style={{ color: appColors.textSecondary, fontSize: 14, lineHeight: 20, marginTop: spacing.xs }}>
+            Crie rotas manuais com cliente, coleta e entrega para iniciar o fluxo do motorista.
+          </Text>
           <View style={{ marginTop: spacing.sm }}>
             <PrimaryButton
-              label="Criar nova rota"
+              label="Criar rota agora"
               onPress={() => setModalVisible(true)}
               icon={<Ionicons name="add-outline" size={18} color={appColors.textPrimary} />}
             />
           </View>
         </GlassCard>
-
-        {isLoading ? (
-          <>
-            <SkeletonCard height={160} />
-            <SkeletonCard height={160} />
-            <SkeletonCard height={160} />
-          </>
-        ) : routes.length === 0 ? (
-          <GlassCard>
-            <Text style={{ color: appColors.textPrimary, fontSize: 18, fontWeight: "800" }}>Nenhuma rota ativa</Text>
-            <Text style={{ color: appColors.textSecondary, fontSize: 14, lineHeight: 20, marginTop: spacing.xs }}>
-              Crie rotas manuais com cliente, coleta e entrega para iniciar o fluxo do motorista.
-            </Text>
-            <View style={{ marginTop: spacing.sm }}>
-              <PrimaryButton
-                label="Criar rota agora"
-                onPress={() => setModalVisible(true)}
-                icon={<Ionicons name="add-outline" size={18} color={appColors.textPrimary} />}
-              />
-            </View>
-          </GlassCard>
-        ) : (
-          <ScrollView contentContainerStyle={{ gap: spacing.sm, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
-            {routes.map((route) => (
-              <RouteOverviewCard
-                key={route.id}
-                route={route}
-                expanded={expandedRouteId === route.id}
-                onToggleExpand={() => setExpandedRouteId((current) => (current === route.id ? null : route.id))}
-                onOpenActions={setSelectedRoute}
-              />
-            ))}
-          </ScrollView>
-        )}
-      </View>
+      ) : (
+        <View style={{ gap: spacing.sm }}>
+          {routes.map((route) => (
+            <RouteOverviewCard
+              key={route.id}
+              route={route}
+              expanded={expandedRouteId === route.id}
+              onToggleExpand={() => setExpandedRouteId((current) => (current === route.id ? null : route.id))}
+              onOpenActions={setSelectedRoute}
+            />
+          ))}
+        </View>
+      )}
 
       <FloatingActionButton label="Nova rota" icon="add" onPress={() => setModalVisible(true)} />
 
@@ -128,119 +126,114 @@ function RouteOverviewCard({
     (route.delivery_lat != null && route.delivery_lng != null);
 
   return (
-    <GlassCard>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.sm }}>
-        <View style={{ flex: 1, gap: spacing.xs }}>
-          <View
-            style={{
-              alignSelf: "flex-start",
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderRadius: radius.pill,
-              backgroundColor: `${status.color}24`,
-            }}
-          >
-            <Text style={{ color: status.color, fontSize: 12, fontWeight: "800" }}>{status.label}</Text>
-          </View>
-          <Text style={{ color: appColors.textPrimary, fontSize: 18, fontWeight: "800" }} numberOfLines={2}>
-            {route.pickup_location}
-          </Text>
-          <Text style={{ color: appColors.textSecondary, fontSize: 14 }} numberOfLines={2}>
-            {route.delivery_location || "Entrega ainda nao definida"}
-          </Text>
-        </View>
-
-        <View style={{ alignItems: "flex-end", gap: spacing.xs }}>
-          {route.client?.name ? (
-            <Text style={{ color: appColors.textSecondary, fontSize: 13, fontWeight: "700" }}>{route.client.name}</Text>
-          ) : null}
-          {route.value != null ? (
-            <Text style={{ color: appColors.success, fontSize: 18, fontWeight: "900" }}>
-              {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(route.value)}
+    <Pressable onPress={onToggleExpand}>
+      <GlassCard>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.sm }}>
+          <View style={{ flex: 1, gap: spacing.xs }}>
+            <View
+              style={{
+                alignSelf: "flex-start",
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: radius.pill,
+                backgroundColor: `${status.color}33`,
+              }}
+            >
+              <Text style={{ color: status.color, fontSize: 11, fontWeight: "900", textTransform: "uppercase" }}>
+                {status.label}
+              </Text>
+            </View>
+            <Text style={{ color: appColors.textPrimary, fontSize: 18, fontWeight: "800" }} numberOfLines={2}>
+              {route.pickup_location}
             </Text>
-          ) : null}
-          <Text style={{ color: appColors.textMuted, fontSize: 12, fontWeight: "700" }}>
-            {route.payment_required ? (route.payment_status === "paid" ? "Pagamento recebido" : "Cobranca pendente") : "Sem cobranca"}
-          </Text>
+            <Text style={{ color: appColors.textSecondary, fontSize: 14 }} numberOfLines={2}>
+              {route.delivery_location || "Entrega não definida"}
+            </Text>
+            {route.client?.name && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}>
+                <Ionicons name="person-circle-outline" size={14} color={appColors.textMuted} />
+                <Text style={{ color: appColors.textMuted, fontSize: 13, fontWeight: "600" }}>{route.client.name}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={{ alignItems: "flex-end", gap: spacing.xs }}>
+            {route.value != null ? (
+              <Text style={{ color: appColors.success, fontSize: 20, fontWeight: "900" }}>
+                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(route.value)}
+              </Text>
+            ) : null}
+            <Text style={{ color: appColors.textMuted, fontSize: 11, fontWeight: "700", textAlign: "right" }}>
+              {route.payment_required ? (route.payment_status === "paid" ? "PAGO" : "A COBRAR") : "SEM COBRANÇA"}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
-        <RouteMetric label="Cliente" value={route.client?.name || (route.client_id ? "Vinculado" : "Livre")} icon="person-outline" compact />
-        <RouteMetric label="Status" value={status.label} icon="pulse-outline" compact />
-      </View>
+        <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
+          <RouteMetric
+            label="Distância"
+            value={routeDistance > 0 ? `${routeDistance.toFixed(1)} km` : "--"}
+            icon="git-commit-outline"
+            compact
+          />
+          <RouteMetric
+            label="Duração"
+            value={route.estimated_duration_minutes ? `${route.estimated_duration_minutes.toFixed(0)} min` : "--"}
+            icon="time-outline"
+            compact
+          />
+        </View>
 
-      <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
-        <RouteMetric
-          label="Distancia"
-          value={routeDistance > 0 ? `${routeDistance.toFixed(1)} km` : "--"}
-          icon="git-commit-outline"
-          compact
-        />
-        <RouteMetric
-          label="Duracao"
-          value={route.estimated_duration_minutes ? `${route.estimated_duration_minutes.toFixed(0)} min` : "--"}
-          icon="time-outline"
-          compact
-        />
-      </View>
+        {expanded && hasMapData ? (
+          <View style={{ marginTop: spacing.sm, gap: spacing.sm }}>
+            <RouteJourneyMap route={route} />
+            <View style={{ flexDirection: "row", gap: spacing.sm }}>
+              <RouteMetric
+                label="Ate coleta"
+                value={route.driver_to_pickup_km ? `${route.driver_to_pickup_km.toFixed(1)} km` : "--"}
+                icon="flag-outline"
+                compact
+              />
+              <RouteMetric
+                label="Ate entrega"
+                value={route.pickup_to_delivery_km ? `${route.pickup_to_delivery_km.toFixed(1)} km` : "--"}
+                icon="checkmark-done-outline"
+                compact
+              />
+            </View>
+          </View>
+        ) : null}
 
-      {expanded && hasMapData ? (
-        <View style={{ marginTop: spacing.sm, gap: spacing.sm }}>
-          <RouteJourneyMap route={route} />
-          <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <RouteMetric
-              label="Ate coleta"
-              value={route.driver_to_pickup_km ? `${route.driver_to_pickup_km.toFixed(1)} km` : "--"}
-              icon="flag-outline"
-              compact
-            />
-            <RouteMetric
-              label="Ate entrega"
-              value={route.pickup_to_delivery_km ? `${route.pickup_to_delivery_km.toFixed(1)} km` : "--"}
-              icon="checkmark-done-outline"
-              compact
+        <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
+          <Pressable
+            onPress={onToggleExpand}
+            style={({ pressed }) => ({
+              flex: 1,
+              minHeight: 44,
+              borderRadius: radius.lg,
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: 1,
+              borderColor: appColors.borderStrong,
+              backgroundColor: pressed ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
+            })}
+          >
+            <Text style={{ color: appColors.textPrimary, fontWeight: "800", fontSize: 13 }}>
+              {expanded ? "Ocultar trajeto" : "Ver trajeto"}
+            </Text>
+          </Pressable>
+
+          <View style={{ flex: 1.2 }}>
+            <PrimaryButton
+              label="Abrir ações"
+              onPress={() => onOpenActions(route)}
+              variant="secondary"
+              icon={<Ionicons name="options-outline" size={18} color={appColors.textPrimary} />}
             />
           </View>
         </View>
-      ) : null}
-
-      <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
-        <Pressable
-          onPress={onToggleExpand}
-          style={{
-            flex: 1,
-            minHeight: 44,
-            borderRadius: radius.lg,
-            alignItems: "center",
-            justifyContent: "center",
-            borderWidth: 1,
-            borderColor: appColors.borderStrong,
-            backgroundColor: "rgba(255,255,255,0.04)",
-          }}
-        >
-          <Text style={{ color: appColors.textPrimary, fontWeight: "800" }}>
-            {expanded ? "Ocultar trajeto" : "Ver trajeto"}
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => onOpenActions(route)}
-          style={{
-            flex: 1,
-            minHeight: 44,
-            borderRadius: radius.lg,
-            alignItems: "center",
-            justifyContent: "center",
-            borderWidth: 1,
-            borderColor: appColors.borderStrong,
-            backgroundColor: "rgba(255,255,255,0.04)",
-          }}
-        >
-          <Text style={{ color: appColors.textPrimary, fontWeight: "800" }}>Abrir acoes</Text>
-        </Pressable>
-      </View>
-    </GlassCard>
+      </GlassCard>
+    </Pressable>
   );
 }
 
