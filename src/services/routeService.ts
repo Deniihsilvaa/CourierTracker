@@ -7,6 +7,7 @@ import { Route } from '../types/route.types';
 import { useSessionStore } from '../modules/sessions/store';
 import { logger } from '../utils/logger';
 import { api } from './api';
+import { ensureForegroundPermission } from '../utils/location-access';
 
 export interface CreateRouteData {
   pickup_location: string;
@@ -109,6 +110,12 @@ export const routeService = {
   async startPickup(routeId: string): Promise<void> {
     try {
       logger.info(`[RouteService] Starting pickup for ${routeId}`);
+      
+      const hasPermission = await ensureForegroundPermission();
+      if (!hasPermission) {
+        throw new Error('Location permission not granted');
+      }
+
       const location = await Location.getCurrentPositionAsync({ 
         accuracy: Location.Accuracy.Balanced
       });
@@ -135,6 +142,12 @@ export const routeService = {
   async arriveAtPickup(routeId: string): Promise<void> {
     try {
       logger.info(`[RouteService] Arrived at pickup for ${routeId}`);
+
+      const hasPermission = await ensureForegroundPermission();
+      if (!hasPermission) {
+        throw new Error('Location permission not granted');
+      }
+
       const location = await Location.getCurrentPositionAsync({ 
         accuracy: Location.Accuracy.Balanced
       });
@@ -184,6 +197,12 @@ export const routeService = {
   async arriveAtDelivery(routeId: string): Promise<void> {
     try {
       logger.info(`[RouteService] Arrived at delivery for ${routeId}`);
+
+      const hasPermission = await ensureForegroundPermission();
+      if (!hasPermission) {
+        throw new Error('Location permission not granted');
+      }
+
       const location = await Location.getCurrentPositionAsync({ 
         accuracy: Location.Accuracy.Balanced
       });
