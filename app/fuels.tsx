@@ -29,6 +29,8 @@ export default function FuelsScreen() {
     handleCreate,
     handleUpdate,
     startEdit,
+    sessions,
+    selectedSessionId,
   } = useFuelsScreen();
 
   const stats = useMemo(() => {
@@ -63,7 +65,12 @@ export default function FuelsScreen() {
               <GlassCard>
                 <SectionHeader title="Novo abastecimento" subtitle="Registre valor, volume, tipo e odometro da parada." />
                 <View style={{ marginTop: spacing.sm }}>
-                  <FuelForm onSubmit={(data) => handleCreate(data)} loading={saving} />
+                  <FuelForm
+                    onSubmit={(data) => handleCreate(data)}
+                    loading={saving}
+                    sessions={sessions}
+                    selectedSessionId={selectedSessionId}
+                  />
                 </View>
               </GlassCard>
             ) : null}
@@ -142,6 +149,8 @@ export default function FuelsScreen() {
                   onSubmit={(data) => handleUpdate(data)}
                   onCancel={() => setEditingId(null)}
                   loading={saving}
+                  sessions={sessions}
+                  selectedSessionId={selectedSessionId}
                 />
               </View>
             </GlassCard>

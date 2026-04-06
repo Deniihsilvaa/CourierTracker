@@ -1,12 +1,13 @@
 import { fuelLogsService, FuelLog, FuelType } from '@/src/services/fuelLogs.service';
 import { useSessionStore } from '@/src/modules/sessions/store';
 import { useAnalyticsStore } from '@/src/modules/analytics/store';
+import { listSessions } from '@/src/modules/sessions/service';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { useBaseCrud } from './useBaseCrud';
 
 export default function useFuelsScreen() {
-  const { activeSession } = useSessionStore();
+  const { activeSession, history } = useSessionStore();
   const {
       loading, setLoading,
       saving, setSaving,
@@ -17,6 +18,7 @@ export default function useFuelsScreen() {
   } = useBaseCrud();
 
   const [fuelLogs, setFuelLogs] = useState<FuelLog[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState('');
 
   // Filters state
   const [typeFilter, setTypeFilter] = useState<FuelType | ''>('');
@@ -41,6 +43,19 @@ export default function useFuelsScreen() {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    void listSessions();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedSessionId) {
+      const preferredSessionId = activeSession?.id || history[0]?.id || '';
+      if (preferredSessionId) {
+        setSelectedSessionId(preferredSessionId);
+      }
+    }
+  }, [activeSession?.id, history, selectedSessionId]);
+
   const handleCreate = async (data: any) => {
     if (!data.amount || isNaN(Number(data.amount))) {
       Alert.alert('Atenção', 'Informe um valor total válido.');
@@ -50,8 +65,11 @@ export default function useFuelsScreen() {
       Alert.alert('Atenção', 'Informe a quantidade de litros.');
       return;
     }
-    if (!activeSession) {
-      Alert.alert('Atenção', 'É necessário uma sessão ativa para registrar abastecimento.');
+    
+    const sessionIdToUse = data.sessionId || selectedSessionId;
+    
+    if (!sessionIdToUse) {
+      Alert.alert('Atenção', 'Selecione uma sessão para vincular o abastecimento.');
       return;
     }
 
@@ -65,7 +83,7 @@ export default function useFuelsScreen() {
         description: data.description || '',
         gasStation: data.gas_station || '',
         type: data.type,
-        sessionId: activeSession.id,
+        sessionId: sessionIdToUse,
         dateCompetition: data.date_competition ? new Date(data.date_competition).toISOString() : new Date().toISOString(),
       });
       setFuelLogs(prev => [created, ...prev]);
@@ -85,8 +103,15 @@ export default function useFuelsScreen() {
   };
 
   const handleUpdate = async (data: any) => {
-    if (!editingId || !activeSession) return;
+    if (!editingId) return;
     
+    const sessionIdToUse = data.sessionId || selectedSessionId;
+    
+    if (!sessionIdToUse) {
+      Alert.alert('Atenção', 'Selecione uma sessão para vincular o abastecimento.');
+      return;
+    }
+
     try {
       setSaving(true);
       const updated = await fuelLogsService.update(editingId, {
@@ -97,7 +122,7 @@ export default function useFuelsScreen() {
         description: data.description || '',
         gasStation: data.gas_station || '',
         type: data.type,
-        sessionId: activeSession.id,
+        sessionId: sessionIdToUse,
         dateCompetition: new Date(data.date_competition).toISOString(),
       });
       setFuelLogs(prev => prev.map(log => log.id === editingId ? updated : log));
@@ -114,6 +139,9 @@ export default function useFuelsScreen() {
 
   return {
     activeSession,
+    sessions: history,
+    selectedSessionId,
+    setSelectedSessionId,
     fuelLogs,
     loading,
     saving,
@@ -131,4 +159,5 @@ export default function useFuelsScreen() {
     startEdit
   };
 }
+
 

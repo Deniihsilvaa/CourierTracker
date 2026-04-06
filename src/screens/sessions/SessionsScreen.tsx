@@ -2,15 +2,18 @@ import { GlassCard } from "@/components/cards/glass-card";
 import { AppScreen } from "@/components/layout/app-screen";
 import { SectionHeader } from "@/components/layout/section-header";
 import { SkeletonCard } from "@/components/skeleton/skeleton-card";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import useSessions from "@/src/hooks/useSessions";
 import { appColors, radius, spacing } from "@/src/theme/colors";
 import { FormatDuration } from "@/src/utils/format";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useMemo } from "react";
-import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import React, { useMemo, useState } from "react";
+import { Pressable, RefreshControl, ScrollView, Text, View, Alert, TouchableOpacity } from "react-native";
 
 export default function SessionsScreen() {
-  const { loading, refreshing, onRefresh, totals, sections, timeFilter, setTimeFilter } = useSessions();
+  const { loading, refreshing, onRefresh, totals, sections, timeFilter, setTimeFilter, deleteSession } = useSessions();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const filterOptions = useMemo(
     () => [
@@ -20,6 +23,22 @@ export default function SessionsScreen() {
     ],
     []
   );
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setIsDeleting(true);
+    try {
+      const success = await deleteSession(deleteId);
+      if (!success) {
+        Alert.alert("Erro", "Não foi possível excluir esta sessão.");
+      }
+      setDeleteId(null);
+    } catch (error) {
+      Alert.alert("Erro", "Ocorreu um erro ao tentar excluir a sessão.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <AppScreen title="Sessões" subtitle="Histórico organizado com leitura rápida de duração, distância e progresso." scrollable={false}>
@@ -97,18 +116,35 @@ export default function SessionsScreen() {
                         Odômetro {item.start_odometer || "---"} → {item.end_odometer || "---"}
                       </Text>
                     </View>
-                    <View
-                      style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 8,
-                        borderRadius: radius.pill,
-                        backgroundColor:
-                          item.status === "closed" ? "rgba(34, 197, 94, 0.18)" : "rgba(245, 158, 11, 0.18)",
-                      }}
-                    >
-                      <Text style={{ color: appColors.textPrimary, fontSize: 12, fontWeight: "800" }}>
-                        {item.status === "closed" ? "Concluído" : "Ativo"}
-                      </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+                      <View
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: radius.pill,
+                          backgroundColor:
+                            item.status === "closed" ? "rgba(34, 197, 94, 0.18)" : "rgba(245, 158, 11, 0.18)",
+                        }}
+                      >
+                        <Text style={{ color: appColors.textPrimary, fontSize: 12, fontWeight: "800" }}>
+                          {item.status === "closed" ? "Concluído" : "Ativo"}
+                        </Text>
+                      </View>
+                      
+                      <TouchableOpacity 
+                        onPress={() => setDeleteId(item.id)}
+                        hitSlop={8}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: radius.lg,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: "rgba(239, 68, 68, 0.1)",
+                        }}
+                      >
+                        <Ionicons name="trash-outline" size={18} color={appColors.danger} />
+                      </TouchableOpacity>
                     </View>
                   </View>
                   <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
@@ -121,6 +157,17 @@ export default function SessionsScreen() {
           ))
         )}
       </ScrollView>
+
+      <ConfirmationModal
+        visible={!!deleteId}
+        title="Excluir sessão"
+        description="Tem certeza que deseja excluir esta sessão? Esta ação é irreversível e removerá todos os dados vinculados a este turno."
+        confirmLabel="Excluir"
+        variant="danger"
+        isLoading={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </AppScreen>
   );
 }

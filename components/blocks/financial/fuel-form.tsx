@@ -1,5 +1,6 @@
 import { PrimaryButton } from "@/components/buttons/primary-button";
 import { appColors, radius, spacing } from "@/src/theme/colors";
+import { SessionSelector } from "@/components/blocks/financial/session-selector";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
@@ -9,8 +10,8 @@ interface FuelFormProps {
   onSubmit: (data: any) => void;
   onCancel?: () => void;
   loading?: boolean;
-  theme?: any;
-  brandColor?: string;
+  sessions?: any[];
+  selectedSessionId?: string;
 }
 
 export const FuelForm = ({
@@ -18,6 +19,8 @@ export const FuelForm = ({
   onSubmit,
   onCancel,
   loading,
+  sessions = [],
+  selectedSessionId = "",
 }: FuelFormProps) => {
   const [formData, setFormData] = React.useState({
     amount: initialData?.amount?.toString() || "",
@@ -30,6 +33,7 @@ export const FuelForm = ({
       : new Date().toISOString().split("T")[0],
     type: initialData?.type || "gasoline",
     description: initialData?.description || "",
+    sessionId: initialData?.session_id || selectedSessionId,
   });
 
   const isEditing = !!initialData;
@@ -138,6 +142,12 @@ export const FuelForm = ({
           </View>
         </Field>
       </View>
+
+      <SessionSelector
+        sessions={sessions}
+        selectedSessionId={formData.sessionId}
+        onSelectSession={(id) => updateField("sessionId", id)}
+      />
 
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
         <PrimaryButton
