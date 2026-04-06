@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  InteractionManager,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -71,10 +72,16 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
       return;
     }
 
-    void (async () => {
+    const task = InteractionManager.runAfterInteractions(async () => {
       try {
-        const permission = await Location.requestForegroundPermissionsAsync();
-        if (permission.status !== "granted") {
+        let { status } = await Location.getForegroundPermissionsAsync();
+        
+        if (status !== "granted") {
+          const permission = await Location.requestForegroundPermissionsAsync();
+          status = permission.status;
+        }
+
+        if (status !== "granted") {
           setLocationError("Permissao de localizacao negada. A distancia sera calculada apenas quando houver GPS disponivel.");
           return;
         }
@@ -83,15 +90,20 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
           accuracy: Location.Accuracy.Balanced,
         });
 
-        setUserLocation({
-          latitude: currentPosition.coords.latitude,
-          longitude: currentPosition.coords.longitude,
-        });
-        setLocationError(null);
+        if (currentPosition?.coords) {
+          setUserLocation({
+            latitude: currentPosition.coords.latitude,
+            longitude: currentPosition.coords.longitude,
+          });
+          setLocationError(null);
+        }
       } catch (error) {
+        console.warn("[CreateRouteModal] Failed to get current position", error);
         setLocationError("Nao foi possivel obter sua localizacao atual.");
       }
-    })();
+    });
+
+    return () => task.cancel();
   }, [visible]);
 
   useEffect(() => {

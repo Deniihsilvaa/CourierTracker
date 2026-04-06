@@ -1,7 +1,7 @@
 import { GlassCard } from "@/components/cards/glass-card";
 import { Route } from "@/src/types/route.types";
 import { appColors, radius, spacing } from "@/src/theme/colors";
-import React, { memo, useEffect, useMemo, useRef } from "react";
+import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Text, View } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 
@@ -10,7 +10,7 @@ interface RouteJourneyMapProps {
 }
 
 function toPoint(latitude: number | null | undefined, longitude: number | null | undefined) {
-  if (latitude == null || longitude == null) {
+  if (latitude == null || longitude == null || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
     return null;
   }
 
@@ -19,6 +19,7 @@ function toPoint(latitude: number | null | undefined, longitude: number | null |
 
 export const RouteJourneyMap = memo(function RouteJourneyMap({ route }: RouteJourneyMapProps) {
   const mapRef = useRef<MapView | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
 
   const originPoint = toPoint(route.driver_start_lat, route.driver_start_lng);
   const pickupPoint = toPoint(route.pickup_arrived_lat ?? route.pickup_lat, route.pickup_arrived_lng ?? route.pickup_lng);
@@ -27,7 +28,9 @@ export const RouteJourneyMap = memo(function RouteJourneyMap({ route }: RouteJou
   const plannedPolyline = useMemo(
     () =>
       Array.isArray(route.route_geometry)
-        ? route.route_geometry.map(([longitude, latitude]) => ({ latitude, longitude }))
+        ? route.route_geometry
+            .map(([longitude, latitude]) => ({ latitude, longitude }))
+            .filter(p => Number.isFinite(p.latitude) && Number.isFinite(p.longitude))
         : [],
     [route.route_geometry]
   );
@@ -48,7 +51,7 @@ export const RouteJourneyMap = memo(function RouteJourneyMap({ route }: RouteJou
   );
 
   useEffect(() => {
-    if (!mapRef.current || fitPoints.length === 0) {
+    if (!mapRef.current || !isMapReady || fitPoints.length === 0) {
       return;
     }
 
@@ -65,11 +68,15 @@ export const RouteJourneyMap = memo(function RouteJourneyMap({ route }: RouteJou
       return;
     }
 
-    mapRef.current.fitToCoordinates(fitPoints, {
-      edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-      animated: true,
-    });
-  }, [fitPoints]);
+    try {
+      mapRef.current.fitToCoordinates(fitPoints, {
+        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+        animated: true,
+      });
+    } catch (e) {
+      console.warn("[RouteJourneyMap] fitToCoordinates failed", e);
+    }
+  }, [fitPoints, isMapReady]);
 
   if (!pickupPoint && !deliveryPoint && !originPoint) {
     return (
@@ -95,6 +102,7 @@ export const RouteJourneyMap = memo(function RouteJourneyMap({ route }: RouteJou
         ref={(instance) => {
           mapRef.current = instance;
         }}
+        onMapReady={() => setIsMapReady(true)}
         style={{ height: 220, borderRadius: radius.xl }}
         initialRegion={{
           latitude: pickupPoint?.latitude ?? originPoint?.latitude ?? deliveryPoint?.latitude ?? -14.235,

@@ -1,6 +1,6 @@
 import { GlassCard } from "@/components/cards/glass-card";
 import { appColors, radius, spacing } from "@/src/theme/colors";
-import React, { memo, useEffect, useMemo, useRef } from "react";
+import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Text, View } from "react-native";
 import MapView, { Marker, Polyline, Region } from "react-native-maps";
 import { AddressSelection, MapCoordinate, RouteCalculation } from "../types";
@@ -13,7 +13,7 @@ interface RouteMapProps {
 }
 
 function coordinateToMapPoint(value: MapCoordinate | AddressSelection | null) {
-  if (!value) {
+  if (!value || !Number.isFinite(value.latitude) || !Number.isFinite(value.longitude)) {
     return null;
   }
 
@@ -30,6 +30,7 @@ export const RouteMap = memo(function RouteMap({
   route,
 }: RouteMapProps) {
   const mapRef = useRef<MapView | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
 
   const initialRegion = useMemo<Region>(
     () => ({
@@ -47,7 +48,7 @@ export const RouteMap = memo(function RouteMap({
   );
 
   useEffect(() => {
-    if (!mapRef.current || points.length === 0) {
+    if (!mapRef.current || !isMapReady || points.length === 0) {
       return;
     }
 
@@ -64,16 +65,20 @@ export const RouteMap = memo(function RouteMap({
       return;
     }
 
-    mapRef.current.fitToCoordinates(points, {
-      edgePadding: {
-        top: 60,
-        right: 60,
-        bottom: 60,
-        left: 60,
-      },
-      animated: true,
-    });
-  }, [points]);
+    try {
+      mapRef.current.fitToCoordinates(points, {
+        edgePadding: {
+          top: 60,
+          right: 60,
+          bottom: 60,
+          left: 60,
+        },
+        animated: true,
+      });
+    } catch (e) {
+      console.warn("[RouteMap] fitToCoordinates failed", e);
+    }
+  }, [points, isMapReady]);
 
   return (
     <GlassCard style={{ padding: spacing.xs }}>
@@ -89,12 +94,13 @@ export const RouteMap = memo(function RouteMap({
           mapRef.current = instance;
         }}
         initialRegion={initialRegion}
+        onMapReady={() => setIsMapReady(true)}
         style={{ height: 260, borderRadius: radius.xl }}
         showsUserLocation={false}
         showsCompass={false}
         toolbarEnabled={false}
       >
-        {userLocation ? (
+        {userLocation && Number.isFinite(userLocation.latitude) ? (
           <Marker
             coordinate={userLocation}
             title="Sua posicao"
@@ -102,7 +108,7 @@ export const RouteMap = memo(function RouteMap({
           />
         ) : null}
 
-        {pickupAddress ? (
+        {pickupAddress && Number.isFinite(pickupAddress.latitude) ? (
           <Marker
             coordinate={{ latitude: pickupAddress.latitude, longitude: pickupAddress.longitude }}
             title="Coleta"
@@ -111,7 +117,7 @@ export const RouteMap = memo(function RouteMap({
           />
         ) : null}
 
-        {deliveryAddress ? (
+        {deliveryAddress && Number.isFinite(deliveryAddress.latitude) ? (
           <Marker
             coordinate={{ latitude: deliveryAddress.latitude, longitude: deliveryAddress.longitude }}
             title="Entrega"

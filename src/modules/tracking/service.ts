@@ -128,15 +128,21 @@ export const startTracking = async () => {
       store.setLocationSubscription(subscription)
     }
 
-    // 5️⃣ Request background permission (non-blocking)
-    Location.getBackgroundPermissionsAsync()
-      .then(async (bg) => {
+    // 5️⃣ Request background permission (sequential, non-blocking)
+    void (async () => {
+      try {
+        // Wait a bit to ensure UI has settled after foreground permission or task start
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const bg = await Location.getBackgroundPermissionsAsync();
         if (bg.status !== 'granted') {
-          const req = await Location.requestBackgroundPermissionsAsync()
-          logger.info('[Tracking] Background permission result', { status: req.status })
+          await Location.requestBackgroundPermissionsAsync();
+          logger.info('[Tracking] Background permission requested');
         }
-      })
-      .catch(() => { })
+      } catch (e) {
+        logger.warn('[Tracking] Could not request background permission', e);
+      }
+    })();
 
     // 6️⃣ Start notification
     await startTrackingNotification(session.id, session.user_id!)
