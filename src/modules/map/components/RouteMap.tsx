@@ -32,15 +32,25 @@ export const RouteMap = memo(function RouteMap({
   const mapRef = useRef<MapView | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
 
-  const initialRegion = useMemo<Region>(
-    () => ({
-      latitude: pickupAddress?.latitude ?? userLocation?.latitude ?? -14.235,
-      longitude: pickupAddress?.longitude ?? userLocation?.longitude ?? -51.9253,
+  const initialRegion = useMemo<Region>(() => {
+    const defaultLat = -14.235;
+    const defaultLng = -51.9253;
+
+    let lat = pickupAddress?.latitude ?? userLocation?.latitude ?? defaultLat;
+    let lng = pickupAddress?.longitude ?? userLocation?.longitude ?? defaultLng;
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      lat = defaultLat;
+      lng = defaultLng;
+    }
+
+    return {
+      latitude: lat,
+      longitude: lng,
       latitudeDelta: 0.08,
       longitudeDelta: 0.08,
-    }),
-    [pickupAddress?.latitude, pickupAddress?.longitude, userLocation?.latitude, userLocation?.longitude]
-  );
+    };
+  }, [pickupAddress?.latitude, pickupAddress?.longitude, userLocation?.latitude, userLocation?.longitude]);
 
   const points = useMemo(
     () => [coordinateToMapPoint(userLocation), coordinateToMapPoint(pickupAddress), coordinateToMapPoint(deliveryAddress)].filter(Boolean) as MapCoordinate[],
