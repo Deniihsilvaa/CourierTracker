@@ -5,7 +5,6 @@ import { useAuthStore } from '@/src/modules/auth/store';
 import { deleteSession, endSession, fetchSessionData, recoverActiveSession, startSession } from '@/src/modules/sessions/service';
 import { useSessionStore } from '@/src/modules/sessions/store';
 import { createRouteEvent } from '@/src/modules/tracking/routeEventService';
-import { resetWaitingDetection } from '@/src/modules/tracking/service';
 import { useTrackingStore } from '@/src/modules/tracking/store';
 import { localDatabase } from '@/src/services/localDatabase';
 import { runFullSync } from '@/src/services/sync';
@@ -30,10 +29,10 @@ export default function useDashboardScreen() {
     const [isSyncing, setIsSyncing] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
 
-    const { 
-        financials, 
-        isLoading: loadingAnalytics, 
-        fetchFinancialSummary 
+    const {
+        financials,
+        isLoading: loadingAnalytics,
+        fetchFinancialSummary
     } = useAnalyticsStore();
 
     const colorScheme = useColorScheme() ?? 'light';
@@ -43,6 +42,8 @@ export default function useDashboardScreen() {
 
     // Pulse animation removed as tracking is disabled
 
+    // Importação dinâmica para evitar dependência circular
+    const { resetWaitingDetection } = require('../modules/tracking/service');
 
     useEffect(() => {
         const checkPending = async () => {
@@ -129,8 +130,8 @@ export default function useDashboardScreen() {
             'Deseja realmente excluir este turno? Todos os dados de GPS e tempo serão perdidos permanentemente.',
             [
                 { text: 'Cancelar', style: 'cancel' },
-                { 
-                    text: 'Excluir', 
+                {
+                    text: 'Excluir',
                     style: 'destructive',
                     onPress: async () => {
                         try {
@@ -150,9 +151,9 @@ export default function useDashboardScreen() {
 
     const confirmStopSession = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        
+
         const finalOdo = endOdometer.trim() ? Number(endOdometer) : undefined;
-        
+
         if (finalOdo !== undefined && activeSession?.start_odometer) {
             if (finalOdo < activeSession.start_odometer) {
                 Alert.alert('Atenção', 'O odômetro final não pode ser menor que o inicial.');
