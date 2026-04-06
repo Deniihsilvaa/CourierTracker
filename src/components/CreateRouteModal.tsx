@@ -14,6 +14,7 @@ import * as Location from "expo-location";
 import { ensureForegroundPermission } from "@/src/utils/location-access";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   InteractionManager,
   KeyboardAvoidingView,
   Modal,
@@ -67,6 +68,7 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
   const [routeError, setRouteError] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
+  const [isLocatingUser, setIsLocatingUser] = useState(false);
 
   useEffect(() => {
     if (!visible) {
@@ -74,6 +76,7 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
     }
 
     const task = InteractionManager.runAfterInteractions(async () => {
+      setIsLocatingUser(true);
       try {
         const hasPermission = await ensureForegroundPermission();
         
@@ -96,6 +99,8 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
       } catch (error) {
         console.warn("[CreateRouteModal] Failed to get current position", error);
         setLocationError("Nao foi possivel obter sua localizacao atual.");
+      } finally {
+        setIsLocatingUser(false);
       }
     });
 
@@ -286,12 +291,35 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
                 editable={!isSubmitting}
               />
 
-              <RouteMap
-                userLocation={userLocation}
-                pickupAddress={pickupAddress}
-                deliveryAddress={deliveryAddress}
-                route={routePreview}
-              />
+              <View>
+                <RouteMap
+                  userLocation={userLocation}
+                  pickupAddress={pickupAddress}
+                  deliveryAddress={deliveryAddress}
+                  route={routePreview}
+                />
+                {isLocatingUser && !userLocation && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: "rgba(15, 23, 42, 0.45)",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      borderRadius: radius.xl,
+                      zIndex: 10,
+                    }}
+                  >
+                    <ActivityIndicator size="small" color={appColors.primary} />
+                    <Text style={{ color: appColors.white, marginTop: spacing.xs, fontSize: 13, fontWeight: "700" }}>
+                      Obtendo localização...
+                    </Text>
+                  </View>
+                )}
+              </View>
 
               <View style={{ flexDirection: "row", gap: spacing.sm }}>
                 <MetricPill
