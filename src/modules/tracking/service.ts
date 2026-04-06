@@ -16,6 +16,7 @@ import { segmentationService } from './segmentation-service';
 import { sessionManager } from './session-manager';
 import { useTrackingStore } from './store';
 import { trackingRecorder } from './tracking-recorder';
+import { ensureForegroundPermission, ensureBackgroundPermission } from '../../utils/location-access';
 
 const LOCATION_TASK_NAME = 'background-location-task';
 const MIN_MOVEMENT_THRESHOLD = 5; // metros
@@ -66,14 +67,9 @@ export const startTracking = async () => {
     logger.info('[Tracking] Initializing tracking pipeline...')
 
     // 1️⃣ Check foreground permission
-    let { status } = await Location.getForegroundPermissionsAsync()
+    const hasForeground = await ensureForegroundPermission();
 
-    if (status !== 'granted') {
-      const request = await Location.requestForegroundPermissionsAsync()
-      status = request.status
-    }
-
-    if (status !== 'granted') {
+    if (!hasForeground) {
       logger.warn('[Tracking] Location permission denied by user')
       return
     }
@@ -130,18 +126,9 @@ export const startTracking = async () => {
 
     // 5️⃣ Request background permission (sequential, non-blocking)
     void (async () => {
-      try {
-        // Wait a bit to ensure UI has settled after foreground permission or task start
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const bg = await Location.getBackgroundPermissionsAsync();
-        if (bg.status !== 'granted') {
-          await Location.requestBackgroundPermissionsAsync();
-          logger.info('[Tracking] Background permission requested');
-        }
-      } catch (e) {
-        logger.warn('[Tracking] Could not request background permission', e);
-      }
+      // Wait a bit to ensure UI has settled after foreground permission or task start
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await ensureBackgroundPermission();
     })();
 
     // 6️⃣ Start notification

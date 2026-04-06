@@ -11,6 +11,7 @@ import { Client } from "@/src/types/route.types";
 import { appColors, radius, spacing } from "@/src/theme/colors";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
+import { ensureForegroundPermission } from "@/src/utils/location-access";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   InteractionManager,
@@ -74,14 +75,9 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
 
     const task = InteractionManager.runAfterInteractions(async () => {
       try {
-        let { status } = await Location.getForegroundPermissionsAsync();
+        const hasPermission = await ensureForegroundPermission();
         
-        if (status !== "granted") {
-          const permission = await Location.requestForegroundPermissionsAsync();
-          status = permission.status;
-        }
-
-        if (status !== "granted") {
+        if (!hasPermission) {
           setLocationError("Permissao de localizacao negada. A distancia sera calculada apenas quando houver GPS disponivel.");
           return;
         }
