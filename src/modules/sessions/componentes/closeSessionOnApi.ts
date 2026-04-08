@@ -1,4 +1,4 @@
-import { api } from '@/src/services/api';
+import { api, API_ROUTES } from '@/src/services/api';
 import { CloseSessionPayload } from './../type';
 
 export const closeSessionOnApi = async (sessionID: string, payload: CloseSessionPayload) => {
@@ -8,11 +8,10 @@ export const closeSessionOnApi = async (sessionID: string, payload: CloseSession
         // Convert to camelCase for API compatibility (similar to startSession)
         const apiPayload = {
             endTime: payload.end_time,
-            status: payload.status,
             endOdometer: payload.end_odometer
         };
 
-        const response = await api.put(`/sessions/v1/${sessionID}`, apiPayload);
+        const response = await api.put(API_ROUTES.SESSIONS.CLOSE(sessionID), apiPayload);
 
         if (!response.data?.success) {
             throw new Error('Server failed to update session');

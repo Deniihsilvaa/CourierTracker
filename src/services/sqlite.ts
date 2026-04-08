@@ -362,7 +362,14 @@ export const initDb = async (forceReset = false) => {
 
         // Soft delete column (except log_system and gps_points as per localDatabase.ts logic)
         if (table !== 'log_system' && table !== 'gps_points') {
-          try { await db.execAsync(`ALTER TABLE ${table} ADD COLUMN deleted_at TEXT;`); } catch (e) { }
+          try { 
+            await db.execAsync(`ALTER TABLE ${table} ADD COLUMN deleted_at TEXT;`); 
+          } catch (e: any) {
+            // Only log if it's not "column already exists" error
+            if (!e.message?.includes('duplicate column name')) {
+              console.warn(`[Migration] Could not add deleted_at to ${table}:`, e.message);
+            }
+          }
         }
       }
 

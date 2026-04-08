@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Alert, AppState } from 'react-native';
+import { useAuthStore } from '../modules/auth/store';
 import { handleNotificationAction, setupNotificationCategories } from '../infrastructure/tracking-notification';
 import { useSessionStore } from '../modules/sessions/store';
 import { sessionManager } from '../modules/tracking/session-manager';
@@ -92,7 +93,8 @@ export const AppInitializer = {
         at: new Date().toISOString(),
       });
 
-      if (lastState.match(/inactive|background/) && nextAppState === 'active') {
+      const { user } = useAuthStore.getState();
+      if (lastState.match(/inactive|background/) && nextAppState === 'active' && user) {
         logger.info('[AppInitializer] App returned to foreground, validating session and syncing...');
         void authSessionGuard.syncAuthStore();
         // Trigger a sync when user comes back to the app

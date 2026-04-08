@@ -15,6 +15,7 @@ import { Alert, Animated, ToastAndroid } from 'react-native';
 
 export default function useDashboardScreen() {
     const { user } = useAuthStore();
+    const lastOdometer = 0
     const { isTracking, lastSyncTime } = useTrackingStore();
     const {
         activeSession,
@@ -37,11 +38,7 @@ export default function useDashboardScreen() {
 
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-
     const pulseAnim = useRef(new Animated.Value(1)).current;
-
-    // Pulse animation removed as tracking is disabled
-
     // Importação dinâmica para evitar dependência circular
     const { resetWaitingDetection } = require('../modules/tracking/service');
 
@@ -221,6 +218,7 @@ export default function useDashboardScreen() {
         isStopModalVisible,
         setIsStopModalVisible,
         endOdometer,
+        lastOdometer,
         setOdometer,
         setEndOdometer,
         handleSaveOdometer,
@@ -232,6 +230,6 @@ export default function useDashboardScreen() {
         handleRouteEvent,
         fetchFinancialSummary,
         financials,
-        loadingAnalytics,
+        loadingAnalytics
     };
 }

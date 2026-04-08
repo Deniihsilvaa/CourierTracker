@@ -6,6 +6,7 @@ import { localDatabase } from "../../services/localDatabase";
 import { setLogUserIdProvider } from "../../services/logSystem";
 import { initDb } from "../../services/sqlite";
 import { logger } from "../../utils/logger";
+import { AppInitializer } from "../../services/app-initializer";
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
@@ -153,7 +154,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await authService.logout();
       set({ user: null });
 
-      // Wipe the whole offline database on sign out to prevent data leaks between sessions/users
+      AppInitializer.cleanup();
       await initDb(true);
       logger.info("[AuthStore] Database wiped successfully after sign out.");
     } catch (error: any) {

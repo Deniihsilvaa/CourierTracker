@@ -1,5 +1,5 @@
 import { localDatabase } from '@/src/services/localDatabase';
-import { api } from '../../services/api';
+import { api, API_ROUTES } from '../../services/api';
 import { cleanupSyncedData, getDb } from '../../services/sqlite';
 import { useAuthStore } from '../auth/store';
 import { sessionManager } from '../tracking/session-manager';
@@ -33,7 +33,7 @@ export const startSession = async (startOdometer?: number) => {
 
     console.log('[Session Service] Attempting to start session on API...');
     console.log('[Session Service] Payload:', JSON.stringify(payload, null, 2));
-    const response = await api.post('/sessions/v1', payload);
+    const response = await api.post(API_ROUTES.SESSIONS.OPEN, payload);
 
     if (!response.data?.success || !response.data.data?.id) {
       throw new Error('Server failed to initialize session');
@@ -82,7 +82,6 @@ export const endSession = async () => {
   const currentOdometer = useSessionStore.getState().odometer;
   const payload = {
     end_time: endTime,
-    status: 'closed' as const,
     end_odometer: currentOdometer ? Number(currentOdometer) : activeSession.start_odometer,
   };
   try {
@@ -102,7 +101,7 @@ export const endSession = async () => {
 
 export const fetchSessionData = async (sessionId: string) => {
   try {
-    const response = await api.get(`/sessions/v1/${sessionId}`);
+    const response = await api.get(API_ROUTES.SESSIONS.DETAIL(sessionId));
     if (response.data.success) {
       return response.data.data;
     }
@@ -145,7 +144,7 @@ export const recoverActiveSession = async () => {
 
     // 2. Fallback: Check API for an open session using the correct user endpoint
     console.log('[Session Service] Checking API for active sessions...');
-    const response = await api.get(`/sessions/v1/user/${user.id}`);
+    const response = await api.get(API_ROUTES.SESSIONS.USER(user.id));
 
     if (response.data.success && Array.isArray(response.data.data)) {
       // Find session where status is NOT closed/cancelled or has no end_time
@@ -199,7 +198,7 @@ export const listSessions = async (isRefreshing = false) => {
   else setHistoryLoading(true);
 
   try {
-    const response = await api.get(`/sessions/v1/user/${user.id}`);
+    const response = await api.get(API_ROUTES.SESSIONS.USER(user.id));
     if (response.data.success && Array.isArray(response.data.data)) {
       setHistory(response.data.data);
     }
@@ -213,11 +212,11 @@ export const listSessions = async (isRefreshing = false) => {
 
 export const deleteSession = async (sessionId: string) => {
   const { setActiveSession } = useSessionStore.getState();
-  
+
   try {
     // 1. Delete on API
     await deleteSessionOnApi(sessionId);
-    
+
     // 2. Cleanup local state if it's the active one
     const active = useSessionStore.getState().activeSession;
     if (active?.id === sessionId) {
@@ -227,8 +226,8 @@ export const deleteSession = async (sessionId: string) => {
 
     // 3. Cleanup local database
     await localDatabase.delete('work_sessions', [sessionId] as any);
-    await localDatabase.delete('gps_points',[sessionId] as any);
-    
+    await localDatabase.delete('gps_points', [sessionId] as any);
+
     console.log(`[Session Service] Session ${sessionId} deleted successfully.`);
   } catch (error) {
     console.error('[Session Service] Failed to delete session', error);
@@ -238,7 +237,7 @@ export const deleteSession = async (sessionId: string) => {
 
 export const deleteSessionOnApi = async (sessionId: string) => {
   try {
-    const response = await api.delete(`/sessions/v1/${sessionId}`);
+    const response = await api.delete(API_ROUTES.SESSIONS.DELETE(sessionId));
     if (response.data.success) {
       return response.data.data;
     }

@@ -4,11 +4,12 @@ import { SectionHeader } from "@/components/layout/section-header";
 import { SkeletonCard } from "@/components/skeleton/skeleton-card";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import useSessions from "@/src/hooks/useSessions";
+import { SessionMetric } from "@/src/modules/sessions/componentes/SessionMetric";
 import { appColors, radius, spacing } from "@/src/theme/colors";
 import { FormatDuration } from "@/src/utils/format";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, Text, View, Alert, TouchableOpacity } from "react-native";
+import { Alert, Pressable, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 export default function SessionsScreen() {
   const { loading, refreshing, onRefresh, totals, sections, timeFilter, setTimeFilter, deleteSession } = useSessions();
@@ -98,60 +99,70 @@ export default function SessionsScreen() {
         ) : (
           sections.map((section) => (
             <View key={section.title} style={{ gap: spacing.xs }}>
+
               <SectionHeader
                 title={section.title}
                 subtitle={`${section.count} turno(s) • ${section.totalKm.toFixed(1)} km`}
               />
               {section.data.map((item) => (
-                <GlassCard key={item.id}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.sm }}>
-                    <View style={{ flex: 1, gap: spacing.xs }}>
-                      <Text style={{ color: appColors.textPrimary, fontSize: 17, fontWeight: "800" }}>
-                        {new Date(item.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        {item.end_time
-                          ? ` - ${new Date(item.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                          : " • Em andamento"}
-                      </Text>
-                      <Text style={{ color: appColors.textSecondary, fontSize: 14 }}>
-                        Odômetro {item.start_odometer || "---"} → {item.end_odometer || "---"}
-                      </Text>
-                    </View>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-                      <View
-                        style={{
-                          paddingHorizontal: 12,
-                          paddingVertical: 8,
-                          borderRadius: radius.pill,
-                          backgroundColor:
-                            item.status === "closed" ? "rgba(34, 197, 94, 0.18)" : "rgba(245, 158, 11, 0.18)",
-                        }}
-                      >
-                        <Text style={{ color: appColors.textPrimary, fontSize: 12, fontWeight: "800" }}>
-                          {item.status === "closed" ? "Concluído" : "Ativo"}
+                <TouchableOpacity
+                  onLongPress={() => {
+
+                  }}
+                  delayLongPress={500}
+                  accessibilityRole="button"
+                  accessibilityLabel="Sessão"
+                >
+                  <GlassCard key={item.id}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.sm }}>
+                      <View style={{ flex: 1, gap: spacing.xs }}>
+                        <Text style={{ color: appColors.textPrimary, fontSize: 17, fontWeight: "800" }}>
+                          {new Date(item.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          {item.end_time
+                            ? ` - ${new Date(item.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                            : " • Em andamento"}
+                        </Text>
+                        <Text style={{ color: appColors.textSecondary, fontSize: 14 }}>
+                          Odômetro {item.start_odometer || "---"} → {item.end_odometer || "---"}
                         </Text>
                       </View>
-                      
-                      <TouchableOpacity 
-                        onPress={() => setDeleteId(item.id)}
-                        hitSlop={8}
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: radius.lg,
-                          alignItems: "center",
-                          justifyContent: "center",
-                          backgroundColor: "rgba(239, 68, 68, 0.1)",
-                        }}
-                      >
-                        <Ionicons name="trash-outline" size={18} color={appColors.danger} />
-                      </TouchableOpacity>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+                        <View
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            borderRadius: radius.pill,
+                            backgroundColor:
+                              item.status === "closed" ? "rgba(34, 197, 94, 0.18)" : "rgba(245, 158, 11, 0.18)",
+                          }}
+                        >
+                          <Text style={{ color: appColors.textPrimary, fontSize: 12, fontWeight: "800" }}>
+                            {item.status === "closed" ? "Concluído" : "Ativo"}
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          onPress={() => setDeleteId(item.id)}
+                          hitSlop={8}
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: radius.lg,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: "rgba(239, 68, 68, 0.1)",
+                          }}
+                        >
+                          <Ionicons name="trash-outline" size={18} color={appColors.danger} />
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                  </View>
-                  <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
-                    <SessionMetric label="KM" value={(item.total_distance_km || 0).toFixed(1)} icon="speedometer-outline" compact />
-                    <SessionMetric label="Ativo" value={FormatDuration({ seconds: item.total_active_seconds || 0, format: "short" })} icon="timer-outline" compact />
-                  </View>
-                </GlassCard>
+                    <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
+                      <SessionMetric label="KM" value={(item.total_distance_km || 0).toFixed(1)} icon="speedometer-outline" compact />
+                      <SessionMetric label="Ativo" value={FormatDuration({ seconds: item.total_active_seconds || 0, format: "short" })} icon="timer-outline" compact />
+                    </View>
+                  </GlassCard>
+                </TouchableOpacity>
               ))}
             </View>
           ))
@@ -172,33 +183,3 @@ export default function SessionsScreen() {
   );
 }
 
-function SessionMetric({
-  label,
-  value,
-  icon,
-  compact = false,
-}: {
-  label: string;
-  value: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  compact?: boolean;
-}) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        minHeight: compact ? 72 : 92,
-        borderRadius: radius.lg,
-        padding: spacing.sm,
-        backgroundColor: "rgba(255,255,255,0.04)",
-        borderWidth: 1,
-        borderColor: appColors.border,
-        gap: spacing.xs,
-      }}
-    >
-      <Ionicons name={icon} size={18} color={appColors.primary} />
-      <Text style={{ color: appColors.textMuted, fontSize: 12, fontWeight: "700", textTransform: "uppercase" }}>{label}</Text>
-      <Text style={{ color: appColors.textPrimary, fontSize: compact ? 16 : 18, fontWeight: "900" }}>{value}</Text>
-    </View>
-  );
-}

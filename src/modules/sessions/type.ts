@@ -1,5 +1,5 @@
 export type CloseSessionPayload = {
     end_time: string
-    status: 'closed'
+    status?: 'closed'
     end_odometer?: number
 }

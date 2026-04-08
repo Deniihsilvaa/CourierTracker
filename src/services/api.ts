@@ -6,11 +6,49 @@ interface RetryAxiosRequest extends AxiosRequestConfig {
 }
 
 const API_TOKEN_KEY = 'auth_token';
+export const API_ROUTES = {
+  AUTH: {
+    LOGIN: '/auth/v1/login',
+    SIGNUP: '/auth/v1/signup',
+    GOOGLE: '/auth/v1/google',
+    REFRESH: '/auth/v1/refresh',
+    PASSWORD_RESET: '/auth/v1/password-reset',
+    LOGOUT: '/auth/v1/logout',
+    PROFILE: '/auth/v1/profile',
+  },
+  SESSIONS: {
+    OPEN: '/sessions/v1/open',
+    CLOSE: (id: string) => `/sessions/v1/close/${id}`,
+    USER: (userId: string) => `/sessions/v1/user/${userId}`,
+    DETAIL: (id: string) => `/sessions/v1/${id}`,
+    DELETE: (id: string) => `/sessions/v1/${id}`,
+  },
+  INCOMES: {
+    BASE: '/incomes/v1/',
+    BY_ID: (id: string) => `/incomes/v1/${id}`,
+  },
+  EXPENSES: {
+    BASE: '/expenses/v1/',
+    BY_ID: (id: string) => `/expenses/v1/${id}`,
+  },
+  FUELS: {
+    BASE: '/fuels/v1/',
+    BY_ID: (id: string) => `/fuels/v1/${id}`,
+  },
+  CATEGORIES: {
+    BASE: '/categories/v1/',
+  },
+  ANALYTICS: {
+    SUMMARY: '/analytics/v1/summary',
+    CHARTS: '/analytics/v1/charts',
+  }
+};
+
 const AUTH_PUBLIC_ROUTES = [
-  '/auth/v1/login',
-  '/auth/v1/signup',
-  '/auth/v1/google',
-  '/auth/v1/password-reset',
+  API_ROUTES.AUTH.LOGIN,
+  API_ROUTES.AUTH.SIGNUP,
+  API_ROUTES.AUTH.GOOGLE,
+  API_ROUTES.AUTH.PASSWORD_RESET,
 ];
 let isRefreshing = false;
 let refreshPromise: Promise<string> | null = null;
@@ -107,7 +145,7 @@ export const refreshToken = async () => {
   }
   isRefreshing = true
   const response = await api.post(
-    `/auth/v1/refresh`,
+    API_ROUTES.AUTH.REFRESH,
     { refreshToken }
   );
   const { session } = response.data

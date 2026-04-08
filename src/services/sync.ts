@@ -3,6 +3,7 @@ import { useTrackingStore } from '../modules/tracking/store';
 import { cleanupSyncedData, getDb } from './sqlite';
 import { SyncPayload, syncService } from './sync.service';
 import { logger } from '../utils/logger';
+import { useAuthStore } from '../modules/auth/store';
 
 // Maximum rows per table in a single batch to avoid payload size issues
 const BATCH_SIZE = 500;
@@ -80,6 +81,13 @@ const markAsSynced = async (db: any, table: string, ids: (string | number)[]) =>
 };
 
 export const runFullSync = async () => {
+    // 1. Check if user is authenticated
+    const user = useAuthStore.getState().user;
+    if (!user) {
+        logger.info('[Sync] No authenticated user, skipping synchronization.');
+        return false;
+    }
+
     const db = getDb();
     const sessionStore = useSessionStore.getState();
     const activeSession = sessionStore.activeSession;

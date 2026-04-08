@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, API_ROUTES } from './api';
 
 export interface Income {
   id: string;
@@ -23,7 +23,7 @@ export interface CreateIncomePayload {
 
 export const incomesService = {
   list: async (params?: { date?: string; name?: string; categories?: string }): Promise<Income[]> => {
-    const response = await api.get('/incomes/v1/', { params });
+    const response = await api.get(API_ROUTES.INCOMES.BASE, { params });
     if (response.data?.success) {
       return response.data.data as Income[];
     }
@@ -31,7 +31,7 @@ export const incomesService = {
   },
 
   create: async (payload: CreateIncomePayload): Promise<Income> => {
-    const response = await api.post('/incomes/v1/', payload);
+    const response = await api.post(API_ROUTES.INCOMES.BASE, payload);
     if (response.data?.success) {
       return response.data.data as Income;
     }
@@ -39,7 +39,7 @@ export const incomesService = {
   },
 
   update: async (id: string, payload: CreateIncomePayload): Promise<Income> => {
-    const response = await api.put(`/incomes/v1/${id}`, payload);
+    const response = await api.put(API_ROUTES.INCOMES.BY_ID(id), payload);
     if (response.data?.success) {
       return response.data.data as Income;
     }

@@ -1,9 +1,9 @@
+import { PrimaryButton } from "@/components/buttons/primary-button";
+import { GlassCard } from "@/components/cards/glass-card";
 import { appColors, radius, spacing } from "@/src/theme/colors";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { Modal, Text, TouchableOpacity, View, StyleSheet } from "react-native";
-import { GlassCard } from "@/components/cards/glass-card";
-import { PrimaryButton } from "@/components/buttons/primary-button";
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface ConfirmationModalProps {
   visible: boolean;
@@ -28,9 +28,9 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   isLoading = false,
   variant = "primary",
 }) => {
-  const confirmColor = variant === "danger" ? appColors.danger : 
-                       variant === "warning" ? appColors.warning : 
-                       appColors.primary;
+  const confirmColor = variant === "danger" ? appColors.danger :
+    variant === "warning" ? appColors.warning :
+      appColors.primary;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
@@ -38,32 +38,31 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         <GlassCard style={styles.card}>
           <View style={styles.header}>
             <View style={[styles.iconContainer, { backgroundColor: `${confirmColor}15` }]}>
-              <Ionicons 
-                name={variant === "danger" ? "trash-outline" : "alert-circle-outline"} 
-                size={24} 
-                color={confirmColor} 
+              <Ionicons
+                name={variant === "danger" ? "trash-outline" : "alert-circle-outline"}
+                size={24}
+                color={confirmColor}
               />
             </View>
             <Text style={styles.title}>{title}</Text>
           </View>
-          
+
           <Text style={styles.description}>{description}</Text>
-          
+
           <View style={styles.footer}>
-            <TouchableOpacity 
-              onPress={onCancel} 
+            <TouchableOpacity
+              onPress={onCancel}
               style={styles.cancelButton}
               disabled={isLoading}
             >
               <Text style={styles.cancelText}>{cancelLabel}</Text>
             </TouchableOpacity>
-            
+
             <PrimaryButton
               label={confirmLabel}
               onPress={onConfirm}
               loading={isLoading}
               variant={variant === "danger" ? "danger" : "primary"}
-              style={styles.confirmButton}
             />
           </View>
         </GlassCard>
