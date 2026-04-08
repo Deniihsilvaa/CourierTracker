@@ -1,20 +1,20 @@
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/src/hooks/useAuth';
+import { stylesAuth } from '@/src/styles';
+import { stylesLogin as styles } from '@/src/styles/auth/login/login.style';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
+  ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableWithoutFeedback,
   View
 } from 'react-native';
-
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/src/hooks/useAuth';
-import { stylesAuth } from '@/src/styles';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 
 export default function LoginScreen() {
@@ -28,10 +28,32 @@ export default function LoginScreen() {
     handleForgotPassword,
     isLoading,
     error,
-    handleRegister
+    handleRegister,
+    user,
+    showPassword,
+    setShowPassword
   } = useAuth();
 
-  const [showPassword, setShowPassword] = React.useState(false);
+  // Se estiver carregando inicialmente ou se já houver um usuário (aguardando redirecionamento do RootLayout)
+  if (isLoading && !email && !password) {
+    return (
+      <View style={[stylesAuth.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#2563eb" />
+        <Text style={[stylesAuth.label, { marginTop: 16 }]}>Verificando acesso...</Text>
+      </View>
+    );
+  }
+
+  if (user) {
+    return (
+      <View style={[stylesAuth.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Ionicons name="checkmark-circle" size={60} color="#10b981" />
+        <Text style={[stylesAuth.title, { marginTop: 16 }]}>Bem-vindo de volta!</Text>
+        <Text style={stylesAuth.label}>Redirecionando...</Text>
+      </View>
+    );
+  }
+
 
   return (
     <KeyboardAvoidingView
@@ -48,7 +70,6 @@ export default function LoginScreen() {
               <Ionicons name="navigate" size={40} color="#2563eb" />
             </View>
             <Text style={stylesAuth.title}>RotaPro</Text>
-            <Text style={styles.subtitle}>Sua jornada profissional começa aqui</Text>
           </View>
 
           <View style={stylesAuth.inputContainer}>
@@ -145,108 +166,3 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: '#eff6ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    paddingHorizontal: 12,
-  },
-  inputIcon: {
-    marginRight: 10,
-  },
-  inputReset: {
-    flex: 1,
-    borderWidth: 0,
-    backgroundColor: 'transparent',
-    paddingHorizontal: 0,
-    height: 48,
-  },
-  forgotPasswordSmall: {
-    alignSelf: 'flex-end',
-    marginTop: 8,
-    color: '#2563eb',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fef2f2',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 20,
-    gap: 8,
-  },
-  errorText: {
-    color: '#ef4444',
-    fontSize: 13,
-    fontWeight: '500',
-    flex: 1,
-  },
-  buttonActionGroup: {
-    gap: 16,
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 8,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e5e7eb',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    color: '#9ca3af',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  footer: {
-    marginTop: 40,
-    alignItems: 'center',
-    gap: 12,
-    paddingBottom: 20,
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#4b5563',
-  },
-  link: {
-    color: '#2563eb',
-    fontWeight: 'bold',
-  },
-  credits: {
-    fontSize: 11,
-    color: '#9ca3af',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  eyeIcon: {
-    paddingHorizontal: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  }
-});

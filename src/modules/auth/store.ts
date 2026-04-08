@@ -1,11 +1,10 @@
 import { AuthState, Profile } from "@/src/types/auth";
-import * as Linking from "expo-linking";
 import { create } from "zustand";
 import { getAuthToken } from "../../services/api";
 import { authService } from "../../services/auth.service";
 import { localDatabase } from "../../services/localDatabase";
-import { initDb } from "../../services/sqlite";
 import { setLogUserIdProvider } from "../../services/logSystem";
+import { initDb } from "../../services/sqlite";
 import { logger } from "../../utils/logger";
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -61,8 +60,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ isLoading: true, error: null });
       await initDb(false);
 
-      if (!password) {
-        throw new Error("Password is required");
+      if (!email || !password) {
+        throw new Error("Email and password are required");
       }
 
       const response = await authService.login(email, password);
@@ -101,13 +100,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       set({ isLoading: true, error: null });
       await initDb(false);
-      
+
       if (!idToken) {
         throw new Error("ID Token is required for Google login");
       }
 
       const user = await authService.googleLogin(idToken);
-      
+
       if (user) {
         const finalProfile: Profile = {
           id: user.id,
@@ -153,7 +152,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ isLoading: true, error: null });
       await authService.logout();
       set({ user: null });
-      
+
       // Wipe the whole offline database on sign out to prevent data leaks between sessions/users
       await initDb(true);
       logger.info("[AuthStore] Database wiped successfully after sign out.");

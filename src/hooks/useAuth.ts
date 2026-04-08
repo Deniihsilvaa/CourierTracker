@@ -7,8 +7,9 @@ import { Alert } from 'react-native';
 export function useAuth() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const { signIn, signInWithGoogle, resetPassword, isLoading, error } = useAuthStore();
+    const { signIn, signInWithGoogle, resetPassword, isLoading, error, user, checkSession } = useAuthStore();
     const router = useRouter();
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleSignIn = async () => {
         try {
@@ -54,7 +55,11 @@ export function useAuth() {
         handleRegister,
         isLoading,
         error,
+        user,
+        checkSession,
         setEmail,
-        setPassword
+        setPassword,
+        showPassword,
+        setShowPassword
     }
 }

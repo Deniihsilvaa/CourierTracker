@@ -13,7 +13,7 @@ export const authService = {
     });
     const returnApi: LoginReturn = data.data;
 
-    await setAuthToken(returnApi.session.access_token);
+    await setAuthToken(returnApi.session.access_token, returnApi.session.refresh_token);
     return returnApi.user;
   },
 
@@ -34,7 +34,7 @@ export const authService = {
     const returnApi: LoginReturn = data.data;
 
     logger.debug("[AuthService] signUp response:", returnApi.user);
-    await setAuthToken(returnApi.session.access_token);
+    await setAuthToken(returnApi.session.access_token, returnApi.session.refresh_token);
     return returnApi.user;
   },
 
@@ -49,7 +49,7 @@ export const authService = {
   async googleLogin(idToken: string): Promise<LoginReturn["user"]> {
     const { data } = await api.post("/auth/v1/google", { idToken });
     const returnApi: LoginReturn = data.data;
-    await setAuthToken(returnApi.session.access_token);
+    await setAuthToken(returnApi.session.access_token, returnApi.session.refresh_token);
     return returnApi.user;
   },
 

@@ -75,9 +75,9 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-export const setAuthToken = async (token: string | null) => {
+export const setAuthToken = async (token: string | null, refreshToken?: string) => {
   if (token) {
-    await authStorage.setToken(token);
+    await authStorage.setToken(token, refreshToken);
   } else {
     await authStorage.clearToken();
   }
