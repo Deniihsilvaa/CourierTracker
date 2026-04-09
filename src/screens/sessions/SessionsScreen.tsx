@@ -4,17 +4,22 @@ import { SectionHeader } from "@/components/layout/section-header";
 import { SkeletonCard } from "@/components/skeleton/skeleton-card";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import useSessions from "@/src/hooks/useSessions";
+import { EditSessionModal } from "@/src/modules/sessions/componentes/EditSessionModal";
 import { SessionMetric } from "@/src/modules/sessions/componentes/SessionMetric";
+import { UpdateSessionPayload, WorkSession } from "@/src/modules/sessions/type";
 import { appColors, radius, spacing } from "@/src/theme/colors";
 import { FormatDuration } from "@/src/utils/format";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from 'expo-haptics';
 import React, { useMemo, useState } from "react";
 import { Alert, Pressable, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 export default function SessionsScreen() {
-  const { loading, refreshing, onRefresh, totals, sections, timeFilter, setTimeFilter, deleteSession } = useSessions();
+  const { loading, refreshing, onRefresh, totals, sections, timeFilter, setTimeFilter, deleteSession, updateSession } = useSessions();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editSession, setEditSession] = useState<WorkSession | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const filterOptions = useMemo(
     () => [
@@ -38,6 +43,34 @@ export default function SessionsScreen() {
       Alert.alert("Erro", "Ocorreu um erro ao tentar excluir a sessão.");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleUpdate = async (sessionId: string, payload: UpdateSessionPayload) => {
+    try {
+      const success = await updateSession(sessionId, payload);
+      if (!success) {
+        Alert.alert("Erro", "Não foi possível atualizar esta sessão.");
+        return false;
+      }
+      return true;
+    } catch (error) {
+      Alert.alert("Erro", "Ocorreu um erro ao tentar atualizar a sessão.");
+      return false;
+    }
+  };
+
+  const handleEditConfirm = async (payload: UpdateSessionPayload) => {
+    if (!editSession) return;
+    setIsUpdating(true);
+    try {
+      console.log("handleEditConfirm", payload);
+      const success = await handleUpdate(editSession.id, payload);
+      if (success) {
+        setEditSession(null);
+      }
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -105,13 +138,16 @@ export default function SessionsScreen() {
                 subtitle={`${section.count} turno(s) • ${section.totalKm.toFixed(1)} km`}
               />
               {section.data.map((item) => (
-                <TouchableOpacity
+                <Pressable
+                  delayLongPress={600}
                   onLongPress={() => {
-
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                    setEditSession(item);
                   }}
-                  delayLongPress={500}
-                  accessibilityRole="button"
-                  accessibilityLabel="Sessão"
+                  style={({ pressed }) => ({
+                    transform: [{ scale: pressed ? 0.97 : 1 }],
+                    opacity: pressed ? 0.9 : 1,
+                  })}
                 >
                   <GlassCard key={item.id}>
                     <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.sm }}>
@@ -162,7 +198,7 @@ export default function SessionsScreen() {
                       <SessionMetric label="Ativo" value={FormatDuration({ seconds: item.total_active_seconds || 0, format: "short" })} icon="timer-outline" compact />
                     </View>
                   </GlassCard>
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </View>
           ))
@@ -178,6 +214,14 @@ export default function SessionsScreen() {
         isLoading={isDeleting}
         onConfirm={handleDelete}
         onCancel={() => setDeleteId(null)}
+      />
+
+      <EditSessionModal
+        visible={!!editSession}
+        session={editSession}
+        onClose={() => setEditSession(null)}
+        onSave={handleEditConfirm}
+        isUpdating={isUpdating}
       />
     </AppScreen>
   );

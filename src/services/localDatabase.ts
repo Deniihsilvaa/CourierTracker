@@ -47,7 +47,11 @@ export const localDatabase = {
     const query = `SELECT * FROM ${tableName} ${effectiveWhere}`;
     try {
       return await db.getAllAsync<T>(query, params);
-    } catch (e) {
+    } catch (e: any) {
+      if (hasDeletedAt && e.message?.includes('no such column: deleted_at')) {
+        console.warn(`[DB] Table ${tableName} missing deleted_at column, retrying without filter`);
+        return await db.getAllAsync<T>(`SELECT * FROM ${tableName} ${where}`, params);
+      }
       console.error(`[DB] List failed in ${tableName}:`, e);
       return [];
     }
@@ -104,7 +108,7 @@ export const localDatabase = {
     const placeholders = keys.map(() => '?').join(', ');
     const values = Object.values(entry);
 
-    const query = `INSERT INTO ${tableName} (${keys.join(', ')}) VALUES (${placeholders})`;
+    const query = `INSERT OR REPLACE INTO ${tableName} (${keys.join(', ')}) VALUES (${placeholders})`;
 
     try {
       const result = await db.runAsync(query, values);

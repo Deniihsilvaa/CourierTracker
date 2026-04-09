@@ -12,11 +12,23 @@ import { logger } from '@/src/utils/logger';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, ToastAndroid } from 'react-native';
+import { api, API_ROUTES } from '../services/api';
 
 export default function useDashboardScreen() {
     const { user } = useAuthStore();
-    const lastOdometer = 0
+    const [lastOdometer, setLastOdometer] = useState<number>(0);
     const { isTracking, lastSyncTime } = useTrackingStore();
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [pendingCount, setPendingCount] = useState(0);
+    const colorScheme = useColorScheme() ?? 'light';
+    const theme = Colors[colorScheme];
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    // Importação dinâmica para evitar dependência circular
+    const { resetWaitingDetection } = require('../modules/tracking/service');
+    const [isStopModalVisible, setIsStopModalVisible] = useState(false);
+
+
+
     const {
         activeSession,
         sessionDuration,
@@ -26,21 +38,11 @@ export default function useDashboardScreen() {
         setIsLoading: setLoadingSession,
         setActiveSession
     } = useSessionStore();
-
-    const [isSyncing, setIsSyncing] = useState(false);
-    const [pendingCount, setPendingCount] = useState(0);
-
     const {
         financials,
         isLoading: loadingAnalytics,
         fetchFinancialSummary
     } = useAnalyticsStore();
-
-    const colorScheme = useColorScheme() ?? 'light';
-    const theme = Colors[colorScheme];
-    const pulseAnim = useRef(new Animated.Value(1)).current;
-    // Importação dinâmica para evitar dependência circular
-    const { resetWaitingDetection } = require('../modules/tracking/service');
 
     useEffect(() => {
         const checkPending = async () => {
@@ -85,7 +87,10 @@ export default function useDashboardScreen() {
         }
     }, [activeSession?.id]);
 
-    const [isStopModalVisible, setIsStopModalVisible] = useState(false);
+    useEffect(() => {
+        handleLastOdometer();
+    }, []);
+
     const [endOdometer, setEndOdometer] = useState('');
 
     const handleManualSync = async () => {
@@ -203,6 +208,10 @@ export default function useDashboardScreen() {
             logger.error('[Dashboard] Error saving odometer:', error);
         }
     };
+    const handleLastOdometer = async () => {
+        const response = await api.get(API_ROUTES.SESSIONS.LAST_ODOMETER)
+        setLastOdometer(response.data.data.lastOdometer)
+    }
 
     return {
         user,

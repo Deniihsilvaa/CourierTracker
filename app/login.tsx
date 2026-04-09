@@ -3,7 +3,7 @@ import { useAuth } from '@/src/hooks/useAuth';
 import { stylesAuth } from '@/src/styles';
 import { stylesLogin as styles } from '@/src/styles/auth/login/login.style';
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -33,6 +33,8 @@ export default function LoginScreen() {
     showPassword,
     setShowPassword
   } = useAuth();
+
+  const passwordInputRef = useRef<TextInput>(null);
 
   // Se estiver carregando inicialmente ou se já houver um usuário (aguardando redirecionamento do RootLayout)
   if (isLoading && !email && !password) {
@@ -80,11 +82,16 @@ export default function LoginScreen() {
                 style={[stylesAuth.input, styles.inputReset]}
                 placeholder="exemplo@email.com"
                 value={email}
+                disableFullscreenUI={true}
+                autoFocus={true}
                 onChangeText={setEmail}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 autoComplete="email"
                 placeholderTextColor="#9ca3af"
+                returnKeyType="next"
+                onSubmitEditing={() => passwordInputRef.current?.focus()}
+                blurOnSubmit={false}
               />
             </View>
           </View>
@@ -100,6 +107,9 @@ export default function LoginScreen() {
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 placeholderTextColor="#9ca3af"
+                ref={passwordInputRef}
+                returnKeyType="go"
+                onSubmitEditing={handleSignIn}
               />
               <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}

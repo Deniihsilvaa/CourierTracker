@@ -4,8 +4,9 @@ import { useAuthStore } from '@/src/modules/auth/store';
 import { AppShellProvider } from '@/src/providers/app-shell-provider';
 import { AppInitializer } from '@/src/services/app-initializer';
 import { logger } from '@/src/utils/logger';
+import { AuthGuard } from '@/src/navigation/AuthGuard';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -26,10 +27,7 @@ export const unstable_settings = {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [isReady, setIsReady] = useState(false);
-  const router = useRouter();
-  const segments = useSegments();
-
-  const { user, checkSession, isLoading } = useAuthStore();
+  const { checkSession } = useAuthStore();
 
   useEffect(() => {
     // Phase 1: Heavy Initialization
@@ -37,7 +35,10 @@ export default function RootLayout() {
       try {
         await AppInitializer.prepare();
         await checkSession();
-        AppInitializer.setupGlobalListeners();
+        await AppInitializer.setupGlobalListeners();
+        
+        // Artificial delay to ensure branding is visible (Splash Screen)
+        await new Promise(resolve => setTimeout(resolve, 1500));
       } catch (e) {
         logger.error('[AppInitializer] Error during preparation:', e);
       } finally {
@@ -52,56 +53,42 @@ export default function RootLayout() {
     };
   }, []);
 
-  // Phase 2: Routing Control & Splash Screen
-  useEffect(() => {
-    if (!isReady || isLoading) return;
 
-    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
-
-    if (!user && !inAuthGroup) {
-      logger.info('[Auth] Redirecting to /login');
-      router.replace('/login');
-    } else if (user && inAuthGroup) {
-      logger.info('[Auth] Redirecting to /');
-      router.replace('/');
-    }
-
-    // Hide splash screen after initialization and first routing check
-    SplashScreen.hideAsync();
-  }, [user, segments, isReady, isLoading]);
 
   if (!isReady) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AppShellProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack
-            screenOptions={{
-              animation: 'slide_from_right',
-              animationDuration: 250,
-              gestureEnabled: true,
-              gestureDirection: 'horizontal',
-            }}
-          >
-            <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
-            <Stack.Screen name="register" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal', animation: 'fade_from_bottom' }} />
-            <Stack.Screen name="incomes" options={{ headerShown: false, animation: 'slide_from_right' }} />
-            <Stack.Screen name="fuels" options={{ headerShown: false, animation: 'slide_from_right' }} />
-            <Stack.Screen name="expenses" options={{ headerShown: false, animation: 'slide_from_right' }} />
-            <Stack.Screen name="categories" options={{ headerShown: false, animation: 'slide_from_right' }} />
-            <Stack.Screen name="reports" options={{ headerShown: false }} />
-            <Stack.Screen name="maintenance" options={{ headerShown: false }} />
-            <Stack.Screen name="export-data" options={{ headerShown: false }} />
-            <Stack.Screen name="backup" options={{ headerShown: false }} />
-            <Stack.Screen name="help" options={{ headerShown: false }} />
-            <Stack.Screen name="about" options={{ headerShown: false }} />
-          </Stack>
-          <AppDrawer />
-          <StatusBar style="light" />
-        </ThemeProvider>
+        <AuthGuard>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <Stack
+              screenOptions={{
+                animation: 'slide_from_right',
+                animationDuration: 250,
+                gestureEnabled: true,
+                gestureDirection: 'horizontal',
+              }}
+            >
+              <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
+              <Stack.Screen name="register" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
+              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal', animation: 'fade_from_bottom' }} />
+              <Stack.Screen name="incomes" options={{ headerShown: false, animation: 'slide_from_right' }} />
+              <Stack.Screen name="fuels" options={{ headerShown: false, animation: 'slide_from_right' }} />
+              <Stack.Screen name="expenses" options={{ headerShown: false, animation: 'slide_from_right' }} />
+              <Stack.Screen name="categories" options={{ headerShown: false, animation: 'slide_from_right' }} />
+              <Stack.Screen name="reports" options={{ headerShown: false }} />
+              <Stack.Screen name="maintenance" options={{ headerShown: false }} />
+              <Stack.Screen name="export-data" options={{ headerShown: false }} />
+              <Stack.Screen name="backup" options={{ headerShown: false }} />
+              <Stack.Screen name="help" options={{ headerShown: false }} />
+              <Stack.Screen name="about" options={{ headerShown: false }} />
+            </Stack>
+            <AppDrawer />
+            <StatusBar style="light" />
+          </ThemeProvider>
+        </AuthGuard>
       </AppShellProvider>
     </GestureHandlerRootView>
   );

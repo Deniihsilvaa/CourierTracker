@@ -5,6 +5,7 @@ import { useAuthStore } from '../auth/store';
 import { sessionManager } from '../tracking/session-manager';
 import { closeSessionOnApi, updateOfflineSession } from './componentes';
 import { useSessionStore } from './store';
+import { UpdateSessionPayload } from './type';
 
 /**
  * Starts a new working session.
@@ -98,6 +99,29 @@ export const endSession = async () => {
     throw error;
   }
 };
+
+
+
+export const updateSessionOnApi = async (sessionId: string, payload: UpdateSessionPayload) => {
+  try {
+    const payloadConverted = {
+      startTime: payload.start_time,
+      endTime: payload.end_time,
+      startOdometer: payload.start_odometer,
+      endOdometer: payload.end_odometer,
+    }
+    const response = await api.put(API_ROUTES.SESSIONS.UPDATE(sessionId), payloadConverted);
+    if (response.data.success) {
+      await updateOfflineSession(sessionId, payload as any);
+      return response.data.data;
+    }
+    return null;
+  } catch (error: any) {
+    console.warn('[Session Service] Error updating session:', error.message);
+    return null;
+  }
+}
+
 
 export const fetchSessionData = async (sessionId: string) => {
   try {

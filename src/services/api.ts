@@ -19,9 +19,11 @@ export const API_ROUTES = {
   SESSIONS: {
     OPEN: '/sessions/v1/open',
     CLOSE: (id: string) => `/sessions/v1/close/${id}`,
+    UPDATE: (id: string) => `/sessions/v1/update/${id}`,
     USER: (userId: string) => `/sessions/v1/user/${userId}`,
     DETAIL: (id: string) => `/sessions/v1/${id}`,
     DELETE: (id: string) => `/sessions/v1/${id}`,
+    LAST_ODOMETER: '/sessions/v1/last-odometer',
   },
   INCOMES: {
     BASE: '/incomes/v1/',
@@ -143,13 +145,31 @@ export const refreshToken = async () => {
   if (isRefreshing && refreshPromise) {
     return refreshPromise;
   }
-  isRefreshing = true
-  const response = await api.post(
-    API_ROUTES.AUTH.REFRESH,
-    { refreshToken }
-  );
-  const { session } = response.data
-  await authStorage.setToken(session.access_token, session.refresh_token);
-  return session.access_token;
+
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const response = await api.post(
+        API_ROUTES.AUTH.REFRESH,
+        { refresh_token: refreshToken }
+      );
+
+      // Fix: API response is { data: { session: { ... } } }
+      const session = response.data?.data?.session;
+
+      if (!session || !session.access_token) {
+        console.error("[API] Invalid refresh response:", response.data);
+        throw new Error("Invalid refresh response structure");
+      }
+
+      await authStorage.setToken(session.access_token, session.refresh_token);
+      return session.access_token;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 };
 

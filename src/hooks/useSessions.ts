@@ -1,31 +1,22 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { deleteSessionOnApi, listSessions } from '@/src/modules/sessions/service';
+import { deleteSessionOnApi, listSessions, updateSessionOnApi } from '@/src/modules/sessions/service';
 import { useSessionStore } from '@/src/modules/sessions/store';
+import { UpdateSessionPayload, WorkSession } from '@/src/modules/sessions/type';
 import { FormatDateLabel } from '@/src/utils/format';
 import { useCallback, useEffect, useMemo } from 'react';
 
-export interface WorkSession {
-    id: string;
-    start_time: string;
-    end_time: string | null;
-    start_odometer: string | null;
-    end_odometer: string | null;
-    status: string;
-    total_distance_km: number;
-    total_active_seconds: number;
-    total_idle_seconds: number;
-}
+
 
 export default function useSessions() {
-    const { 
-        history: sessions, 
-        loading, 
-        refreshing, 
-        timeFilter, 
-        setTimeFilter 
+    const {
+        history: sessions,
+        loading,
+        refreshing,
+        timeFilter,
+        setTimeFilter
     } = useSessionStore();
-    
+
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
 
@@ -84,6 +75,20 @@ export default function useSessions() {
         }
     }, []);
 
+    const updateSession = useCallback(async (sessionId: string, payload: UpdateSessionPayload) => {
+        try {
+
+            const response = await updateSessionOnApi(sessionId, payload);
+            if (response) {
+                listSessions(); // Refresh history
+            }
+            return response;
+        } catch (error) {
+            console.error('[Session Hook] Failed to update session', error);
+            return null;
+        }
+    }, []);
+
     return {
         sessions,
         loading,
@@ -94,6 +99,7 @@ export default function useSessions() {
         timeFilter,
         setTimeFilter,
         theme,
-        deleteSession
+        deleteSession,
+        updateSession
     };
 }

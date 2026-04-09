@@ -97,24 +97,20 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  signInWithGoogle: async (idToken?: string) => {
+  signInWithGoogle: async () => {
     try {
       set({ isLoading: true, error: null });
       await initDb(false);
 
-      if (!idToken) {
-        throw new Error("ID Token is required for Google login");
-      }
-
-      const user = await authService.googleLogin(idToken);
+      const user = await authService.googleLogin();
 
       if (user) {
         const finalProfile: Profile = {
           id: user.id,
-          name: user.user_metadata?.name ?? user.name ?? null,
+          name: user.name ?? null,
           email: user.email ?? null,
-          vehicle_type: user.user_metadata?.vehicle_type ?? null,
-          city: user.user_metadata?.city ?? null,
+          vehicle_type: user.vehicle_type ?? null,
+          city: user.city ?? null,
         };
 
         await localDatabase.insert("profiles", finalProfile).catch(() => {

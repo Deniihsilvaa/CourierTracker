@@ -173,7 +173,7 @@ export default function HomeScreen() {
                       value={odometer}
                       onChangeText={setOdometer}
                       keyboardType="numeric"
-                      placeholder="Odometro inicial"
+                      placeholder={`Odometro inicial ${lastOdometer}`}
                       returnKeyType="done"
                       placeholderTextColor={appColors.textMuted}
                       style={{
@@ -189,9 +189,15 @@ export default function HomeScreen() {
                       }}
                     />
                     {/* Texto de informacao */}
-                    <Text style={{ color: appColors.textMuted, fontSize: 10, fontWeight: "600", textTransform: "capitalize", textAlign: "right" }}>
-                      Ultimo odometro registrado: {lastOdometer}
-                    </Text>
+                    <Pressable
+                      onPress={() => setOdometer(String(lastOdometer))}
+                      style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 4 }}
+                    >
+                      <Ionicons name="attach-outline" size={14} color={appColors.primary} style={{ transform: [{ rotate: '45deg' }] }} />
+                      <Text style={{ color: appColors.textMuted, fontSize: 10, fontWeight: "600", textTransform: "capitalize", textAlign: "right" }}>
+                        Ultimo odometro registrado: {lastOdometer}
+                      </Text>
+                    </Pressable>
                     <PrimaryButton
                       label="Iniciar turno"
                       onPress={handleStartSession}
