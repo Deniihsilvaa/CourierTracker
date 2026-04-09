@@ -30,11 +30,11 @@ export const routeService = {
     try {
       logger.info('[RouteService] Creating manual route');
       
-      // 1. Geocode pickup (required)
+      // 1. Geocode pickup if provided (required if no client maybe, but we allow empty later)
       const pickupGeo =
         data.pickup_lat != null && data.pickup_lng != null
           ? { lat: data.pickup_lat, lng: data.pickup_lng }
-          : await geocodingService.geocodeAddress(data.pickup_location);
+          : data.pickup_location ? await geocodingService.geocodeAddress(data.pickup_location) : null;
       
       // 2. Geocode delivery (optional)
       let deliveryGeo = null;
@@ -50,55 +50,83 @@ export const routeService = {
 
       const now = new Date().toISOString();
       
-      const newRoute: Route = {
-        id: uuidv4(),
+      // Request body payload for API
+      const apiPayload = {
         session_id: sessionId,
         client_id: data.client_id || null,
-        
-        pickup_location: data.pickup_location,
+        pickup_location: data.pickup_location || "Coleta do Cliente", // fallback if client is selected but no location string
         pickup_lat: pickupGeo?.lat ?? null,
         pickup_lng: pickupGeo?.lng ?? null,
-        
         delivery_location: data.delivery_location ?? null,
         delivery_lat: deliveryGeo?.lat ?? null,
         delivery_lng: deliveryGeo?.lng ?? null,
-        
         value: data.value ?? null,
-        
-        driver_start_lat: null,
-        driver_start_lng: null,
-        driver_start_at: null,
-
-        pickup_arrived_lat: null,
-        pickup_arrived_lng: null,
-        pickup_arrived_at: null,
-
-        delivery_arrived_lat: null,
-        delivery_arrived_lng: null,
-        delivery_arrived_at: null,
-
-        driver_to_pickup_km: data.driver_to_pickup_km ?? null,
-        pickup_to_delivery_km: data.pickup_to_delivery_km ?? null,
-        estimated_duration_minutes: data.estimated_duration_minutes ?? null,
-        route_geometry: data.route_geometry ?? null,
-        
-        route_status: 'pending',
-        
         payment_required: data.payment_required,
         payment_status: 'pending',
-        payment_received_at: null,
-        
-        created_at: now,
-        synced: false
       };
+
+      let newRoute: Route | null = null;
+      let syncedStatus = 0;
+
+      try {
+        const response = await api.post('/routes/v1/', apiPayload);
+        if (response.data && response.data.success && response.data.data) {
+          logger.info('[RouteService] API creation successful.');
+          newRoute = mapRemoteRouteToModel(response.data.data);
+          syncedStatus = 1;
+        }
+      } catch (apiError: any) {
+        logger.warn('[RouteService] API creation failed, falling back to local DB:', apiError?.message || apiError);
+      }
+
+      // If API failed or somehow returned no data, fallback to generating local record
+      if (!newRoute) {
+        newRoute = {
+          id: uuidv4(),
+          session_id: sessionId,
+          client_id: data.client_id || null,
+          client: undefined, // Type doesn't have it initialized locally without fetching client usually
+          pickup_location: data.pickup_location || "Coleta do Cliente",
+          pickup_lat: pickupGeo?.lat ?? null,
+          pickup_lng: pickupGeo?.lng ?? null,
+          delivery_location: data.delivery_location ?? null,
+          delivery_lat: deliveryGeo?.lat ?? null,
+          delivery_lng: deliveryGeo?.lng ?? null,
+          value: data.value ?? null,
+          driver_start_lat: null,
+          driver_start_lng: null,
+          driver_start_at: null,
+          pickup_arrived_lat: null,
+          pickup_arrived_lng: null,
+          pickup_arrived_at: null,
+          delivery_arrived_lat: null,
+          delivery_arrived_lng: null,
+          delivery_arrived_at: null,
+          driver_to_pickup_km: data.driver_to_pickup_km ?? null,
+          pickup_to_delivery_km: data.pickup_to_delivery_km ?? null,
+          estimated_duration_minutes: data.estimated_duration_minutes ?? null,
+          route_geometry: data.route_geometry ?? null,
+          route_status: 'pending',
+          payment_required: data.payment_required,
+          payment_status: 'pending',
+          payment_received_at: null,
+          created_at: now,
+          synced: false,
+        };
+      }
 
       const sqliteRow = {
         ...newRoute,
         route_geometry: newRoute.route_geometry ? JSON.stringify(newRoute.route_geometry) : null,
         payment_required: newRoute.payment_required ? 1 : 0,
-        synced: 0
+        synced: syncedStatus
       };
-      await localDatabase.insert('manual_routes', sqliteRow);
+      
+      // we remove the nested "client" object before inserting because localDb might not store it directly or expects plain columns
+      const rowToInsert = { ...sqliteRow };
+      delete rowToInsert.client;
+
+      await localDatabase.insert('manual_routes', rowToInsert);
 
       return newRoute;
     } catch (error) {

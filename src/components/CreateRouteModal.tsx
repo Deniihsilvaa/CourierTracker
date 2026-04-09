@@ -277,14 +277,16 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
                 ) : null}
               </GlassCard>
 
-              <AddressAutocomplete
-                label="Coleta"
-                placeholder="Busque o endereco de coleta"
-                selectedAddress={pickupAddress}
-                onSelectAddress={setPickupAddress}
-                onClearAddress={() => setPickupAddress(null)}
-                editable={!isSubmitting}
-              />
+              {!selectedClient && (
+                <AddressAutocomplete
+                  label="Coleta"
+                  placeholder="Busque o endereco de coleta"
+                  selectedAddress={pickupAddress}
+                  onSelectAddress={setPickupAddress}
+                  onClearAddress={() => setPickupAddress(null)}
+                  editable={!isSubmitting}
+                />
+              )}
 
               <AddressAutocomplete
                 label="Entrega"
