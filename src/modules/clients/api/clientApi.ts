@@ -1,4 +1,4 @@
-import { api } from "@/src/services/api";
+import { api, API_ROUTES } from "@/src/services/api";
 import { Client } from "@/src/types/route.types";
 import { AxiosError } from "axios";
 
@@ -85,7 +85,9 @@ const getErrorMessage = (error: unknown) => {
   return "Não foi possível concluir a operação com clientes.";
 };
 
-const handleEnvelope = <T extends { success: boolean; data: unknown }>(payload: T) => {
+const handleEnvelope = <T extends { success: boolean; data: unknown }>(
+  payload: T,
+) => {
   if (!payload?.success) {
     throw new Error("A API respondeu sem sucesso para a operação de clientes.");
   }
@@ -96,7 +98,10 @@ const handleEnvelope = <T extends { success: boolean; data: unknown }>(payload: 
 export const clientApi = {
   async list(params: ListClientsParams = {}): Promise<ClientListResponse> {
     try {
-      const response = await api.get<ClientListResponse>("/clients/v1/", { params });
+      const response = await api.get<ClientListResponse>(
+        API_ROUTES.CLIENTS.list,
+        { params },
+      );
       const payload = response.data;
 
       if (!payload?.success) {
@@ -132,7 +137,10 @@ export const clientApi = {
 
   async update(id: string, payload: Partial<ClientPayload>): Promise<Client> {
     try {
-      const response = await api.patch<ClientEnvelope>(`/clients/v1/${id}`, payload);
+      const response = await api.patch<ClientEnvelope>(
+        `/clients/v1/${id}`,
+        payload,
+      );
       return normalizeClient(handleEnvelope(response.data).data as Client);
     } catch (error) {
       throw new Error(getErrorMessage(error));
@@ -141,7 +149,9 @@ export const clientApi = {
 
   async delete(id: string): Promise<{ id: string }> {
     try {
-      const response = await api.delete<ClientDeleteEnvelope>(`/clients/v1/${id}`);
+      const response = await api.delete<ClientDeleteEnvelope>(
+        `/clients/v1/${id}`,
+      );
       return handleEnvelope(response.data).data as { id: string };
     } catch (error) {
       throw new Error(getErrorMessage(error));
