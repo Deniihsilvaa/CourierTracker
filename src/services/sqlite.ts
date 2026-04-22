@@ -12,18 +12,16 @@ export const getDb = () => {
 };
 
 // Initialize the database tables
+const CURRENT_DB_VERSION = 5;
+
 /**
  * Initializes the database.
  * @param forceReset - Whether to force a database reset.
  */
 export const initDb = async (forceReset = false) => {
   if (initPromise) {
-    if (!forceReset) {
-      await initPromise;
-      return;
-    }
-
     await initPromise;
+    if (!forceReset) return;
   }
 
   if (isInitialized && !forceReset) {
@@ -36,392 +34,349 @@ export const initDb = async (forceReset = false) => {
     if (forceReset) {
       console.log('[Storage] FORCING DATABASE RESET...');
       await db.execAsync(`
-      DROP TABLE IF EXISTS gps_points;
-      DROP TABLE IF EXISTS trips;
-      DROP TABLE IF EXISTS work_sessions;
-      DROP TABLE IF EXISTS profiles;
-      DROP TABLE IF EXISTS log_system;
-      DROP TABLE IF EXISTS route_events;
-      DROP TABLE IF EXISTS tracking_sessions;
-      DROP TABLE IF EXISTS route_segments;
-      DROP TABLE IF EXISTS analytics_sessions;
-      DROP TABLE IF EXISTS category_types;
-      DROP TABLE IF EXISTS expenses;
-      DROP TABLE IF EXISTS incomes;
-      DROP TABLE IF EXISTS fuel_logs;
-      DROP TABLE IF EXISTS maintenance_logs;
-      DROP TABLE IF EXISTS manual_routes;
-      DROP TABLE IF EXISTS clients;
-    `);
+        DROP TABLE IF EXISTS gps_points;
+        DROP TABLE IF EXISTS trips;
+        DROP TABLE IF EXISTS work_sessions;
+        DROP TABLE IF EXISTS profiles;
+        DROP TABLE IF EXISTS log_system;
+        DROP TABLE IF EXISTS route_events;
+        DROP TABLE IF EXISTS tracking_sessions;
+        DROP TABLE IF EXISTS route_segments;
+        DROP TABLE IF EXISTS analytics_sessions;
+        DROP TABLE IF EXISTS category_types;
+        DROP TABLE IF EXISTS expenses;
+        DROP TABLE IF EXISTS incomes;
+        DROP TABLE IF EXISTS fuel_logs;
+        DROP TABLE IF EXISTS maintenance_logs;
+        DROP TABLE IF EXISTS manual_routes;
+        DROP TABLE IF EXISTS clients;
+        PRAGMA user_version = 0;
+      `);
     }
 
     try {
       // Enable WAL mode and optimized settings
-      await db.execAsync(`PRAGMA journal_mode = WAL;`);
-      await db.execAsync(`PRAGMA foreign_keys = ON;`);
-      await db.execAsync(`PRAGMA synchronous = NORMAL;`);
-      await db.execAsync(`PRAGMA wal_autocheckpoint = 1000;`);
-
-      await db.withTransactionAsync(async () => {
-        // --- 1. CREATE CORE TABLES ---
-
-        // Profiles
-        await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS profiles (
-          id TEXT PRIMARY KEY,
-          name TEXT,
-          full_name TEXT,
-          email TEXT,
-          vehicle_type TEXT,
-          city TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          synced INTEGER DEFAULT 0
-        );
+      await db.execAsync(`
+        PRAGMA journal_mode = WAL;
+        PRAGMA foreign_keys = ON;
+        PRAGMA synchronous = NORMAL;
+        PRAGMA wal_autocheckpoint = 1000;
       `);
 
-        // Work Sessions
-        await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS work_sessions (
-          id TEXT PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          start_time TEXT NOT NULL,
-          end_time TEXT,
-          start_odometer TEXT,
-          end_odometer TEXT,
-          total_distance_km REAL DEFAULT 0.0,
-          total_active_seconds INTEGER DEFAULT 0,
-          total_idle_seconds INTEGER DEFAULT 0,
-          status TEXT DEFAULT 'open',
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT,
-          deleted_at TEXT,
-          synced INTEGER DEFAULT 0
-        );
-      `);
+      const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version;');
+      const currentVersion = result?.user_version ?? 0;
 
+      if (currentVersion < CURRENT_DB_VERSION) {
+        console.log(`[Storage] Migrating database from version ${currentVersion} to ${CURRENT_DB_VERSION}...`);
 
-        // Trips
-        await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS trips (
-          id TEXT PRIMARY KEY,
-          session_id TEXT NOT NULL,
-          user_id TEXT,
-          start_time TEXT,
-          end_time TEXT,
-          start_latitude REAL,
-          start_longitude REAL,
-          end_latitude REAL,
-          end_longitude REAL,
-          distance_km REAL DEFAULT 0.0,
-          duration_seconds INTEGER,
-          status TEXT DEFAULT 'pending',
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          synced INTEGER DEFAULT 0
-        );
-      `);
+        await db.withTransactionAsync(async () => {
+          // --- 1. CREATE CORE TABLES (If they don't exist) ---
+          await db.execAsync(`
+            CREATE TABLE IF NOT EXISTS profiles (
+              id TEXT PRIMARY KEY,
+              name TEXT,
+              full_name TEXT,
+              email TEXT,
+              vehicle_type TEXT,
+              city TEXT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              synced INTEGER DEFAULT 0
+            );
 
-        // GPS Points
-        await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS gps_points (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id TEXT,
-          session_id TEXT,
-          trip_id TEXT,
-          latitude REAL NOT NULL,
-          longitude REAL NOT NULL,
-          accuracy REAL,
-          speed REAL,
-          recorded_at TEXT NOT NULL,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          synced INTEGER DEFAULT 0
-        );
-      `);
+            CREATE TABLE IF NOT EXISTS work_sessions (
+              id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL,
+              start_time TEXT NOT NULL,
+              end_time TEXT,
+              start_odometer TEXT,
+              end_odometer TEXT,
+              total_distance_km REAL DEFAULT 0.0,
+              total_active_seconds INTEGER DEFAULT 0,
+              total_idle_seconds INTEGER DEFAULT 0,
+              status TEXT DEFAULT 'open',
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              updated_at TEXT,
+              deleted_at TEXT,
+              synced INTEGER DEFAULT 0
+            );
 
-        // Route Events
-        await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS route_events (
-          id TEXT PRIMARY KEY,
-          user_id TEXT,
-          session_id TEXT,
-          event_type TEXT,
-          latitude REAL,
-          longitude REAL,
-          created_at TEXT,
-          metadata TEXT,
-          synced INTEGER DEFAULT 0
-        );
-      `);
+            CREATE TABLE IF NOT EXISTS trips (
+              id TEXT PRIMARY KEY,
+              session_id TEXT NOT NULL,
+              user_id TEXT,
+              start_time TEXT,
+              end_time TEXT,
+              start_latitude REAL,
+              start_longitude REAL,
+              end_latitude REAL,
+              end_longitude REAL,
+              distance_km REAL DEFAULT 0.0,
+              duration_seconds INTEGER,
+              status TEXT DEFAULT 'pending',
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              synced INTEGER DEFAULT 0
+            );
 
-        // Tracking Sessions
-        await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS tracking_sessions (
-          id TEXT PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          started_at TEXT NOT NULL,
-          ended_at TEXT,
-          status TEXT DEFAULT 'active',
-          synced INTEGER DEFAULT 0
-        );
-      `);
+            CREATE TABLE IF NOT EXISTS gps_points (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id TEXT,
+              session_id TEXT,
+              trip_id TEXT,
+              latitude REAL NOT NULL,
+              longitude REAL NOT NULL,
+              accuracy REAL,
+              speed REAL,
+              recorded_at TEXT NOT NULL,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              synced INTEGER DEFAULT 0
+            );
 
-        // Route Segments
-        await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS route_segments (
-          id TEXT PRIMARY KEY,
-          session_id TEXT NOT NULL,
-          segment_type TEXT,
-          started_at TEXT,
-          ended_at TEXT,
-          distance_km REAL,
-          duration_seconds INTEGER,
-          metadata TEXT,
-          synced INTEGER DEFAULT 0
-        );
-      `);
+            CREATE TABLE IF NOT EXISTS route_events (
+              id TEXT PRIMARY KEY,
+              user_id TEXT,
+              session_id TEXT,
+              event_type TEXT,
+              latitude REAL,
+              longitude REAL,
+              created_at TEXT,
+              metadata TEXT,
+              synced INTEGER DEFAULT 0
+            );
 
-        // Analytics Sessions
-        await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS analytics_sessions (
-          id TEXT PRIMARY KEY,
-          session_id TEXT NOT NULL,
-          metrics_json TEXT,
-          generated_at TEXT,
-          synced INTEGER DEFAULT 0
-        );
-      `);
+            CREATE TABLE IF NOT EXISTS tracking_sessions (
+              id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL,
+              started_at TEXT NOT NULL,
+              ended_at TEXT,
+              status TEXT DEFAULT 'active',
+              synced INTEGER DEFAULT 0
+            );
 
-        // Log System
-        await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS log_system (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          message TEXT,
-          level TEXT,
-          data TEXT,
-          meta_dados TEXT,
-          synced INTEGER DEFAULT 0
-        );
-      `);
+            CREATE TABLE IF NOT EXISTS route_segments (
+              id TEXT PRIMARY KEY,
+              session_id TEXT NOT NULL,
+              segment_type TEXT,
+              started_at TEXT,
+              ended_at TEXT,
+              distance_km REAL,
+              duration_seconds INTEGER,
+              metadata TEXT,
+              synced INTEGER DEFAULT 0
+            );
 
-        // Category Types
-        await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS category_types (
-          id TEXT PRIMARY KEY,
-          user_id TEXT,
-          name TEXT,
-          description TEXT,
-          type TEXT,
-          synced INTEGER DEFAULT 0
-        );
-      `);
+            CREATE TABLE IF NOT EXISTS analytics_sessions (
+              id TEXT PRIMARY KEY,
+              session_id TEXT NOT NULL,
+              metrics_json TEXT,
+              generated_at TEXT,
+              synced INTEGER DEFAULT 0
+            );
 
-        // Expenses
-        await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS expenses (
-          id TEXT PRIMARY KEY,
-          user_id TEXT,
-          session_id TEXT,
-          amount REAL,
-          category_id TEXT,
-          description TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          synced INTEGER DEFAULT 0
-        );
-      `);
+            CREATE TABLE IF NOT EXISTS log_system (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              message TEXT,
+              level TEXT,
+              data TEXT,
+              meta_dados TEXT,
+              synced INTEGER DEFAULT 0
+            );
 
-        // Incomes
-        await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS incomes (
-          id TEXT PRIMARY KEY,
-          user_id TEXT,
-          session_id TEXT,
-          amount REAL,
-          source TEXT,
-          description TEXT,
-          category_id TEXT,
-          date_competition TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          synced INTEGER DEFAULT 0
-        );
-      `);
+            CREATE TABLE IF NOT EXISTS category_types (
+              id TEXT PRIMARY KEY,
+              user_id TEXT,
+              name TEXT,
+              description TEXT,
+              type TEXT,
+              synced INTEGER DEFAULT 0
+            );
 
-        // Fuel Logs
-        await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS fuel_logs (
-          id TEXT PRIMARY KEY,
-          user_id TEXT,
-          session_id TEXT,
-          amount REAL,
-          liters TEXT,
-          price_per_liter REAL,
-          odometer TEXT,
-          description TEXT,
-          gas_station TEXT,
-          date_competition TEXT,
-          type TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          synced INTEGER DEFAULT 0
-        );
-      `);
+            CREATE TABLE IF NOT EXISTS expenses (
+              id TEXT PRIMARY KEY,
+              user_id TEXT,
+              session_id TEXT,
+              amount REAL,
+              category_id TEXT,
+              description TEXT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              synced INTEGER DEFAULT 0
+            );
 
-        // Maintenance Logs
-        await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS maintenance_logs (
-          id TEXT PRIMARY KEY,
-          user_id TEXT,
-          type TEXT,
-          amount REAL,
-          odometer TEXT,
-          description TEXT,
-          date_m TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          synced INTEGER DEFAULT 0
-        );
-      `);
+            CREATE TABLE IF NOT EXISTS incomes (
+              id TEXT PRIMARY KEY,
+              user_id TEXT,
+              session_id TEXT,
+              amount REAL,
+              source TEXT,
+              description TEXT,
+              category_id TEXT,
+              date_competition TEXT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              synced INTEGER DEFAULT 0
+            );
 
-        // Clients
-        await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS clients (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          address TEXT NOT NULL,
-          phone TEXT,
-          latitude REAL,
-          longitude REAL,
-          client_type TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT,
-          deleted_at TEXT,
-          synced INTEGER DEFAULT 0
-        );
-      `);
+            CREATE TABLE IF NOT EXISTS fuel_logs (
+              id TEXT PRIMARY KEY,
+              user_id TEXT,
+              session_id TEXT,
+              amount REAL,
+              liters TEXT,
+              price_per_liter REAL,
+              odometer TEXT,
+              description TEXT,
+              gas_station TEXT,
+              date_competition TEXT,
+              type TEXT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              synced INTEGER DEFAULT 0
+            );
 
-        // Manual Routes
-        await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS manual_routes (
-          id TEXT PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS maintenance_logs (
+              id TEXT PRIMARY KEY,
+              user_id TEXT,
+              type TEXT,
+              amount REAL,
+              odometer TEXT,
+              description TEXT,
+              date_m TEXT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              synced INTEGER DEFAULT 0
+            );
 
-          session_id TEXT,
-          client_id TEXT,
+            CREATE TABLE IF NOT EXISTS clients (
+              id TEXT PRIMARY KEY,
+              name TEXT NOT NULL,
+              address TEXT NOT NULL,
+              phone TEXT,
+              latitude REAL,
+              longitude REAL,
+              client_type TEXT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              updated_at TEXT,
+              deleted_at TEXT,
+              synced INTEGER DEFAULT 0
+            );
 
-          pickup_location TEXT NOT NULL,
-          pickup_lat REAL,
-          pickup_lng REAL,
+            CREATE TABLE IF NOT EXISTS manual_routes (
+              id TEXT PRIMARY KEY,
+              session_id TEXT,
+              client_id TEXT,
+              pickup_location TEXT NOT NULL,
+              pickup_lat REAL,
+              pickup_lng REAL,
+              delivery_location TEXT,
+              delivery_lat REAL,
+              delivery_lng REAL,
+              value REAL,
+              driver_start_lat REAL,
+              driver_start_lng REAL,
+              driver_start_at TEXT,
+              pickup_arrived_lat REAL,
+              pickup_arrived_lng REAL,
+              pickup_arrived_at TEXT,
+              delivery_arrived_lat REAL,
+              delivery_arrived_lng REAL,
+              delivery_arrived_at TEXT,
+              driver_to_pickup_km REAL,
+              pickup_to_delivery_km REAL,
+              estimated_duration_minutes REAL,
+              route_geometry TEXT,
+              route_status TEXT DEFAULT 'pending',
+              payment_required INTEGER DEFAULT 1,
+              payment_status TEXT DEFAULT 'pending',
+              payment_received_at TEXT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              updated_at TEXT,
+              deleted_at TEXT,
+              synced INTEGER DEFAULT 0
+            );
+          `);
 
-          delivery_location TEXT,
-          delivery_lat REAL,
-          delivery_lng REAL,
+          // --- 2. RUN SCHEMA EVOLUTION ---
+          const tablesToMigrate = [
+            'profiles', 'work_sessions', 'trips', 'route_events',
+            'expenses', 'incomes', 'fuel_logs', 'maintenance_logs', 'category_types',
+            'gps_points', 'tracking_sessions', 'route_segments', 'analytics_sessions', 'manual_routes', 'clients'
+          ];
 
-          value REAL,
+          for (const table of tablesToMigrate) {
+            const columnInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`);
+            const existingColumns = columnInfo.map(c => c.name);
 
-          driver_start_lat REAL,
-          driver_start_lng REAL,
-          driver_start_at TEXT,
-
-          pickup_arrived_lat REAL,
-          pickup_arrived_lng REAL,
-          pickup_arrived_at TEXT,
-
-          delivery_arrived_lat REAL,
-          delivery_arrived_lng REAL,
-          delivery_arrived_at TEXT,
-
-          driver_to_pickup_km REAL,
-          pickup_to_delivery_km REAL,
-          estimated_duration_minutes REAL,
-          route_geometry TEXT,
-
-          route_status TEXT DEFAULT 'pending',
-
-          payment_required INTEGER DEFAULT 1,
-          payment_status TEXT DEFAULT 'pending',
-          payment_received_at TEXT,
-
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT,
-          deleted_at TEXT,
-          synced INTEGER DEFAULT 0
-        );
-      `);
-      });
-
-      // --- 2. RUN MIGRATIONS (Ensure all columns exist) ---
-      // These run OUTSIDE the main transaction to prevent rollback on duplicate column errors
-
-      const tablesToMigrate = [
-        'profiles', 'work_sessions', 'trips', 'route_events',
-        'expenses', 'incomes', 'fuel_logs', 'maintenance_logs', 'category_types',
-        'gps_points', 'tracking_sessions', 'route_segments', 'analytics_sessions', 'manual_routes', 'clients'
-      ];
-
-      for (const table of tablesToMigrate) {
-        // Basic sync columns
-        try { await db.execAsync(`ALTER TABLE ${table} ADD COLUMN synced INTEGER DEFAULT 0;`); } catch (e) { }
-        try { await db.execAsync(`ALTER TABLE ${table} ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP;`); } catch (e) { }
-        try { await db.execAsync(`ALTER TABLE ${table} ADD COLUMN updated_at TEXT;`); } catch (e) { }
-
-        // Soft delete column (except log_system and gps_points as per localDatabase.ts logic)
-        if (table !== 'log_system' && table !== 'gps_points') {
-          try { 
-            // Check if column exists first to be safe
-            const columnInfo = await db.getAllAsync<{name: string}>(`PRAGMA table_info(${table})`);
-            const hasDeletedAt = columnInfo.some(c => c.name === 'deleted_at');
-            
-            if (!hasDeletedAt) {
-              console.log(`[Storage] Adding deleted_at to ${table}...`);
-              await db.execAsync(`ALTER TABLE ${table} ADD COLUMN deleted_at TEXT;`); 
-              console.log(`[Storage] Migration success: Added deleted_at to ${table}`);
+            // Add missing columns if they don't exist
+            if (!existingColumns.includes('synced')) {
+              await db.execAsync(`ALTER TABLE ${table} ADD COLUMN synced INTEGER DEFAULT 0;`);
             }
-          } catch (e: any) {
-            console.error(`[Storage] CRITICAL: Could not add deleted_at to ${table}:`, e.message);
+            if (!existingColumns.includes('created_at')) {
+              await db.execAsync(`ALTER TABLE ${table} ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP;`);
+            }
+            if (!existingColumns.includes('updated_at')) {
+              await db.execAsync(`ALTER TABLE ${table} ADD COLUMN updated_at TEXT;`);
+            }
+            if (table !== 'log_system' && table !== 'gps_points' && !existingColumns.includes('deleted_at')) {
+              await db.execAsync(`ALTER TABLE ${table} ADD COLUMN deleted_at TEXT;`);
+            }
+
+            // Table specific columns
+            if (table === 'manual_routes') {
+              if (!existingColumns.includes('driver_start_lat')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_start_lat REAL;`);
+              if (!existingColumns.includes('driver_start_lng')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_start_lng REAL;`);
+              if (!existingColumns.includes('driver_start_at')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_start_at TEXT;`);
+              if (!existingColumns.includes('pickup_arrived_lat')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_arrived_lat REAL;`);
+              if (!existingColumns.includes('pickup_arrived_lng')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_arrived_lng REAL;`);
+              if (!existingColumns.includes('pickup_arrived_at')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_arrived_at TEXT;`);
+              if (!existingColumns.includes('delivery_arrived_lat')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_lat REAL;`);
+              if (!existingColumns.includes('delivery_arrived_lng')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_lng REAL;`);
+              if (!existingColumns.includes('delivery_arrived_at')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_at TEXT;`);
+              if (!existingColumns.includes('driver_to_pickup_km')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_to_pickup_km REAL;`);
+              if (!existingColumns.includes('pickup_to_delivery_km')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_to_delivery_km REAL;`);
+              if (!existingColumns.includes('estimated_duration_minutes')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN estimated_duration_minutes REAL;`);
+              if (!existingColumns.includes('route_geometry')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN route_geometry TEXT;`);
+            }
+
+            if (table === 'clients') {
+              if (!existingColumns.includes('client_type')) await db.execAsync(`ALTER TABLE clients ADD COLUMN client_type TEXT;`);
+            }
+
+            if (table === 'work_sessions') {
+              if (!existingColumns.includes('start_odometer')) await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN start_odometer TEXT;`);
+              if (!existingColumns.includes('end_odometer')) await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN end_odometer TEXT;`);
+              if (!existingColumns.includes('total_distance_km')) await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN total_distance_km REAL DEFAULT 0.0;`);
+              if (!existingColumns.includes('total_active_seconds')) await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN total_active_seconds INTEGER DEFAULT 0;`);
+              if (!existingColumns.includes('total_idle_seconds')) await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN total_idle_seconds INTEGER DEFAULT 0;`);
+            }
+
+            if (table === 'profiles') {
+              if (!existingColumns.includes('full_name')) await db.execAsync(`ALTER TABLE profiles ADD COLUMN full_name TEXT;`);
+              if (!existingColumns.includes('vehicle_type')) await db.execAsync(`ALTER TABLE profiles ADD COLUMN vehicle_type TEXT;`);
+              if (!existingColumns.includes('city')) await db.execAsync(`ALTER TABLE profiles ADD COLUMN city TEXT;`);
+            }
           }
-        }
-      }
 
-      // Manual Routes migrations
-      try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_start_lat REAL;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_start_lng REAL;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_start_at TEXT;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_arrived_lat REAL;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_arrived_lng REAL;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_arrived_at TEXT;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_lat REAL;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_lng REAL;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_at TEXT;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_to_pickup_km REAL;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_to_delivery_km REAL;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN estimated_duration_minutes REAL;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN route_geometry TEXT;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE clients ADD COLUMN client_type TEXT;`); } catch (e) { }
+          // --- 3. CREATE INDICES (Optimized) ---
+          await db.execAsync(`
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_gps_dedup ON gps_points (session_id, recorded_at);
+            CREATE INDEX IF NOT EXISTS idx_gps_points_session ON gps_points(session_id);
+            CREATE INDEX IF NOT EXISTS idx_route_events_session ON route_events(session_id);
+            CREATE INDEX IF NOT EXISTS idx_route_events_time ON route_events(created_at);
+            CREATE INDEX IF NOT EXISTS idx_log_system_synced ON log_system (synced, created_at);
+            CREATE INDEX IF NOT EXISTS idx_routes_session ON manual_routes (session_id);
+            CREATE INDEX IF NOT EXISTS idx_clients_search ON clients(name, address, phone);
+            
+            CREATE INDEX IF NOT EXISTS idx_work_sessions_synced ON work_sessions(synced);
+            CREATE INDEX IF NOT EXISTS idx_trips_synced ON trips(synced);
+            CREATE INDEX IF NOT EXISTS idx_gps_points_synced ON gps_points(synced);
+            CREATE INDEX IF NOT EXISTS idx_route_events_synced ON route_events(synced);
+            CREATE INDEX IF NOT EXISTS idx_expenses_synced ON expenses(synced);
+            CREATE INDEX IF NOT EXISTS idx_incomes_synced ON incomes(synced);
+            CREATE INDEX IF NOT EXISTS idx_fuel_logs_synced ON fuel_logs(synced);
+            CREATE INDEX IF NOT EXISTS idx_maintenance_logs_synced ON maintenance_logs(synced);
+            CREATE INDEX IF NOT EXISTS idx_manual_routes_synced ON manual_routes(synced);
+          `);
 
-      // Specific columns for work_sessions
-      try { await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN start_odometer TEXT;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN end_odometer TEXT;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN total_distance_km REAL DEFAULT 0.0;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN total_active_seconds INTEGER DEFAULT 0;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN total_idle_seconds INTEGER DEFAULT 0;`); } catch (e) { }
-
-      // Specific columns for profiles
-      try { await db.execAsync(`ALTER TABLE profiles ADD COLUMN full_name TEXT;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE profiles ADD COLUMN vehicle_type TEXT;`); } catch (e) { }
-      try { await db.execAsync(`ALTER TABLE profiles ADD COLUMN city TEXT;`); } catch (e) { }
-
-      // Indices
-      try { await db.execAsync(`CREATE UNIQUE INDEX IF NOT EXISTS idx_gps_dedup ON gps_points (session_id, recorded_at);`); } catch (e) { }
-      try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_gps_points_session ON gps_points(session_id);`); } catch (e) { }
-      try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_route_events_session ON route_events(session_id);`); } catch (e) { }
-      try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_route_events_time ON route_events(created_at);`); } catch (e) { }
-      try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_log_system_synced ON log_system (synced, created_at);`); } catch (e) { }
-      try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_routes_session ON manual_routes (session_id);`); } catch (e) { }
-      try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_clients_search ON clients(name, address, phone);`); } catch (e) { }
-
-      // Performance: Synced indexes
-      const syncIndexTables = [
-        'work_sessions', 'trips', 'gps_points', 'route_events',
-        'expenses', 'incomes', 'fuel_logs', 'maintenance_logs', 'manual_routes'
-      ];
-      for (const table of syncIndexTables) {
-        try { await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_${table}_synced ON ${table}(synced);`); } catch (e) { }
+          // Set the final version
+          await db.execAsync(`PRAGMA user_version = ${CURRENT_DB_VERSION};`);
+        });
       }
 
       console.log('[Storage] Local database initialized successfully.');
@@ -439,6 +394,7 @@ export const initDb = async (forceReset = false) => {
     initPromise = null;
   }
 };
+
 
 /**
  * Retention Policy: Remove synced GPS data older than 7 days 

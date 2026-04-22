@@ -24,7 +24,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   ) => {
     try {
       set({ isLoading: true, error: null });
-      await initDb(false);
 
       const response = await authService.signUp(
         email,
@@ -59,7 +58,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   signIn: async (email: string, password?: string) => {
     try {
       set({ isLoading: true, error: null });
-      await initDb(false);
 
       if (!email || !password) {
         throw new Error("Email and password are required");
@@ -100,7 +98,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   signInWithGoogle: async () => {
     try {
       set({ isLoading: true, error: null });
-      await initDb(false);
 
       const user = await authService.googleLogin();
 
@@ -164,7 +161,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   checkSession: async () => {
     try {
       set({ isLoading: true, error: null });
-      await initDb(false);
 
       const token = await getAuthToken();
       if (!token) {

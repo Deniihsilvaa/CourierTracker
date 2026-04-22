@@ -16,8 +16,8 @@ import { runFullSync } from './sync';
  */
 export const AppInitializer = {
   privateSubscriptions: [] as any[],
-  timerInterval: null as NodeJS.Timeout | null,
-  syncInterval: null as NodeJS.Timeout | null,
+  timerInterval: null as any,
+  syncInterval: null as any,
   /**
    * Initializes the application.
    * @returns True if the initialization was successful, false otherwise.
@@ -50,16 +50,16 @@ export const AppInitializer = {
   startAutoSync() {
     if (this.syncInterval) clearInterval(this.syncInterval);
     
-    // Trigger initial sync shortly after start
+    // Trigger initial sync after some time to not compete with app startup
     setTimeout(() => {
       runFullSync().catch(err => logger.error('[AppInitializer] Initial auto-sync failed:', err));
-    }, 5000);
+    }, 15000);
 
-    // Set up recurring sync every 1 minute
+    // Set up recurring sync every 5 minutes
     this.syncInterval = setInterval(() => {
       logger.info('[AppInitializer] Running scheduled background sync...');
       runFullSync().catch(err => logger.warn('[AppInitializer] Scheduled sync failed (likely offline):', err.message));
-    }, 1 * 60 * 1000); 
+    }, 5 * 60 * 1000); 
   },
 
   startGlobalTimer() {

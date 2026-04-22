@@ -36,9 +36,6 @@ export default function RootLayout() {
         await AppInitializer.prepare();
         await checkSession();
         await AppInitializer.setupGlobalListeners();
-        
-        // Artificial delay to ensure branding is visible (Splash Screen)
-        await new Promise(resolve => setTimeout(resolve, 1500));
       } catch (e) {
         logger.error('[AppInitializer] Error during preparation:', e);
       } finally {
