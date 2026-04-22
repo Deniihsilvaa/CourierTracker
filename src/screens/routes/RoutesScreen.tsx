@@ -65,35 +65,50 @@ export default function RoutesScreen() {
             <SkeletonCard height={210} />
             <SkeletonCard height={210} />
           </View>
-        ) : routes.length === 0 ? (
-          <GlassCard>
-            <Text style={{ color: appColors.textPrimary, fontSize: 18, fontWeight: "800" }}>Nenhuma rota ativa</Text>
-            <Text style={{ color: appColors.textSecondary, fontSize: 14, lineHeight: 20, marginTop: spacing.xs }}>
-              Crie rotas manuais com cliente, coleta e entrega para iniciar o fluxo do motorista.
-            </Text>
-            <View style={{ marginTop: spacing.sm }}>
-              <PrimaryButton
-                label="Criar rota agora"
-                onPress={() => setModalVisible(true)}
-                icon={<Ionicons name="add-outline" size={18} color={appColors.textPrimary} />}
-              />
-            </View>
-          </GlassCard>
         ) : (
           <View style={{ gap: spacing.sm }}>
-            {routes.map((route) => (
-              <RouteOverviewCard
-                key={route.id}
-                route={route}
-                expanded={expandedRouteId === route.id}
-                onToggleExpand={() => setExpandedRouteId((current) => (current === route.id ? null : route.id))}
-                onOpenActions={setSelectedRoute}
-              />
-            ))}
+            {/* FAB movido para o topo da lista conforme solicitado */}
+            <FloatingActionButton
+              label="Nova rota"
+              icon="add"
+              onPress={() => setModalVisible(true)}
+              style={{
+                position: "relative",
+                bottom: 0,
+                right: 0,
+                marginBottom: spacing.sm,
+                width: "100%",
+                justifyContent: "center"
+              }}
+            />
+
+            {routes.length === 0 ? (
+              <GlassCard>
+                <Text style={{ color: appColors.textPrimary, fontSize: 18, fontWeight: "800" }}>Nenhuma rota ativa</Text>
+                <Text style={{ color: appColors.textSecondary, fontSize: 14, lineHeight: 20, marginTop: spacing.xs }}>
+                  Crie rotas manuais com cliente, coleta e entrega para iniciar o fluxo do motorista.
+                </Text>
+                <View style={{ marginTop: spacing.sm }}>
+                  <PrimaryButton
+                    label="Criar rota agora"
+                    onPress={() => setModalVisible(true)}
+                    icon={<Ionicons name="add-outline" size={18} color={appColors.textPrimary} />}
+                  />
+                </View>
+              </GlassCard>
+            ) : (
+              routes.map((route) => (
+                <RouteOverviewCard
+                  key={route.id}
+                  route={route}
+                  expanded={expandedRouteId === route.id}
+                  onToggleExpand={() => setExpandedRouteId((current) => (current === route.id ? null : route.id))}
+                  onOpenActions={setSelectedRoute}
+                />
+              ))
+            )}
           </View>
         )}
-
-        <FloatingActionButton label="Nova rota" icon="add" onPress={() => setModalVisible(true)} />
 
         <CreateRouteModal visible={modalVisible} onClose={() => setModalVisible(false)} />
         <RouteActionsModal visible={!!selectedRoute} onClose={() => setSelectedRoute(null)} route={selectedRoute} />

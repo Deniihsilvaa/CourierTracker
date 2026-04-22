@@ -1,18 +1,20 @@
 import { appColors, radius, softShadow } from "@/src/theme/colors";
 import { Ionicons } from "@expo/vector-icons";
 import React, { memo } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleProp, Text, View, ViewStyle } from "react-native";
 
 interface FloatingActionButtonProps {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   onPress: () => void;
+  style?: StyleProp<ViewStyle>;
 }
 
 export const FloatingActionButton = memo(function FloatingActionButton({
   label,
   icon,
   onPress,
+  style,
 }: FloatingActionButtonProps) {
   return (
     <Pressable
@@ -33,6 +35,7 @@ export const FloatingActionButton = memo(function FloatingActionButton({
           gap: 10,
           transform: [{ scale: pressed ? 0.97 : 1 }],
         },
+        style,
         softShadow,
       ]}
     >
