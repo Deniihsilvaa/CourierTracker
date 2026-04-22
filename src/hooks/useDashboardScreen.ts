@@ -190,7 +190,7 @@ export default function useDashboardScreen() {
                 ...activeSession,
                 start_odometer: Number(odometer)
             });
-
+            setLastOdometer(Number(odometer));
             ToastAndroid.show('Odômetro salvo!', ToastAndroid.SHORT);
         } catch (error) {
             logger.error('[Dashboard] Error saving odometer:', error);

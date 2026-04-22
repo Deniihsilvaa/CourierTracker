@@ -15,7 +15,7 @@ import React, { useMemo, useState } from "react";
 import { Alert, Pressable, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 export default function SessionsScreen() {
-  const { loading, refreshing, onRefresh, totals, sections, timeFilter, setTimeFilter, deleteSession, updateSession } = useSessions();
+  const { loading, refreshing, onRefresh, sections, timeFilter, setTimeFilter, deleteSession, updateSession } = useSessions();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [editSession, setEditSession] = useState<WorkSession | null>(null);
@@ -82,14 +82,6 @@ export default function SessionsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={appColors.primary} />}
         showsVerticalScrollIndicator={false}
       >
-        <GlassCard>
-          <SectionHeader title="Resumo consolidado" subtitle="Indicadores principais do período selecionado." />
-          <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
-            <SessionMetric label="Turnos" value={String(totals.count)} icon="calendar-outline" />
-            <SessionMetric label="Distância" value={`${totals.distance.toFixed(1)} km`} icon="navigate-outline" />
-            <SessionMetric label="Tempo" value={`${Math.floor(totals.duration / 3600)} h`} icon="time-outline" />
-          </View>
-        </GlassCard>
 
         <View style={{ flexDirection: "row", gap: spacing.xs }}>
           {filterOptions.map((option) => {
@@ -131,7 +123,7 @@ export default function SessionsScreen() {
           </GlassCard>
         ) : (
           sections.map((section) => (
-            <View key={section.title} style={{ gap: spacing.xs }}>
+            <View key={section.title.toLowerCase()} style={{ gap: spacing.xs }}>
 
               <SectionHeader
                 title={section.title}

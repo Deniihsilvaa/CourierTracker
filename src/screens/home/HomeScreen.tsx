@@ -225,7 +225,7 @@ export default function HomeScreen() {
             <View style={{ gap: spacing.xs }}>
               <Text style={{ color: appColors.textPrimary, fontSize: 22, fontWeight: "900" }}>Encerrar turno</Text>
               <Text style={{ color: appColors.textSecondary, fontSize: 14, lineHeight: 20 }}>
-                Informe o odometro final para fechar a sessao com o mesmo cuidado do inicio.
+                Informe o odometro final para fechar a sessao com o mesmo cuidado do inicio, ultimo odometro informado foi: {lastOdometer}
               </Text>
             </View>
 
