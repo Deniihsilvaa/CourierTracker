@@ -78,34 +78,34 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config as RetryAxiosRequest;
+    const requestUrl = originalRequest?.url ?? "";
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      const originalRequest = error.config as RetryAxiosRequest;
+    // Never retry the refresh endpoint itself — prevents infinite loop
+    const isRefreshRoute = requestUrl.startsWith(API_ROUTES.AUTH.REFRESH);
+    const isPublicAuthRoute = AUTH_PUBLIC_ROUTES.some((route) =>
+      requestUrl.startsWith(route),
+    );
+
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isRefreshRoute &&
+      !isPublicAuthRoute
+    ) {
+      originalRequest._retry = true; // Prevent retry loop
 
       try {
         console.warn("[API] Access token expired. Refreshing...");
-
         const newToken = await refreshToken();
-        const requestUrl = originalRequest?.url ?? "";
 
-        const isPublicAuthRoute = AUTH_PUBLIC_ROUTES.some((route) =>
-          requestUrl.startsWith(route),
-        );
-
-        if (isPublicAuthRoute) {
-          return Promise.reject(error);
-        }
         originalRequest.headers = originalRequest.headers ?? {};
-
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
 
         return api(originalRequest);
       } catch (refreshError) {
         console.warn("[API] Refresh failed. Logging out.");
-
         await authStorage.clearToken();
-        await initDb(true);
 
         return Promise.reject(refreshError);
       }

@@ -2,7 +2,7 @@ import { PrimaryButton } from "@/components/buttons/primary-button";
 import { appColors, radius, spacing } from "@/src/theme/colors";
 import { SessionSelector } from "@/components/blocks/financial/session-selector";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useCallback, useEffect } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
 interface FuelFormProps {
@@ -39,8 +39,28 @@ export const FuelForm = ({
   const isEditing = !!initialData;
 
   const updateField = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Permite apenas numeros e um ponto decimal
+    const sanitized = value.replace(",", ".");
+    setFormData((prev) => ({ ...prev, [field]: sanitized }));
   };
+
+  const calculateLiters = useCallback(() => {
+    const amount = parseFloat(formData.amount);
+    const price = parseFloat(formData.price_per_liter);
+    if (amount > 0 && price > 0) {
+      const result = (amount / price).toFixed(2);
+      setFormData((prev) => ({ ...prev, liters: result }));
+    }
+  }, [formData.amount, formData.price_per_liter]);
+
+  const calculateTotal = useCallback(() => {
+    const liters = parseFloat(formData.liters);
+    const price = parseFloat(formData.price_per_liter);
+    if (liters > 0 && price > 0) {
+      const result = (liters * price).toFixed(2);
+      setFormData((prev) => ({ ...prev, amount: result }));
+    }
+  }, [formData.liters, formData.price_per_liter]);
 
   return (
     <View style={{ gap: spacing.sm }}>
@@ -50,6 +70,7 @@ export const FuelForm = ({
         </Text>
       ) : null}
 
+      {/* Row de Preço, Litros e Total */}
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
         <Field label="R$/Litro" style={{ flex: 1 }}>
           <TextInput
@@ -57,30 +78,53 @@ export const FuelForm = ({
             onChangeText={(v) => updateField("price_per_liter", v)}
             style={inputStyle}
             placeholder="0.00"
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             placeholderTextColor={appColors.textMuted}
           />
         </Field>
+        
         <Field label="Litros" style={{ flex: 1 }}>
-          <TextInput
-            value={formData.liters}
-            onChangeText={(v) => updateField("liters", v)}
-            style={inputStyle}
-            placeholder="0.00"
-            keyboardType="numeric"
-            placeholderTextColor={appColors.textMuted}
-          />
+          <View style={{ position: 'relative' }}>
+            <TextInput
+              value={formData.liters}
+              onChangeText={(v) => updateField("liters", v)}
+              style={inputStyle}
+              placeholder="0.00"
+              keyboardType="decimal-pad"
+              placeholderTextColor={appColors.textMuted}
+            />
+            <Pressable 
+              onPress={calculateLiters}
+              style={{ position: 'absolute', right: 8, top: 14 }}
+            >
+              <Ionicons name="calculator-outline" size={20} color={appColors.warning} />
+            </Pressable>
+          </View>
         </Field>
+
         <Field label="Total R$" style={{ flex: 1 }}>
-          <TextInput
-            value={formData.amount}
-            onChangeText={(v) => updateField("amount", v)}
-            style={[inputStyle, { fontWeight: "800" }]}
-            placeholder="0.00"
-            keyboardType="numeric"
-            placeholderTextColor={appColors.textMuted}
-          />
+          <View style={{ position: 'relative' }}>
+            <TextInput
+              value={formData.amount}
+              onChangeText={(v) => updateField("amount", v)}
+              style={[inputStyle, { fontWeight: "800" }]}
+              placeholder="0.00"
+              keyboardType="decimal-pad"
+              placeholderTextColor={appColors.textMuted}
+            />
+            <Pressable 
+              onPress={calculateTotal}
+              style={{ position: 'absolute', right: 8, top: 14 }}
+            >
+              <Ionicons name="refresh-outline" size={20} color={appColors.success} />
+            </Pressable>
+          </View>
         </Field>
+      </View>
+
+      {/* Helper Text para automação */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: -spacing.xs }}>
+        <Text style={{ color: appColors.textMuted, fontSize: 10 }}>Clique no ícone para calcular</Text>
       </View>
 
       <View style={{ flexDirection: "row", gap: spacing.sm }}>

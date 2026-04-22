@@ -34,8 +34,14 @@ export default function RootLayout() {
     const prepareApp = async () => {
       try {
         await AppInitializer.prepare();
-        await checkSession();
-        await AppInitializer.setupGlobalListeners();
+
+        // Timeout: if checkSession takes longer than 5s, continue without it
+        await Promise.race([
+          checkSession(),
+          new Promise((resolve) => setTimeout(resolve, 5000)),
+        ]);
+
+        AppInitializer.setupGlobalListeners();
       } catch (e) {
         logger.error('[AppInitializer] Error during preparation:', e);
       } finally {

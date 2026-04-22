@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Alert, AppState } from 'react-native';
 import { handleNotificationAction, setupNotificationCategories } from '../infrastructure/tracking-notification';
@@ -90,10 +91,16 @@ export const AppInitializer = {
    * Sets up global listeners for the application.
    */
   setupGlobalListeners() {
-    // 1. Notification Response Listener
-    const notificationSub = Notifications.addNotificationResponseReceivedListener(response => {
-      handleNotificationAction(response);
-    });
+    // Skip notification setup in Expo Go to avoid heavy error logs/lag
+    if (Constants.appOwnership === 'expo') {
+      logger.info('[AppInitializer] Skipping notification setup in Expo Go');
+    } else {
+      // 1. Notification Response Listener
+      const notificationSub = Notifications.addNotificationResponseReceivedListener(response => {
+        handleNotificationAction(response).catch(err => logger.error('[AppInitializer] Notification action failed:', err));
+      });
+      this.privateSubscriptions.push(notificationSub);
+    }
 
     // 2. AppState Listener for Session Guard and Proactive Sync
     let lastState = AppState.currentState;
@@ -114,7 +121,7 @@ export const AppInitializer = {
       lastState = nextAppState;
     });
 
-    this.privateSubscriptions.push(notificationSub, appStateSub);
+    this.privateSubscriptions.push(appStateSub);
   },
 
   /**
