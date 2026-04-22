@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Alert, AppState } from 'react-native';
-import { useAuthStore } from '../modules/auth/store';
 import { handleNotificationAction, setupNotificationCategories } from '../infrastructure/tracking-notification';
+import { useAuthStore } from '../modules/auth/store';
 import { useSessionStore } from '../modules/sessions/store';
 import { sessionManager } from '../modules/tracking/session-manager';
 import { logger } from '../utils/logger';
@@ -36,7 +36,7 @@ export const AppInitializer = {
 
       // Start global timer if there's an active session
       this.startGlobalTimer();
-      
+
       // Start background sync timer (every 15 minutes)
       this.startAutoSync();
 
@@ -46,10 +46,13 @@ export const AppInitializer = {
       return false;
     }
   },
-
+  /**
+   * @description
+   * Starts the auto-sync process.
+   */
   startAutoSync() {
     if (this.syncInterval) clearInterval(this.syncInterval);
-    
+
     // Trigger initial sync after some time to not compete with app startup
     setTimeout(() => {
       runFullSync().catch(err => logger.error('[AppInitializer] Initial auto-sync failed:', err));
@@ -59,9 +62,13 @@ export const AppInitializer = {
     this.syncInterval = setInterval(() => {
       logger.info('[AppInitializer] Running scheduled background sync...');
       runFullSync().catch(err => logger.warn('[AppInitializer] Scheduled sync failed (likely offline):', err.message));
-    }, 5 * 60 * 1000); 
+    }, 5 * 60 * 1000);
   },
 
+  /**
+   * @description
+   * Starts the global timer for the active session.
+   */
   startGlobalTimer() {
     if (this.timerInterval) clearInterval(this.timerInterval);
 
@@ -78,6 +85,10 @@ export const AppInitializer = {
     }, 1000);
   },
 
+  /**
+   * @description
+   * Sets up global listeners for the application.
+   */
   setupGlobalListeners() {
     // 1. Notification Response Listener
     const notificationSub = Notifications.addNotificationResponseReceivedListener(response => {
@@ -106,6 +117,10 @@ export const AppInitializer = {
     this.privateSubscriptions.push(notificationSub, appStateSub);
   },
 
+  /**
+   * @description
+   * Cleans up all the private subscriptions and timers.
+   */
   cleanup() {
     this.privateSubscriptions.forEach(sub => sub.remove());
     this.privateSubscriptions = [];
@@ -113,6 +128,10 @@ export const AppInitializer = {
     if (this.syncInterval) clearInterval(this.syncInterval);
   },
 
+  /**
+   * @description
+   * Sets up global error handling for the application.
+   */
   setupErrorHandling() {
     if (!__DEV__) {
       const defaultErrorHandler = (ErrorUtils as any).getGlobalHandler();
