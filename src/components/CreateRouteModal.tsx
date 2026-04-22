@@ -1,17 +1,17 @@
 import { PrimaryButton } from "@/components/buttons/primary-button";
 import { GlassCard } from "@/components/cards/glass-card";
 import { SectionHeader } from "@/components/layout/section-header";
+import { ClientPickerModal } from "@/src/modules/clients/components/ClientPickerModal";
 import { AddressAutocomplete } from "@/src/modules/map/components/AddressAutocomplete";
 import { RouteMap } from "@/src/modules/map/components/RouteMap";
 import { mapboxService } from "@/src/modules/map/services/mapboxService";
 import { AddressSelection, MapCoordinate, RouteCalculation } from "@/src/modules/map/types";
-import { ClientPickerModal } from "@/src/modules/clients/components/ClientPickerModal";
 import { useRouteStore } from "@/src/store/routeStore";
-import { Client } from "@/src/types/route.types";
 import { appColors, radius, spacing } from "@/src/theme/colors";
+import { Client } from "@/src/types/route.types";
+import { ensureForegroundPermission } from "@/src/utils/location-access";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { ensureForegroundPermission } from "@/src/utils/location-access";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -79,7 +79,7 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
       setIsLocatingUser(true);
       try {
         const hasPermission = await ensureForegroundPermission();
-        
+
         if (!hasPermission) {
           setLocationError("Permissao de localizacao negada. A distancia sera calculada apenas quando houver GPS disponivel.");
           return;
@@ -171,21 +171,31 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
 
   const handleConfirm = async () => {
     if (!pickupAddress) {
-      setRouteError("Selecione um endereco de coleta valido.");
+      setRouteError("Informe o endereço de coleta.");
+      return;
+    }
+
+    if (!deliveryAddress) {
+      setRouteError("Informe o endereço de entrega. Este campo é obrigatório.");
+      return;
+    }
+
+    const numericValue = value.trim() ? parseFloat(value.replace(",", ".")) : 0;
+    if (isNaN(numericValue) || numericValue < 0) {
+      setRouteError("Informe um valor válido para a entrega (mínimo R$ 0,00).");
       return;
     }
 
     setIsSubmitting(true);
-    const numericValue = value.trim() ? parseFloat(value.replace(",", ".")) : null;
 
     try {
       await addRoute({
         pickup_location: pickupAddress.full_address,
         pickup_lat: pickupAddress.latitude,
         pickup_lng: pickupAddress.longitude,
-        delivery_location: deliveryAddress?.full_address ?? null,
-        delivery_lat: deliveryAddress?.latitude ?? null,
-        delivery_lng: deliveryAddress?.longitude ?? null,
+        delivery_location: deliveryAddress.full_address,
+        delivery_lat: deliveryAddress.latitude,
+        delivery_lng: deliveryAddress.longitude,
         value: numericValue,
         payment_required: paymentRequired,
         client_id: selectedClient?.id ?? undefined,
@@ -252,10 +262,10 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
                 <SectionHeader title="Cliente" subtitle="Opcional: use um cliente salvo para preencher a coleta mais rapido." />
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, marginTop: spacing.sm }}>
                   <View style={{ flex: 1, gap: 4 }}>
-                    <Text style={{ 
-                      color: selectedClient ? appColors.textPrimary : appColors.textMuted, 
-                      fontSize: 16, 
-                      fontWeight: selectedClient ? "800" : "500" 
+                    <Text style={{
+                      color: selectedClient ? appColors.textPrimary : appColors.textMuted,
+                      fontSize: 16,
+                      fontWeight: selectedClient ? "800" : "500"
                     }}>
                       {selectedClient ? selectedClient.name : "Nenhum cliente selecionado"}
                     </Text>
@@ -358,7 +368,7 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
               ) : null}
 
               <GlassCard>
-                <SectionHeader title="Financeiro" subtitle="Defina valor e necessidade de cobranca na entrega." />
+                <SectionHeader title="Financeiro" subtitle="Defina da entrega." />
                 <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
                   <View style={{ gap: spacing.xs }}>
                     <Text style={{ color: appColors.textSecondary, fontSize: 12, fontWeight: "700", textTransform: "uppercase" }}>
@@ -419,6 +429,8 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
                       disabled={isSubmitting}
                     />
                   </View>
+                  {/* TODO: Adicionar categoria de entrega, cada categoria tera um valor padrao baseada no perfil do entregador */}
+
                 </View>
               </GlassCard>
 

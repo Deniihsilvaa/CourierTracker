@@ -12,7 +12,7 @@ export const getDb = () => {
 };
 
 // Initialize the database tables
-const CURRENT_DB_VERSION = 5;
+const CURRENT_DB_VERSION = 6;
 
 /**
  * Initializes the database.

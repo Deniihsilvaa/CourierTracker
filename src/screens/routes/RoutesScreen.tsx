@@ -2,17 +2,17 @@ import { FloatingActionButton } from "@/components/buttons/floating-action-butto
 import { PrimaryButton } from "@/components/buttons/primary-button";
 import { GlassCard } from "@/components/cards/glass-card";
 import { AppScreen } from "@/components/layout/app-screen";
-import { SectionHeader } from "@/components/layout/section-header";
 import { SkeletonCard } from "@/components/skeleton/skeleton-card";
 import { CreateRouteModal } from "@/src/components/CreateRouteModal";
 import { RouteActionsModal } from "@/src/components/RouteActionsModal";
 import { RouteJourneyMap } from "@/src/modules/map/components/RouteJourneyMap";
+import { runFullSync } from "@/src/services/sync";
 import { useRouteStore } from "@/src/store/routeStore";
 import { appColors, radius, spacing } from "@/src/theme/colors";
 import { Route } from "@/src/types/route.types";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 
 const statusMeta: Record<Route["route_status"], { label: string; color: string }> = {
   pending: { label: "Pendente", color: appColors.warning },
@@ -29,79 +29,75 @@ export default function RoutesScreen() {
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [expandedRouteId, setExpandedRouteId] = useState<string | null>(null);
 
+  const onRefresh = useCallback(async () => {
+    // We run a full sync first to push any local changes before fetching
+    await runFullSync();
+    await loadRoutes();
+  }, [loadRoutes]);
+
   useEffect(() => {
     void loadRoutes();
   }, [loadRoutes]);
 
-  const summary = useMemo(
-    () => ({
-      total: routes.length,
-      active: routes.filter((route) => route.route_status !== "completed" && route.route_status !== "cancelled").length,
-      pendingPayment: routes.filter((route) => route.payment_required && route.payment_status !== "paid").length,
-    }),
-    [routes]
-  );
 
   return (
     <AppScreen
       title="Rotas"
       subtitle="Fluxo manual com prioridade para velocidade de selecao e leitura operacional."
-      scrollable={true}
     >
-      <GlassCard>
-        <SectionHeader title="Painel de entregas" subtitle="Indicadores rapidos para o turno atual." />
-        <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
-          <RouteMetric label="Total" value={String(summary.total)} icon="albums-outline" />
-          <RouteMetric label="Ativas" value={String(summary.active)} icon="navigate-outline" />
-          <RouteMetric label="Cobrancas" value={String(summary.pendingPayment)} icon="cash-outline" />
-        </View>
-        <View style={{ marginTop: spacing.sm }}>
-          <PrimaryButton
-            label="Criar nova rota"
-            onPress={() => setModalVisible(true)}
-            icon={<Ionicons name="add-outline" size={18} color={appColors.textPrimary} />}
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ gap: spacing.sm, paddingBottom: 120 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={onRefresh}
+            tintColor={appColors.primary}
+            colors={[appColors.primary]}
+            progressBackgroundColor="rgba(255,255,255,0.1)"
           />
-        </View>
-      </GlassCard>
-
-      {isLoading ? (
-        <View style={{ gap: spacing.sm }}>
-          <SkeletonCard height={210} />
-          <SkeletonCard height={210} />
-          <SkeletonCard height={210} />
-        </View>
-      ) : routes.length === 0 ? (
-        <GlassCard>
-          <Text style={{ color: appColors.textPrimary, fontSize: 18, fontWeight: "800" }}>Nenhuma rota ativa</Text>
-          <Text style={{ color: appColors.textSecondary, fontSize: 14, lineHeight: 20, marginTop: spacing.xs }}>
-            Crie rotas manuais com cliente, coleta e entrega para iniciar o fluxo do motorista.
-          </Text>
-          <View style={{ marginTop: spacing.sm }}>
-            <PrimaryButton
-              label="Criar rota agora"
-              onPress={() => setModalVisible(true)}
-              icon={<Ionicons name="add-outline" size={18} color={appColors.textPrimary} />}
-            />
+        }
+        showsVerticalScrollIndicator={true}
+      >
+        {isLoading ? (
+          <View style={{ gap: spacing.sm }}>
+            <SkeletonCard height={210} />
+            <SkeletonCard height={210} />
+            <SkeletonCard height={210} />
           </View>
-        </GlassCard>
-      ) : (
-        <View style={{ gap: spacing.sm }}>
-          {routes.map((route) => (
-            <RouteOverviewCard
-              key={route.id}
-              route={route}
-              expanded={expandedRouteId === route.id}
-              onToggleExpand={() => setExpandedRouteId((current) => (current === route.id ? null : route.id))}
-              onOpenActions={setSelectedRoute}
-            />
-          ))}
-        </View>
-      )}
+        ) : routes.length === 0 ? (
+          <GlassCard>
+            <Text style={{ color: appColors.textPrimary, fontSize: 18, fontWeight: "800" }}>Nenhuma rota ativa</Text>
+            <Text style={{ color: appColors.textSecondary, fontSize: 14, lineHeight: 20, marginTop: spacing.xs }}>
+              Crie rotas manuais com cliente, coleta e entrega para iniciar o fluxo do motorista.
+            </Text>
+            <View style={{ marginTop: spacing.sm }}>
+              <PrimaryButton
+                label="Criar rota agora"
+                onPress={() => setModalVisible(true)}
+                icon={<Ionicons name="add-outline" size={18} color={appColors.textPrimary} />}
+              />
+            </View>
+          </GlassCard>
+        ) : (
+          <View style={{ gap: spacing.sm }}>
+            {routes.map((route) => (
+              <RouteOverviewCard
+                key={route.id}
+                route={route}
+                expanded={expandedRouteId === route.id}
+                onToggleExpand={() => setExpandedRouteId((current) => (current === route.id ? null : route.id))}
+                onOpenActions={setSelectedRoute}
+              />
+            ))}
+          </View>
+        )}
 
-      <FloatingActionButton label="Nova rota" icon="add" onPress={() => setModalVisible(true)} />
+        <FloatingActionButton label="Nova rota" icon="add" onPress={() => setModalVisible(true)} />
 
-      <CreateRouteModal visible={modalVisible} onClose={() => setModalVisible(false)} />
-      <RouteActionsModal visible={!!selectedRoute} onClose={() => setSelectedRoute(null)} route={selectedRoute} />
+        <CreateRouteModal visible={modalVisible} onClose={() => setModalVisible(false)} />
+        <RouteActionsModal visible={!!selectedRoute} onClose={() => setSelectedRoute(null)} route={selectedRoute} />
+      </ScrollView>
     </AppScreen>
   );
 }
@@ -169,7 +165,7 @@ function RouteOverviewCard({
           </View>
         </View>
 
-        <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
+        <View style={{ flexDirection: "row", gap: spacing.md, marginTop: spacing.md }}>
           <RouteMetric
             label="Distância"
             value={routeDistance > 0 ? `${routeDistance.toFixed(1)} km` : "--"}
@@ -252,18 +248,19 @@ function RouteMetric({
     <View
       style={{
         flex: 1,
+        flexDirection: "column",
         minHeight: compact ? 68 : 88,
         borderRadius: radius.lg,
-        padding: spacing.sm,
+        padding: spacing.xs,
         borderWidth: 1,
         borderColor: appColors.border,
         backgroundColor: "rgba(255,255,255,0.04)",
         gap: spacing.xs,
       }}
     >
-      <Ionicons name={icon} size={18} color={appColors.primary} />
-      <Text style={{ color: appColors.textMuted, fontSize: 11, fontWeight: "700", textTransform: "uppercase" }}>{label}</Text>
-      <Text style={{ color: appColors.textPrimary, fontSize: 15, fontWeight: "800" }}>{value}</Text>
+      <Ionicons name={icon} size={20} color={appColors.primary} />
+      <Text style={{ color: appColors.textMuted, fontSize: 10, fontWeight: "700", textTransform: "uppercase" }}>{label}</Text>
+      <Text style={{ color: appColors.textPrimary, fontSize: 11, fontWeight: "800" }}>{value}</Text>
     </View>
   );
 }

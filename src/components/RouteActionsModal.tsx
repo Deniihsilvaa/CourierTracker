@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Route } from '../types/route.types';
-import { useRouteStore } from '../store/routeStore';
+import React, { useState } from 'react';
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { navigationService } from '../services/navigationService';
-import { UpdateDeliveryModal } from './UpdateDeliveryModal';
+import { useRouteStore } from '../store/routeStore';
+import { Route } from '../types/route.types';
 import { FormatTime } from '../utils/format';
+import { UpdateDeliveryModal } from './UpdateDeliveryModal';
 
 interface RouteActionsModalProps {
   visible: boolean;
@@ -14,13 +14,13 @@ interface RouteActionsModalProps {
 }
 
 export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, onClose, route }) => {
-  const { 
-    startPickup, 
-    arriveAtPickup, 
-    startDelivery, 
-    arriveAtDelivery, 
-    markPaymentReceived, 
-    removeRoute 
+  const {
+    startPickup,
+    arriveAtPickup,
+    startDelivery,
+    arriveAtDelivery,
+    markPaymentReceived,
+    removeRoute
   } = useRouteStore();
 
   const [deliveryModalVisible, setDeliveryModalVisible] = useState(false);
@@ -51,8 +51,6 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
   };
 
   const canNavigateToPickup = !!route.pickup_location;
-  // Agora usamos a variável declarada para controle de estado se necessário, 
-  // mas mantemos a lógica de renderização condicional.
   const hasDeliveryAddress = !!route.delivery_location;
 
   return (
@@ -76,9 +74,9 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
                     <Text className="text-zinc-500 text-[10px] font-bold uppercase mb-1">Criação</Text>
                     <Text className="text-zinc-100 font-black text-sm">{FormatTime(route.created_at)}</Text>
                   </View>
-                  
+
                   <Ionicons name="chevron-forward" size={12} color="#27272a" />
-                  
+
                   <View className="items-center flex-1">
                     <Text className="text-zinc-500 text-[10px] font-bold uppercase mb-1">Aceite</Text>
                     <Text className={route.driver_start_at ? "text-blue-400 font-black text-sm" : "text-zinc-700 font-bold text-sm"}>
@@ -100,18 +98,18 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
               {/* Navegação */}
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Navegação</Text>
-                <TouchableOpacity 
-                  onPress={() => navigationService.chooseNavigationApp(route.pickup_location, route.pickup_lat, route.pickup_lng)} 
+                <TouchableOpacity
+                  onPress={() => navigationService.chooseNavigationApp(route.pickup_location, route.pickup_lat, route.pickup_lng)}
                   style={styles.navButton}
                   disabled={!canNavigateToPickup || isProcessing}
                 >
                   <Ionicons name="navigate" size={20} color={canNavigateToPickup ? "#3b82f6" : "#52525b"} />
                   <Text style={[styles.navText, !canNavigateToPickup && styles.disabledText]}>Navegar até a Coleta</Text>
                 </TouchableOpacity>
-                
+
                 {hasDeliveryAddress ? (
-                  <TouchableOpacity 
-                    onPress={() => navigationService.chooseNavigationApp(route.delivery_location!, route.delivery_lat, route.delivery_lng)} 
+                  <TouchableOpacity
+                    onPress={() => navigationService.chooseNavigationApp(route.delivery_location!, route.delivery_lat, route.delivery_lng)}
                     style={styles.navButton}
                     disabled={isProcessing}
                   >
@@ -119,8 +117,8 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
                     <Text style={styles.navText}>Navegar até a Entrega</Text>
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity 
-                    onPress={() => setDeliveryModalVisible(true)} 
+                  <TouchableOpacity
+                    onPress={() => setDeliveryModalVisible(true)}
                     style={[styles.navButton, { borderStyle: 'dashed', borderWidth: 1, borderColor: '#3f3f46', backgroundColor: 'transparent' }]}
                     disabled={isProcessing}
                   >
@@ -133,10 +131,10 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
               {/* Status Rápido - Event Driven */}
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Fluxo da Rota</Text>
-                
+
                 {route.route_status === 'pending' && (
-                  <TouchableOpacity 
-                    onPress={() => handleAction(startPickup)} 
+                  <TouchableOpacity
+                    onPress={() => handleAction(startPickup)}
                     style={[styles.eventBtn, { backgroundColor: '#3b82f6' }]}
                     disabled={isProcessing}
                   >
@@ -150,8 +148,8 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
                 )}
 
                 {route.route_status === 'going_to_pickup' && (
-                  <TouchableOpacity 
-                    onPress={() => handleAction(arriveAtPickup)} 
+                  <TouchableOpacity
+                    onPress={() => handleAction(arriveAtPickup)}
                     style={[styles.eventBtn, { backgroundColor: '#3b82f6' }]}
                     disabled={isProcessing}
                   >
@@ -165,8 +163,8 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
                 )}
 
                 {route.route_status === 'pickup_arrived' && (
-                  <TouchableOpacity 
-                    onPress={() => handleAction(startDelivery)} 
+                  <TouchableOpacity
+                    onPress={() => handleAction(startDelivery)}
                     style={[styles.eventBtn, { backgroundColor: '#f97316' }]}
                     disabled={isProcessing}
                   >
@@ -180,8 +178,8 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
                 )}
 
                 {route.route_status === 'delivering' && (
-                  <TouchableOpacity 
-                    onPress={() => handleAction(arriveAtDelivery)} 
+                  <TouchableOpacity
+                    onPress={() => handleAction(arriveAtDelivery)}
                     style={[styles.eventBtn, { backgroundColor: '#22c55e' }]}
                     disabled={isProcessing}
                   >
@@ -206,8 +204,8 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
               {route.payment_required && route.payment_status !== 'paid' && (
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Financeiro</Text>
-                  <TouchableOpacity 
-                    onPress={() => handleAction(markPaymentReceived)} 
+                  <TouchableOpacity
+                    onPress={() => handleAction(markPaymentReceived)}
                     style={[styles.actionBtn, { backgroundColor: '#10b981' }]}
                     disabled={isProcessing}
                   >
@@ -224,8 +222,8 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
               {/* Editar Endereço */}
               {route.route_status !== 'completed' && route.delivery_location && (
                 <View style={styles.section}>
-                  <TouchableOpacity 
-                    onPress={() => setDeliveryModalVisible(true)} 
+                  <TouchableOpacity
+                    onPress={() => setDeliveryModalVisible(true)}
                     style={[styles.actionBtn, { backgroundColor: '#27272a' }]}
                     disabled={isProcessing}
                   >
@@ -247,10 +245,10 @@ export const RouteActionsModal: React.FC<RouteActionsModalProps> = ({ visible, o
         </View>
       </Modal>
 
-      <UpdateDeliveryModal 
-        visible={deliveryModalVisible} 
-        onClose={() => setDeliveryModalVisible(false)} 
-        route={route} 
+      <UpdateDeliveryModal
+        visible={deliveryModalVisible}
+        onClose={() => setDeliveryModalVisible(false)}
+        route={route}
       />
     </>
   );

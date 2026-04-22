@@ -50,33 +50,41 @@ export const routeService = {
 
       const now = new Date().toISOString();
       
-      // Request body payload for API
-      const apiPayload = {
-        session_id: sessionId,
-        client_id: data.client_id || null,
-        pickup_location: data.pickup_location || "Coleta do Cliente", // fallback if client is selected but no location string
-        pickup_lat: pickupGeo?.lat ?? null,
-        pickup_lng: pickupGeo?.lng ?? null,
-        delivery_location: data.delivery_location ?? null,
-        delivery_lat: deliveryGeo?.lat ?? null,
-        delivery_lng: deliveryGeo?.lng ?? null,
-        value: data.value ?? null,
+      // Build the payload, omitting null/undefined fields that the backend
+      // schema does not accept as null (strict validation).
+      const apiPayload: Record<string, unknown> = {
+        pickup_location: data.pickup_location || "Coleta do Cliente",
         payment_required: data.payment_required,
         payment_status: 'pending',
+        value: data.value ?? 0,
       };
+
+      if (sessionId) apiPayload.session_id = sessionId;
+      if (data.client_id) apiPayload.client_id = data.client_id;
+      if (pickupGeo?.lat != null) apiPayload.pickup_lat = pickupGeo.lat;
+      if (pickupGeo?.lng != null) apiPayload.pickup_lng = pickupGeo.lng;
+      if (data.delivery_location) apiPayload.delivery_location = data.delivery_location;
+      if (deliveryGeo?.lat != null) apiPayload.delivery_lat = deliveryGeo.lat;
+      if (deliveryGeo?.lng != null) apiPayload.delivery_lng = deliveryGeo.lng;
 
       let newRoute: Route | null = null;
       let syncedStatus = 0;
 
-      try {
-        const response = await api.post('/routes/v1/', apiPayload);
-        if (response.data && response.data.success && response.data.data) {
-          logger.info('[RouteService] API creation successful.');
-          newRoute = mapRemoteRouteToModel(response.data.data);
-          syncedStatus = 1;
+      // Only call the API if we have a session_id — it's required by the backend.
+      // Without it, the route is saved locally and synced later via batch sync.
+      if (sessionId) {
+        try {
+          const response = await api.post('/routes/v1/', apiPayload);
+          if (response.data && response.data.success && response.data.data) {
+            logger.info('[RouteService] API creation successful.');
+            newRoute = mapRemoteRouteToModel(response.data.data);
+            syncedStatus = 1;
+          }
+        } catch (apiError: any) {
+          logger.warn('[RouteService] API creation failed, falling back to local DB:', apiError?.message || apiError);
         }
-      } catch (apiError: any) {
-        logger.warn('[RouteService] API creation failed, falling back to local DB:', apiError?.message || apiError);
+      } else {
+        logger.info('[RouteService] No active session — saving route locally for later sync.');
       }
 
       // If API failed or somehow returned no data, fallback to generating local record

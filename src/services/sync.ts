@@ -116,7 +116,9 @@ export const runFullSync = async () => {
         for (const table of tablesToSync) {
             const result = await prepareTableData(db, table);
             if (result) {
-                (payload as any)[table] = result.rows;
+                // Map local table names to backend schema names if needed
+                const apiKey = table === 'work_sessions' ? 'sessions' : table;
+                (payload as any)[apiKey] = result.rows;
                 syncMap[table] = result.ids;
             }
         }
