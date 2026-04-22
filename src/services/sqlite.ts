@@ -12,7 +12,7 @@ export const getDb = () => {
 };
 
 // Initialize the database tables
-const CURRENT_DB_VERSION = 6;
+const CURRENT_DB_VERSION = 7;
 
 /**
  * Initializes the database.
@@ -300,56 +300,64 @@ export const initDb = async (forceReset = false) => {
           ];
 
           for (const table of tablesToMigrate) {
-            const columnInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`);
-            const existingColumns = columnInfo.map(c => c.name);
+            try {
+              const columnInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`);
+              const existingColumns = columnInfo.map(c => c.name);
 
-            // Add missing columns if they don't exist
-            if (!existingColumns.includes('synced')) {
-              await db.execAsync(`ALTER TABLE ${table} ADD COLUMN synced INTEGER DEFAULT 0;`);
-            }
-            if (!existingColumns.includes('created_at')) {
-              await db.execAsync(`ALTER TABLE ${table} ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP;`);
-            }
-            if (!existingColumns.includes('updated_at')) {
-              await db.execAsync(`ALTER TABLE ${table} ADD COLUMN updated_at TEXT;`);
-            }
-            if (table !== 'log_system' && table !== 'gps_points' && !existingColumns.includes('deleted_at')) {
-              await db.execAsync(`ALTER TABLE ${table} ADD COLUMN deleted_at TEXT;`);
-            }
+              // Add missing core columns
+              if (!existingColumns.includes('synced')) {
+                await db.execAsync(`ALTER TABLE ${table} ADD COLUMN synced INTEGER DEFAULT 0;`);
+              }
+              if (!existingColumns.includes('created_at')) {
+                await db.execAsync(`ALTER TABLE ${table} ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP;`);
+              }
+              if (!existingColumns.includes('updated_at')) {
+                await db.execAsync(`ALTER TABLE ${table} ADD COLUMN updated_at TEXT;`);
+              }
+              
+              // Add deleted_at to all tables except system logs and raw gps points
+              const needsSoftDelete = table !== 'log_system' && table !== 'gps_points';
+              if (needsSoftDelete && !existingColumns.includes('deleted_at')) {
+                await db.execAsync(`ALTER TABLE ${table} ADD COLUMN deleted_at TEXT;`);
+                console.log(`[Storage] Added missing deleted_at column to ${table}`);
+              }
 
-            // Table specific columns
-            if (table === 'manual_routes') {
-              if (!existingColumns.includes('driver_start_lat')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_start_lat REAL;`);
-              if (!existingColumns.includes('driver_start_lng')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_start_lng REAL;`);
-              if (!existingColumns.includes('driver_start_at')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_start_at TEXT;`);
-              if (!existingColumns.includes('pickup_arrived_lat')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_arrived_lat REAL;`);
-              if (!existingColumns.includes('pickup_arrived_lng')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_arrived_lng REAL;`);
-              if (!existingColumns.includes('pickup_arrived_at')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_arrived_at TEXT;`);
-              if (!existingColumns.includes('delivery_arrived_lat')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_lat REAL;`);
-              if (!existingColumns.includes('delivery_arrived_lng')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_lng REAL;`);
-              if (!existingColumns.includes('delivery_arrived_at')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_at TEXT;`);
-              if (!existingColumns.includes('driver_to_pickup_km')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_to_pickup_km REAL;`);
-              if (!existingColumns.includes('pickup_to_delivery_km')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_to_delivery_km REAL;`);
-              if (!existingColumns.includes('estimated_duration_minutes')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN estimated_duration_minutes REAL;`);
-              if (!existingColumns.includes('route_geometry')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN route_geometry TEXT;`);
-            }
+              // Entity-specific evolutions
+              if (table === 'manual_routes') {
+                if (!existingColumns.includes('driver_start_lat')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_start_lat REAL;`);
+                if (!existingColumns.includes('driver_start_lng')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_start_lng REAL;`);
+                if (!existingColumns.includes('driver_start_at')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_start_at TEXT;`);
+                if (!existingColumns.includes('pickup_arrived_lat')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_arrived_lat REAL;`);
+                if (!existingColumns.includes('pickup_arrived_lng')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_arrived_lng REAL;`);
+                if (!existingColumns.includes('pickup_arrived_at')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_arrived_at TEXT;`);
+                if (!existingColumns.includes('delivery_arrived_lat')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_lat REAL;`);
+                if (!existingColumns.includes('delivery_arrived_lng')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_lng REAL;`);
+                if (!existingColumns.includes('delivery_arrived_at')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN delivery_arrived_at TEXT;`);
+                if (!existingColumns.includes('driver_to_pickup_km')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN driver_to_pickup_km REAL;`);
+                if (!existingColumns.includes('pickup_to_delivery_km')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN pickup_to_delivery_km REAL;`);
+                if (!existingColumns.includes('estimated_duration_minutes')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN estimated_duration_minutes REAL;`);
+                if (!existingColumns.includes('route_geometry')) await db.execAsync(`ALTER TABLE manual_routes ADD COLUMN route_geometry TEXT;`);
+              }
 
-            if (table === 'clients') {
-              if (!existingColumns.includes('client_type')) await db.execAsync(`ALTER TABLE clients ADD COLUMN client_type TEXT;`);
-            }
+              if (table === 'work_sessions') {
+                if (!existingColumns.includes('start_odometer')) await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN start_odometer TEXT;`);
+                if (!existingColumns.includes('end_odometer')) await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN end_odometer TEXT;`);
+                if (!existingColumns.includes('total_distance_km')) await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN total_distance_km REAL DEFAULT 0.0;`);
+                if (!existingColumns.includes('total_active_seconds')) await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN total_active_seconds INTEGER DEFAULT 0;`);
+                if (!existingColumns.includes('total_idle_seconds')) await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN total_idle_seconds INTEGER DEFAULT 0;`);
+              }
 
-            if (table === 'work_sessions') {
-              if (!existingColumns.includes('start_odometer')) await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN start_odometer TEXT;`);
-              if (!existingColumns.includes('end_odometer')) await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN end_odometer TEXT;`);
-              if (!existingColumns.includes('total_distance_km')) await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN total_distance_km REAL DEFAULT 0.0;`);
-              if (!existingColumns.includes('total_active_seconds')) await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN total_active_seconds INTEGER DEFAULT 0;`);
-              if (!existingColumns.includes('total_idle_seconds')) await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN total_idle_seconds INTEGER DEFAULT 0;`);
-            }
+              if (table === 'profiles') {
+                if (!existingColumns.includes('full_name')) await db.execAsync(`ALTER TABLE profiles ADD COLUMN full_name TEXT;`);
+                if (!existingColumns.includes('vehicle_type')) await db.execAsync(`ALTER TABLE profiles ADD COLUMN vehicle_type TEXT;`);
+                if (!existingColumns.includes('city')) await db.execAsync(`ALTER TABLE profiles ADD COLUMN city TEXT;`);
+              }
 
-            if (table === 'profiles') {
-              if (!existingColumns.includes('full_name')) await db.execAsync(`ALTER TABLE profiles ADD COLUMN full_name TEXT;`);
-              if (!existingColumns.includes('vehicle_type')) await db.execAsync(`ALTER TABLE profiles ADD COLUMN vehicle_type TEXT;`);
-              if (!existingColumns.includes('city')) await db.execAsync(`ALTER TABLE profiles ADD COLUMN city TEXT;`);
+              if (table === 'clients') {
+                if (!existingColumns.includes('client_type')) await db.execAsync(`ALTER TABLE clients ADD COLUMN client_type TEXT;`);
+              }
+            } catch (tableError) {
+              console.error(`[Storage] Failed to migrate table ${table}:`, tableError);
             }
           }
 
@@ -377,6 +385,19 @@ export const initDb = async (forceReset = false) => {
           // Set the final version
           await db.execAsync(`PRAGMA user_version = ${CURRENT_DB_VERSION};`);
         });
+      }
+
+      // --- 4. FAIL-SAFE INTEGRITY CHECK ---
+      // Explicitly ensure work_sessions has deleted_at (most common failure point)
+      try {
+        const checkColumns = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(work_sessions)`);
+        const colNames = checkColumns.map(c => c.name);
+        if (!colNames.includes('deleted_at')) {
+          console.warn('[Storage] FAIL-SAFE: work_sessions missing deleted_at, adding now...');
+          await db.execAsync(`ALTER TABLE work_sessions ADD COLUMN deleted_at TEXT;`);
+        }
+      } catch (checkErr) {
+        console.error('[Storage] Fail-safe check failed:', checkErr);
       }
 
       console.log('[Storage] Local database initialized successfully.');

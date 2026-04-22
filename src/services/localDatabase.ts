@@ -205,24 +205,19 @@ export const localDatabase = {
         throw e;
       }
     }
-    if (tableName === 'work_sessions') {
-      const query = `DELETE FROM ${tableName} WHERE id = ?`;
-      try {
-        await db.runAsync(query, [id]);
-        return;
-      } catch (e) {
-        console.error(`[DB] Work sessions delete failed:`, e);
-        throw e;
-      }
-    }
 
     // SOFT DELETE: Marking as deleted and unsynced so the deletion can sync
     const query = `UPDATE ${tableName} SET deleted_at = ?, synced = 0 WHERE id = ?`;
     try {
       await db.runAsync(query, [now, id]);
-    } catch (e) {
-      console.error(`[DB] Soft delete failed in ${tableName}:`, e);
-      throw e;
+    } catch (e: any) {
+      if (e.message?.includes('no such column: deleted_at')) {
+        console.warn(`[DB] Soft delete failed: table ${tableName} missing deleted_at. Falling back to hard delete.`);
+        await db.runAsync(`DELETE FROM ${tableName} WHERE id = ?`, [id]);
+      } else {
+        console.error(`[DB] Delete failed in ${tableName}:`, e);
+        throw e;
+      }
     }
   }
 };

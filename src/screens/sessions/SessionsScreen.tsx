@@ -131,6 +131,7 @@ export default function SessionsScreen() {
               />
               {section.data.map((item) => (
                 <Pressable
+                  key={item.id}
                   delayLongPress={600}
                   onLongPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -141,7 +142,7 @@ export default function SessionsScreen() {
                     opacity: pressed ? 0.9 : 1,
                   })}
                 >
-                  <GlassCard key={item.id}>
+                  <GlassCard>
                     <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.sm }}>
                       <View style={{ flex: 1, gap: spacing.xs }}>
                         <Text style={{ color: appColors.textPrimary, fontSize: 17, fontWeight: "800" }}>
