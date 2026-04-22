@@ -1,6 +1,5 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useAnalyticsStore } from '@/src/modules/analytics/store';
 import { useAuthStore } from '@/src/modules/auth/store';
 import { deleteSession, endSession, fetchSessionData, recoverActiveSession, startSession } from '@/src/modules/sessions/service';
 import { useSessionStore } from '@/src/modules/sessions/store';
@@ -34,15 +33,9 @@ export default function useDashboardScreen() {
         sessionDuration,
         odometer,
         setOdometer,
-        isLoading: loadingSession,
         setIsLoading: setLoadingSession,
         setActiveSession
     } = useSessionStore();
-    const {
-        financials,
-        isLoading: loadingAnalytics,
-        fetchFinancialSummary
-    } = useAnalyticsStore();
 
     useEffect(() => {
         const checkPending = async () => {
@@ -55,12 +48,7 @@ export default function useDashboardScreen() {
             }
         };
 
-        const loadAnalytics = async () => {
-            fetchFinancialSummary("month");
-        };
-
         checkPending();
-        loadAnalytics();
         recoverActiveSession();
 
         const interval = setInterval(checkPending, 10000);
@@ -221,7 +209,6 @@ export default function useDashboardScreen() {
         theme,
         pulseAnim,
         activeSession,
-        loadingSession,
         sessionTime: sessionDuration,
         odometer,
         isStopModalVisible,
@@ -237,8 +224,5 @@ export default function useDashboardScreen() {
         handleDeleteSession,
         confirmStopSession,
         handleRouteEvent,
-        fetchFinancialSummary,
-        financials,
-        loadingAnalytics
     };
 }

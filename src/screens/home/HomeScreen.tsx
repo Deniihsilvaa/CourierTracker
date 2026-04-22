@@ -1,10 +1,7 @@
 import { PrimaryButton } from "@/components/buttons/primary-button";
-import { ChartCard } from "@/components/cards/chart-card";
 import { GlassCard } from "@/components/cards/glass-card";
-import { StatCard } from "@/components/cards/stat-card";
 import { AppScreen } from "@/components/layout/app-screen";
 import { SectionHeader } from "@/components/layout/section-header";
-import { SkeletonCard } from "@/components/skeleton/skeleton-card";
 import useDashboardScreen from "@/src/hooks/useDashboardScreen";
 import { appColors, radius, spacing } from "@/src/theme/colors";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,15 +9,12 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef } from "react";
 import { Animated, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
-const formatCurrency = (value?: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
 
 export default function HomeScreen() {
   const router = useRouter();
   const {
     user,
     activeSession,
-    loadingSession,
     sessionTime,
     odometer,
     setOdometer,
@@ -30,8 +24,6 @@ export default function HomeScreen() {
     handleManualSync,
     isSyncing,
     pendingCount,
-    financials,
-    loadingAnalytics,
     isStopModalVisible,
     setIsStopModalVisible,
     endOdometer,
@@ -51,28 +43,6 @@ export default function HomeScreen() {
   }, [activeSession, pulse]);
 
   const displayName = useMemo(() => user?.name || user?.email?.split("@")[0] || "Motorista", [user]);
-
-  const monthlyChart = useMemo(
-    () => [
-      { label: "S1", value: Math.max(120, Number(financials?.total_income || 0) * 0.22), tone: appColors.primary },
-      { label: "S2", value: Math.max(90, Number(financials?.net_profit || 0) * 0.18), tone: appColors.accentCyan },
-      { label: "S3", value: Math.max(80, Number(financials?.total_costs || 0) * 0.16), tone: appColors.warning },
-      { label: "S4", value: Math.max(140, Number(financials?.total_income || 0) * 0.28), tone: appColors.success },
-    ],
-    [financials]
-  );
-
-  const weeklyChart = useMemo(
-    () => [
-      { label: "Seg", value: Math.max(40, Number(financials?.net_profit || 0) * 0.12), tone: appColors.primary },
-      { label: "Ter", value: Math.max(54, Number(financials?.total_income || 0) * 0.08), tone: appColors.accentLilac },
-      { label: "Qua", value: Math.max(36, Number(financials?.total_fuel || 0) * 0.14), tone: appColors.warning },
-      { label: "Qui", value: Math.max(58, Number(financials?.total_income || 0) * 0.1), tone: appColors.accentEmerald },
-      { label: "Sex", value: Math.max(72, Number(financials?.net_profit || 0) * 0.16), tone: appColors.success },
-    ],
-    [financials]
-  );
-
   return (
     <>
       <AppScreen
@@ -215,41 +185,6 @@ export default function HomeScreen() {
               </View>
             </GlassCard>
           </Animated.View>
-
-          <SectionHeader title="Resumo diario" subtitle="Leitura rapida de ganhos, custos e saude financeira." />
-
-          {loadingAnalytics ? (
-            <>
-              <SkeletonCard height={136} />
-              <SkeletonCard height={136} />
-            </>
-          ) : (
-            <>
-              <View style={{ flexDirection: "row", gap: spacing.sm }}>
-                <StatCard label="Ganhos" value={formatCurrency(financials?.total_income)} icon="wallet-outline" tone="success" trend="+8%" />
-                <StatCard label="Custos" value={formatCurrency(financials?.total_costs)} icon="trending-down-outline" tone="danger" trend="-3%" />
-              </View>
-              <View style={{ flexDirection: "row", gap: spacing.sm }}>
-                <StatCard label="Combustivel" value={formatCurrency(financials?.total_fuel)} icon="water-outline" tone="warning" trend="+2%" />
-                <StatCard label="Lucro liquido" value={formatCurrency(financials?.net_profit)} icon="sparkles-outline" tone="primary" trend="+11%" />
-              </View>
-            </>
-          )}
-
-          <SectionHeader title="Visao de desempenho" subtitle="Dois recortes rapidos para decisoes do dia." />
-
-          {loadingSession && !activeSession ? (
-            <>
-              <SkeletonCard height={220} />
-              <SkeletonCard height={220} />
-            </>
-          ) : (
-            <>
-              <ChartCard title="Ganhos do mes" subtitle="Distribuicao estimada por semana" data={monthlyChart} />
-              <ChartCard title="Performance semanal" subtitle="Sinal rapido de ritmo operacional" data={weeklyChart} />
-            </>
-          )}
-
           <GlassCard>
             <SectionHeader title="Acoes rapidas" subtitle="Atalhos para reduzir navegacao durante a operacao." />
             <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
