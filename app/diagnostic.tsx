@@ -26,6 +26,11 @@ export default function DiagnosticScreen() {
           <DiagnosticRow label="Permissão GPS (Background)" status={results.gpsBackground} />
           <DiagnosticRow label="Protocolo de Notificações" status={results.notifications} />
           <DiagnosticRow label="Conectividade de Rede" status={results.network} />
+          <DiagnosticRow
+            label="Token Mapbox (Busca)"
+            status={results.mapboxToken}
+            sublabel={results.mapboxToken === 'error' ? 'Variável EXPO_PUBLIC_MAPBOX_TOKEN não encontrada' : 'Configurado'}
+          />
           <DiagnosticRow label="Otimização de Bateria" status={results.battery} sublabel="Recomendado: Não Otimizado" />
         </View>
 

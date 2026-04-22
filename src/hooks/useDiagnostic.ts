@@ -17,7 +17,8 @@ export function useDiagnostic() {
         gpsBackground: 'pending',
         notifications: 'pending',
         network: 'pending',
-        battery: 'pending'
+        battery: 'pending',
+        mapboxToken: 'pending'
     });
 
     const runDiagnostic = async () => {
@@ -54,6 +55,11 @@ export function useDiagnostic() {
 
         // 5. Battery (Simulação de check de otimização)
         setStats(prev => ({ ...prev, battery: 'warning' }));
+        await delay(600);
+
+        // 6. Mapbox Token
+        const mapboxToken = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
+        setStats(prev => ({ ...prev, mapboxToken: (mapboxToken && mapboxToken.startsWith('pk.')) ? 'success' : 'error' }));
 
         setIsScanning(false);
     };
