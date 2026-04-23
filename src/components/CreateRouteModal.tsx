@@ -175,11 +175,6 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
       return;
     }
 
-    if (!deliveryAddress) {
-      setRouteError("Informe o endereço de entrega. Este campo é obrigatório.");
-      return;
-    }
-
     const numericValue = value.trim() ? parseFloat(value.replace(",", ".")) : 0;
     if (isNaN(numericValue) || numericValue < 0) {
       setRouteError("Informe um valor válido para a entrega (mínimo R$ 0,00).");
@@ -193,9 +188,9 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
         pickup_location: pickupAddress.full_address,
         pickup_lat: pickupAddress.latitude,
         pickup_lng: pickupAddress.longitude,
-        delivery_location: deliveryAddress.full_address,
-        delivery_lat: deliveryAddress.latitude,
-        delivery_lng: deliveryAddress.longitude,
+        delivery_location: deliveryAddress?.full_address ?? null,
+        delivery_lat: deliveryAddress?.latitude ?? null,
+        delivery_lng: deliveryAddress?.longitude ?? null,
         value: numericValue,
         payment_required: paymentRequired,
         client_id: selectedClient?.id ?? undefined,
@@ -299,8 +294,8 @@ export const CreateRouteModal: React.FC<CreateRouteModalProps> = ({ visible, onC
               )}
 
               <AddressAutocomplete
-                label="Entrega"
-                placeholder="Busque o endereco de entrega"
+                label="Entrega (opcional)"
+                placeholder="Preencha apos saber o destino"
                 selectedAddress={deliveryAddress}
                 onSelectAddress={setDeliveryAddress}
                 onClearAddress={() => setDeliveryAddress(null)}
